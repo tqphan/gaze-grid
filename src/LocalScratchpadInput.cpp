@@ -56,11 +56,18 @@ bool LocalScratchpadInput::atEnd()const{
 }
 bool LocalScratchpadInput::clear(){
  if(!ready())return false;
- if(QGuiApplication::focusObject()==editor)QGuiApplication::inputMethod()->reset();
- QInputMethodEvent cancel;QCoreApplication::sendEvent(editor,&cancel);
+ cancelComposition();
  const bool cleared=QMetaObject::invokeMethod(editor,"clear",Qt::DirectConnection);
  if(!cleared)failure="Local scratchpad could not be cleared";
  return cleared;
+}
+void LocalScratchpadInput::cancelComposition(){
+ if(!editor||editor->thread()!=QThread::currentThread())return;
+ const bool focused=QGuiApplication::focusObject()==editor;
+ if(focused)QGuiApplication::inputMethod()->reset();
+ if(engine&&engine->thread()==QThread::currentThread()&&(focused||!engine->property("requiresFocus").toBool())&&engine->metaObject()->indexOfMethod("cancel()")>=0)
+  QMetaObject::invokeMethod(engine,"cancel",Qt::DirectConnection);
+ QInputMethodEvent cancel;QCoreApplication::sendEvent(editor,&cancel);
 }
 bool LocalScratchpadInput::ready(){
  failure.clear();

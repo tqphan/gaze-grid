@@ -18,6 +18,7 @@ public:
  bool attached()const{return !editor.isNull();}
  bool atEnd()const;
  bool clear();
+ void cancelComposition();
  bool text(const QString &text,const QStringList &held,bool useEngine);
  bool key(const QString &name,const QStringList &held,bool useEngine);
  QString error()const{return failure;}

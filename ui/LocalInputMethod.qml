@@ -39,4 +39,5 @@ Item {
         candidateModel.selectItem(index)
         return true
     }
+    function cancel() { InputContext.clear() }
 }

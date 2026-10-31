@@ -62,7 +62,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  localIme=QCoreApplication::arguments().contains("--local-ime")&&!signInMode;
  wantedImeLocale=profile.values["localImeLocale"].toString();
  connect(this,&Controller::layoutChanged,this,&Controller::refreshLocalIme);
- connect(&runner,&ActionRunner::cancelled,this,&Controller::refreshLocalIme);
+ connect(&runner,&ActionRunner::cancelled,this,[this]{localInput.cancelComposition();refreshLocalIme();});
  runner.canEditLocal=[this]{return scratchpadEditable()&&localInput.attached();};
  runner.sendLocalText=[this](QString text,QStringList held){return desktopActive&&!paused&&!sensitiveInput&&localInput.text(text,held,systemKeyboard());};
  runner.sendLocalKey=[this](QString name,QStringList held){return desktopActive&&!paused&&!sensitiveInput&&localInput.key(name,held,systemKeyboard());};
@@ -263,6 +263,7 @@ void Controller::connectDesktop(){
 }
 void Controller::setDesktopActive(bool active){
  if(desktopActive==active)return;
+ if(!active)localInput.cancelComposition();
  desktopActive=active;
  if(!active){
   clearCapture();clearOverlap();runner.cancel();endButtonHold();heldDwellTarget.clear();
@@ -364,11 +365,12 @@ void Controller::refreshKeyboardLabels(){
 }
 void Controller::setSystemKeyboard(bool enabled){
  if(signInMode||systemKeyboard()==enabled)return;
+ localInput.cancelComposition();
  runner.cancel();endButtonHold();clearOverlap();dwell.reset();
  runner.physicalText=enabled;systemLayout.refresh();
  refreshLocalIme();
  completionSpaceContext.clear();pendingCompletionText.clear();
- actionStatus=enabled?(systemLayout.available()?"System keyboard enabled":"System keyboard layout unavailable"):"Personal keyboard enabled";
+ actionStatus=enabled?(scratchpadEditable()?(localInput.inputEngine()?"Local input method enabled":"Local input method unavailable"):(systemLayout.available()?"System keyboard enabled":"System keyboard layout unavailable")):"Personal keyboard enabled";
  updateSuggestions();emit changed();
 }
 bool Controller::savePreferences(){
@@ -392,6 +394,7 @@ bool Controller::savePreferences(){
  profileStatus=ok?QString():error;emit changed();return ok;
 }
 void Controller::resetPreferences(){
+ localInput.cancelComposition();
  wantedImeLocale.clear();
  runner.physicalText=false;systemCaps=false;
  pendingCompletionText.clear();completionSpaceContext.clear();
@@ -556,7 +559,7 @@ void Controller::setSmoothWhenChangingGazeTarget(bool enabled){
  if(enabled==smoothTargetChanges)return;
  smoothTargetChanges=enabled;gazeSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
 }
-void Controller::togglePause(){if(!desktopActive)return;paused=!paused;dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;portal.releaseAll();pointer.cancel();emit changed();}
+void Controller::togglePause(){if(!desktopActive)return;localInput.cancelComposition();paused=!paused;dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;portal.releaseAll();pointer.cancel();emit changed();}
 void Controller::setGazeEnabled(bool enabled){
  const bool preferenceChanged=gazeEnabled!=enabled;
  gazeEnabled=enabled;dwell.reset();gazeSmoothing.reset();
@@ -855,7 +858,7 @@ void Controller::openLayout(QString name,bool backReturnsHere){
  }
  const bool textOnly=compiled["simulatekeystrokes"].toString().compare("false",Qt::CaseInsensitive)==0;
  const bool preserve=preserveTogglesBetweenLayouts&&!textOnly&&!runner.textOnly;
- runner.cancel(textOnly==runner.textOnly,preserve);endButtonHold();gameController.reset(preserve);activeJoystick=-1;runner.textOnly=textOnly;runner.capsLock=false;pointer.cancel();dwell.reset();
+ localInput.cancelComposition();runner.cancel(textOnly==runner.textOnly,preserve);endButtonHold();gameController.reset(preserve);activeJoystick=-1;runner.textOnly=textOnly;runner.capsLock=false;pointer.cancel();dwell.reset();
  if(backReturnsHere&&!layoutName.isEmpty()&&layoutName!=name){backStack<<layoutName;if(backStack.size()>64)backStack.removeFirst();}
  canvasSourcePath=sourcePath;canvasSource=sourceBytes;
  saveCanvasChanges=!signInMode&&compiled["persistkeygeometry"].toString().compare("true",Qt::CaseInsensitive)==0;canvasSaveStatus.clear();
@@ -932,7 +935,7 @@ bool Controller::performAction(QString action){
   if(localImeActive()){
    const int localPageSize=suggestionPageSize();
    const int next=imeCandidateOffset+(action=="NextSuggestions"?localPageSize:-localPageSize);
-   if(next>=0&&next<imeCandidateSnapshot.size()){imeCandidateOffset=next;++imeRevision;dwell.reset();emit changed();}
+   if(next>=0&&next<imeCandidateSnapshot.size()){imeCandidateOffset=next;++imeRevision;emit changed();}
    return true;
   }
   const auto all=predictionSuggestions(1000);
@@ -1075,16 +1078,20 @@ bool Controller::imeTarget(const QString &target,int &index)const{
 }
 void Controller::refreshLocalIme(){
  imeCandidateSnapshot=localImeActive()?localInput.candidates():QStringList();
- imeCandidateOffset=0;++imeRevision;dwell.reset();emit changed();
+ // Candidate commands carry the new revision, so their dwell restarts naturally.
+ // Resetting all dwell here would re-arm a consumed letter or paging key.
+ imeCandidateOffset=0;++imeRevision;emit changed();
 }
 void Controller::attachScratchpadInputEngine(QObject *engine){
+ if(localInput.inputEngine()==engine)return;
  for(const auto &connection:imeConnections)disconnect(connection);imeConnections.clear();
  localInput.setEngine(engine);
  if(engine){
   imeConnections<<connect(engine,SIGNAL(candidatesChanged()),this,SLOT(refreshLocalIme()));
-  imeConnections<<connect(engine,&QObject::destroyed,this,[this]{localInput.setEngine(nullptr);refreshLocalIme();});
+  imeConnections<<connect(engine,&QObject::destroyed,this,[this]{localInput.setEngine(nullptr);QTimer::singleShot(0,this,&Controller::refreshLocalIme);});
   if(!wantedImeLocale.isEmpty()&&!localInput.setLocale(wantedImeLocale)){actionStatus=localInput.error();wantedImeLocale.clear();}
  }
+ if(scratchpadEditable()&&systemKeyboard()&&localInput.error().isEmpty())actionStatus=engine?"Local input method enabled":"Local input method unavailable";
  refreshLocalIme();
 }
 void Controller::setLocalImeLocale(const QString &locale){

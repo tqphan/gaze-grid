@@ -15,10 +15,11 @@ Window {
  property string hovered: ""
  property bool canvasDragging:false
  Loader {
+  objectName:"localInputMethodLoader"
   active:controller.localImeEnabled&&controller.scratchpadEditable&&controller.systemKeyboard
   source:active?"LocalInputMethod.qml":""
-  onLoaded:controller.attachScratchpadInputEngine(item)
-  onActiveChanged:if(!active)controller.attachScratchpadInputEngine(null)
+  onLoaded:Qt.callLater(function(){if(active&&item)controller.attachScratchpadInputEngine(item)})
+  onActiveChanged:if(!active)Qt.callLater(function(){if(!active)controller.attachScratchpadInputEngine(null)})
  }
  property point canvasPoint:Qt.point(0,0)
  // Keep coordinates current before entering edit mode as well.
@@ -599,7 +600,7 @@ Window {
   }
   component SettingsComboBox:Desktop.ComboBox {
    id:comboControl;implicitHeight:40;leftPadding:12;rightPadding:34
-   contentItem:Text {text:comboControl.displayText;color:Kirigami.Theme.textColor;font.pixelSize:14;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight;opacity:comboControl.enabled?1:0.4}
+   contentItem:TextInput {text:comboControl.displayText;color:Kirigami.Theme.textColor;font.pixelSize:14;verticalAlignment:Text.AlignVCenter;readOnly:true;activeFocusOnPress:false;selectByMouse:false;clip:true;opacity:comboControl.enabled?1:0.4}
    indicator:Text {x:parent.width-width-14;anchors.verticalCenter:parent.verticalCenter;text:"\u2304";color:Kirigami.Theme.textColor;font.pixelSize:18}
    background:Rectangle {radius:6;color:Qt.rgba(0.5,0.5,0.5,comboControl.hovered?0.13:0.07);border.width:1;border.color:comboControl.activeFocus?"#599cff":Qt.rgba(0.5,0.5,0.5,0.32)}
   }

@@ -14,6 +14,9 @@ inline bool localTestBuild() {
 // Keep application data separate without hiding the desktop theme configuration.
 inline QString appConfigDirectory() {
  const auto overridePath=qEnvironmentVariable("GAZE_GRID_CONFIG_DIR");
+#ifdef GAZE_GRID_ISOLATED_TEST
+ if(!overridePath.isEmpty())return overridePath;
+#endif
  if(localTestBuild()){
   bool check=false;
   for(const auto &arg:QCoreApplication::arguments())if(arg.endsWith("-check")||arg=="--smoke")check=true;
