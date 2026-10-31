@@ -3,7 +3,7 @@
 
 PointerActions::PointerActions(QObject *parent):QObject(parent){
     clock.start();
-    timer.setSingleShot(true);connect(&timer,&QTimer::timeout,this,&PointerActions::tick);
+    timer.setTimerType(Qt::PreciseTimer);timer.setSingleShot(true);connect(&timer,&QTimer::timeout,this,&PointerActions::tick);
 }
 bool PointerActions::supports(const QString &a){
     static const QSet<QString> names{"MouseMoveTo","MouseMoveAndLeftClick","MouseMoveAndLeftDoubleClick",
@@ -46,7 +46,13 @@ bool PointerActions::setButton(int code,bool down){
     if(!button||!button(code,down))return false;
     if(down)held.insert(code);else held.remove(code);emit changed();return true;
 }
-bool PointerActions::click(int code){return setButton(code,true)&&setButton(code,false);}
+bool PointerActions::click(int code){
+    if(!setButton(code,true))return false;
+    if(clickDurationMs==0)return setButton(code,false);
+    pendingClickButton=code;
+    phase=current.action=="MouseMoveAndLeftDoubleClick"&&phase!=3?4:5;
+    timer.start(clickDurationMs);return true;
+}
 bool PointerActions::moveTo(QPointF p){if(!move||!move(p.x(),p.y()))return false;position=p;return true;}
 void PointerActions::execute(){
     const auto a=current.action;bool ok=false;
@@ -67,7 +73,7 @@ void PointerActions::execute(){
         const int code=a=="MouseLeftDownUp"?272:a=="MouseRightDownUp"?273:274;
         ok=setButton(code,!held.contains(code));if(ok)last={};
     }else if(a=="MouseScrollToTop"||a=="MouseScrollToBottom")ok=scroll&&scroll(a.endsWith("Top")?-120:120);
-    else if(a=="MouseLeftClick")ok=click(272);
+    else if(a=="MouseLeftClick"){ok=click(272);if(ok&&phase==5)return;}
     else if(a=="MouseMoveToTop"||a=="MouseMoveToBottom"||a=="MouseMoveToLeft"||a=="MouseMoveToRight"){
         const double dx=a.endsWith("Left")?-25:a.endsWith("Right")?25:0;
         const double dy=a.endsWith("Top")?-25:a.endsWith("Bottom")?25:0;
@@ -77,6 +83,7 @@ void PointerActions::execute(){
         if(ok&&a.startsWith("MouseMoveAnd")){
             const int code=a=="MouseMoveAndRightClick"?273:a=="MouseMoveAndMiddleClick"?274:272;
             ok=click(code);
+            if(ok&&(phase==4||phase==5))return;
             if(ok&&a=="MouseMoveAndLeftDoubleClick"){phase=3;timer.start(90);return;}
         }
     }
@@ -90,7 +97,12 @@ void PointerActions::tick(){
         if(!moveTo(p)){finish(false);return;}
         if(dragStep==12){phase=2;timer.start(100);}else timer.start(16);
     }else if(phase==2)finish(setButton(272,false));
-    else if(phase==3)finish(click(272));
+    else if(phase==3){const bool ok=click(272);if(!ok||phase!=5)finish(ok);}
+    else if(phase==4||phase==5){
+        const bool anotherClick=phase==4;
+        if(!setButton(pendingClickButton,false)){finish(false);return;}
+        if(anotherClick){phase=3;timer.start(90);}else finish(true);
+    }
 }
 void PointerActions::finish(bool success){
     timer.stop();active=false;choosing=false;phase=0;

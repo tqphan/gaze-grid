@@ -20,6 +20,7 @@ public:
     std::function<bool(double,double)> scrollAxes;
     std::function<void()> releaseAll;
     bool start(const QString &action,int initialDelayMs=0);
+    void setClickDuration(int ms){clickDurationMs=qBound(0,ms,250);}
     void select(QPointF point);
     void cancel();
     void trackingLost();
@@ -58,6 +59,7 @@ public:
     bool clampScrollGaze=true,cancelScrollOffscreen=false;
     bool active=false,choosing=false,sourceChosen=false,following=false;
     int phase=0,dragStep=0;
+    int clickDurationMs=0,pendingClickButton=272;
     QString instruction;
     QSizeF displaySize;
     LookScroll lookScroll;

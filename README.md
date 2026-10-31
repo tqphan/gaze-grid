@@ -177,6 +177,10 @@ and its Cancel button remain available. Continuous magnetic cursor and look-to-s
 modes restore the keyboard after activation so their controls remain accessible.
 The option defaults off and is retained with Save preferences.
 
+**Click duration** in Keyboard settings holds each mouse click for 0-250 ms in
+25 ms steps (default 0 ms). It applies to left, middle, right, and both clicks of
+a double-click. Save preferences retains the value. Drag and hold actions are unchanged.
+
 Enable **Settings → Gaze & dwell → Cycle modifiers while hovering** to advance
 Shift, Ctrl, Alt, and Win at the configured repeat rate without looking away. The option
 defaults off, applies to modifier keys only, and is retained with Save preferences.

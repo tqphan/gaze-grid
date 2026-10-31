@@ -81,6 +81,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  predictionTextScale=profile.values["predictionTextScale"].toInt(100);
  scratchpadTextScale=profile.values["scratchpadTextScale"].toInt(100);
  magnifierEnabled=profile.values.value("magnifierEnabled").toBool(false);
+ clickDurationMs=profile.values["clickDurationMs"].toInt(0);
  magneticMouseRelative=profile.values["magneticMouseRelative"].toBool(false);
 #ifndef _WIN32
  magneticMouseRelative=false; // The portal cannot report the global cursor position.
@@ -310,7 +311,7 @@ void Controller::setKeyCycleModes(const QStringList &modes){
 
 bool Controller::savePreferences(){
  if(signInMode)return false;
- QJsonObject values{{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
+ QJsonObject values{{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
  values["keyMode"]=keyModeValue;
  values["buttonMode"]=buttonModeValue;
  values["groupDwellTimes"]=QJsonObject::fromVariantMap(groupDwellValues);
@@ -351,7 +352,7 @@ void Controller::resetPreferences(){
  preserveTogglesBetweenLayouts=false;
  cycleModifiersOnHover=false;
  hideKeyboardDuringMouseActions=false;
- magneticMouseRelative=false;
+ clickDurationMs=0;magneticMouseRelative=false;
  scrollSpeed=100;scrollDeadzone=50;scrollAxis=0;clampScrollGaze=true;cancelScrollOffscreen=false;
  showScrollZones=false;scrollZoneOpacity=30;scrollZoneColor="#00bfff";
  gazeIndicatorSize=18;gazeIndicatorOpacity=100;gazeIndicatorColor="#00bfff";gazeIndicatorMorph=false;
@@ -868,6 +869,7 @@ bool Controller::performAction(QString action){
   if(PointerActions::needsAbsolute(action)&&!(action=="MouseMagneticCursor"&&magneticMouseRelative)&&!portal.absoluteAvailable()){
    actionStatus="Pointer targeting requires an input region mapped to the primary display";emit changed();return false;
   }
+  pointer.setClickDuration(clickDurationMs);
   runner.suspend();
   if(!pointer.start(action,hideKeyboardDuringMouseActions&&action!="MouseMagneticCursor"?100:0)){actionStatus="Pointer action unavailable: release held buttons or complete an action before repeating";emit changed();return false;}
   return true;

@@ -51,6 +51,12 @@ class ControllerTests:public QObject {
   c.setProperty("layout",QVariantMap{{"layoutMode","canvas"},{"activateoverlappingkeys",true},{"keys",content}});
  }
 private slots:
+ void clickDurationPreferences(){
+  Controller c;c.resetPreferences();QCOMPARE(c.property("clickDurationMs").toInt(),0);
+  QVERIFY(c.setProperty("clickDurationMs",175));QVERIFY(c.savePreferences());
+  Controller restored;QCOMPARE(restored.property("clickDurationMs").toInt(),175);
+  restored.resetPreferences();QCOMPARE(restored.property("clickDurationMs").toInt(),0);
+ }
  void allGroupDwellTimes(){
   Controller c;c.resetPreferences();c.setGroupDwellTime("Alphabet",950);
   c.setAllGroupDwellTimes(1500);

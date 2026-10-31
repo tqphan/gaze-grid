@@ -717,6 +717,34 @@ private slots:
   QTRY_COMPARE(done.count(),1);QCOMPARE(clicks,2);QVERIFY(p.start("RepeatLastMouseAction"));QVERIFY(!p.targeting());
   QTRY_COMPARE(done.count(),2);QCOMPARE(clicks,4);QCOMPARE(moves,QList<QPointF>({{.3,.4},{.3,.4}}));
  }
+ void clickDurationProfileRoundTrip(){
+  auto values=ProfileStore::defaults();QCOMPARE(values["clickDurationMs"].toInt(),0);
+  QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
+  for(int duration:{0,25,250}){values["clickDurationMs"]=duration;QVERIFY(store.save(values,error));QCOMPARE(store.load().values["clickDurationMs"].toInt(),duration);}
+  for(const auto &invalid:QJsonArray{-1,251,1.5,"25",true}){values["clickDurationMs"]=invalid;QVERIFY(!ProfileStore::valid(values));}
+  values.remove("clickDurationMs");QVERIFY(ProfileStore::valid(values));
+ }
+ void delayedClicksHoldEachButton(){
+  for(const auto &action:QStringList{"MouseLeftClick","MouseMoveAndMiddleClick","MouseMoveAndRightClick","MouseMoveAndLeftDoubleClick"}){
+   PointerActions p;p.setClickDuration(100);QElapsedTimer clock;clock.start();
+   QList<qint64> times;QList<bool> states;
+   p.move=[](double,double){return true;};
+   p.button=[&](int,bool down){times<<clock.elapsed();states<<down;return true;};
+   QSignalSpy done(&p,&PointerActions::completed);QVERIFY(p.start(action));
+   if(p.targeting())p.select({.3,.4});
+   QTRY_COMPARE(done.count(),1);QVERIFY(done[0][0].toBool());
+   const int count=action.endsWith("DoubleClick")?4:2;QCOMPARE(times.size(),count);
+   for(int i=0;i<count;i+=2){QVERIFY(states[i]);QVERIFY(!states[i+1]);QVERIFY(times[i+1]-times[i]>=100);}
+   QVERIFY(p.heldButtons().isEmpty());
+  }
+ }
+ void cancellingDelayedClickReleases(){
+  PointerActions p;p.setClickDuration(250);bool held=false;int events=0;
+  p.button=[&](int,bool down){held=down;++events;return true;};
+  p.releaseAll=[&]{held=false;};QSignalSpy done(&p,&PointerActions::completed);
+  QVERIFY(p.start("MouseLeftClick"));QTRY_VERIFY(held);QVERIFY(p.busy());
+  p.cancel();QVERIFY(!held);QTest::qWait(300);QCOMPARE(events,1);QCOMPARE(done.count(),0);QVERIFY(!p.busy());
+ }
  void heldButtonCannotBeReleasedByClick(){
   PointerActions p;QStringList events;p.button=[&](int,bool down){events<< (down?"down":"up");return true;};
   QSignalSpy done(&p,&PointerActions::completed);QVERIFY(p.start("MouseLeftDownUp"));QTRY_COMPARE(done.count(),1);
