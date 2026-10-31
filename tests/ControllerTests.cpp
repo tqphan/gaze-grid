@@ -51,6 +51,15 @@ class ControllerTests:public QObject {
   c.setProperty("layout",QVariantMap{{"layoutMode","canvas"},{"activateoverlappingkeys",true},{"keys",content}});
  }
 private slots:
+ void transitionPreferences(){
+  Controller c;c.resetPreferences();QCOMPARE(c.property("keyboardTransition").toString(),QString("instant"));
+  QCOMPARE(c.property("transitionDurationMs").toInt(),180);
+  QVERIFY(c.setProperty("keyboardTransition","rows"));QVERIFY(c.setProperty("transitionDurationMs",320));QVERIFY(c.savePreferences());
+  Controller restored;QCOMPARE(restored.property("keyboardTransition").toString(),QString("rows"));
+  QCOMPARE(restored.property("transitionDurationMs").toInt(),320);
+  restored.resetPreferences();QCOMPARE(restored.property("keyboardTransition").toString(),QString("instant"));
+  QCOMPARE(restored.property("transitionDurationMs").toInt(),180);
+ }
  void clickDurationPreferences(){
   Controller c;c.resetPreferences();QCOMPARE(c.property("clickDurationMs").toInt(),0);
   QVERIFY(c.setProperty("clickDurationMs",175));QVERIFY(c.savePreferences());

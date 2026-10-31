@@ -724,6 +724,18 @@ private slots:
   for(const auto &invalid:QJsonArray{-1,251,1.5,"25",true}){values["clickDurationMs"]=invalid;QVERIFY(!ProfileStore::valid(values));}
   values.remove("clickDurationMs");QVERIFY(ProfileStore::valid(values));
  }
+ void transitionProfileValidation(){
+  auto values=ProfileStore::defaults();
+  QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
+  for(const auto &style:QStringList{"instant","fade","lift","slide","zoom","rows"}){
+   values["keyboardTransition"]=style;values["transitionDurationMs"]=320;
+   QVERIFY(store.save(values,error));QCOMPARE(store.load().values["keyboardTransition"].toString(),style);
+   QCOMPARE(store.load().values["transitionDurationMs"].toInt(),320);
+  }
+  values["keyboardTransition"]="unknown";QVERIFY(!ProfileStore::valid(values));values["keyboardTransition"]="instant";
+  for(const auto &invalid:QJsonArray{0,49,1001,180.5,"180",true}){values["transitionDurationMs"]=invalid;QVERIFY(!ProfileStore::valid(values));}
+  values.remove("keyboardTransition");values.remove("transitionDurationMs");QVERIFY(ProfileStore::valid(values));
+ }
  void delayedClicksHoldEachButton(){
   for(const auto &action:QStringList{"MouseLeftClick","MouseMoveAndMiddleClick","MouseMoveAndRightClick","MouseMoveAndLeftDoubleClick"}){
    PointerActions p;p.setClickDuration(100);QElapsedTimer clock;clock.start();

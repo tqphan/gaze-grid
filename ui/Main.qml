@@ -20,6 +20,33 @@ Window {
  property var dwellStyleIds: ["bar","top-bar","fill","fill-down","fill-left","fill-right","outline","ring","pie","collapse","expand"]
  property var dwellStyleNames: ["Bottom Bar","Top Bar","Fill Up","Fill Down","Fill Right","Fill Left","Outline Trace","Ring Progress","Pie Progress","Shrink Inward","Grow Outward"]
  property real progress: 0
+ readonly property var transitionIds:["instant","fade","lift","slide","zoom","rows"]
+ readonly property var transitionNames:["Instant Switch","Soft Fade","Gentle Lift","Directional Slide","Subtle Zoom","Row Reveal"]
+ property string displayedLayout:""
+ property string activeTransition:"instant"
+ property real revealProgress:1
+ readonly property bool transitioning:layoutReveal.running
+ property int slideDirection:1
+ function revealLayout() {
+  if(displayedLayout===controller.layoutName)return
+  const previous=displayedLayout
+  displayedLayout=controller.layoutName
+  layoutReveal.stop()
+  revealProgress=1
+  activeTransition=controller.keyboardTransition
+  if(!previous||!root.visible||root.minimizedRecovery||activeTransition==="instant")return
+  slideDirection=controller.layoutTransitionDirection
+  root.hovered="";root.progress=0;root.overlapProgress=({})
+  controller.hover("");controller.joystick(-1,0,0,false)
+  layoutReveal.start()
+ }
+ NumberAnimation {
+  id:layoutReveal;target:root;property:"revealProgress";from:0;to:1
+  duration:controller.transitionDurationMs
+  easing.type:Easing.OutCubic
+  onStopped:{root.revealProgress=1;root.hovered="";root.progress=0;controller.hover("")}
+ }
+ onVisibleChanged:if(!visible)layoutReveal.stop()
  property var overlapProgress: ({})
  readonly property bool overlapEnabled:controller.layout.layoutMode==="canvas"&&controller.layout.activateoverlappingkeys===true&&!controller.sizeMoveMode
  readonly property var overlapTargets: {
@@ -91,7 +118,7 @@ Window {
   if(signInTrackerStatus.visible)rectangles.push(Qt.rect(signInTrackerStatus.x,signInTrackerStatus.y,signInTrackerStatus.width,signInTrackerStatus.height))
   controller.updateKeyboardMask(root,rectangles,backgroundClickThrough)
  }
- Component.onCompleted:Qt.callLater(updateInputMask)
+ Component.onCompleted:{displayedLayout=controller.layoutName;Qt.callLater(updateInputMask)}
  property int hitTestRevision: 0
  onHitTestRevisionChanged:Qt.callLater(updateInputMask)
  readonly property string gazeTarget: {
@@ -107,6 +134,7 @@ Window {
      &&px<signInTrackerStatus.x+signInTrackerStatus.width&&py<signInTrackerStatus.y+signInTrackerStatus.height
  }
  function keyAt(px,py) {
+  if(root.transitioning)return ""
   if(overSignInStatus(px,py))return ""
   for(let i=keys.count-1;i>=0;--i){let item=keys.itemAt(i);if(!item)continue
    if(px>=item.x&&py>=item.y&&px<item.x+item.width&&py<item.y+item.height){
@@ -136,13 +164,14 @@ Window {
  Connections {
   target:controller
   function onSettingsRequested(){if(controller.signInMode)return;settings.showNormal();settings.raise();settings.requestActivate()}
-  function onLayoutChanged(){root.hovered="";root.progress=0}
+  function onLayoutChanged(){root.hovered="";root.progress=0;root.revealLayout()}
   function onGazePoint(x,y,valid){keyboardGazeIndicator.updateMotion(x,y,valid);root.gazeValid=valid;root.gaze=Qt.point(x,y)}
   function onChanged(){if(controller.keyboardTemporarilyHidden){root.hovered="";root.progress=0}if(!controller.targeting){root.targetProgress=0;root.targetPointValid=false}}
  }
  Timer {
   interval:25;running:!root.gazeCheck&&root.desktopActive;repeat:true
   onTriggered:{
+   if(root.transitioning){controller.hover("");controller.joystick(-1,0,0,false);root.progress=0;root.overlapProgress=({});return}
    if(root.usingGaze&&controller.gazeDwellPaused){controller.pauseGazeDwell();return}
    if(controller.sizeMoveMode){
     const point=root.usingGaze?Qt.point(root.gaze.x*root.screenWidth-root.logicalX,root.gaze.y*root.screenHeight-root.logicalY):canvasHover.point.position
@@ -194,6 +223,10 @@ Window {
   }
  }
  Rectangle {objectName:"keyboardBackdrop";anchors.fill:parent;visible:!root.transparentBackground;color:root.keyboardBackground}
+ Item {
+  objectName:"keyboardKeys"
+  anchors.fill:parent
+  enabled:!root.transitioning
  Repeater {
   id:keys
   onItemAdded: root.hitTestRevision++
@@ -208,6 +241,18 @@ Window {
    clip:true
    required property var modelData
    required property int index
+   readonly property real reveal:root.activeTransition==="rows"?Math.max(0,Math.min(1,root.revealProgress*2-modelData.row/Math.max(1,controller.layout.rows-1))):root.revealProgress
+   transform:[
+    Translate {
+     x:root.activeTransition==="slide"?(1-root.revealProgress)*root.width*root.slideDirection:0
+     y:root.activeTransition==="lift"?(1-root.revealProgress)*8:0
+    },
+    Scale {
+     origin.x:root.width/2-key.x;origin.y:root.height/2-key.y
+     xScale:root.activeTransition==="zoom"?0.98+0.02*root.revealProgress:1
+     yScale:xScale
+    }
+   ]
    property bool keyboardToggled:controller.keyToggled(modelData.commands||[])
    property bool gamepadPressed: {
     const commands=modelData.commands||[]
@@ -273,7 +318,7 @@ Window {
    color:root.keyboardPalette?root.keyboardPalette.key:Kirigami.Theme.backgroundColor
    // Composite overlapping key visuals before applying whole-key transparency.
    layer.enabled:opacity<1
-   opacity:(enabled?1:0.35)*(root.minimizedRecovery?controller.restoreOpacity/100:root.styleOpacity(modelData.style,"opacity"))
+   opacity:key.reveal*(!controller.paused||sleepKey?1:0.35)*(root.minimizedRecovery?controller.restoreOpacity/100:root.styleOpacity(modelData.style,"opacity"))
    Kirigami.Theme.colorSet:Kirigami.Theme.Button
    Kirigami.Theme.inherit:false
    border.width:root.minimizedRecovery?0:1;border.color:root.keyboardBorder
@@ -436,8 +481,9 @@ Window {
    Accessible.role:Accessible.Button
    Accessible.description:key.keyboardToggled?"Locked until selected again":key.cycleButtonModeKey?"Button mode: "+controller.buttonMode:key.cycleKeyModeKey?"Key mode: "+controller.keyMode:key.sleepKey?(controller.paused?"Pause on":"Pause off"):key.magnifierKey?(controller.magnifierEnabled?"Magnifier on":"Magnifier off"):key.magneticCursorKey?(controller.magneticCursor?"Magnetic mouse on":"Magnetic mouse off"):key.modifier?(key.modifierState==="locked"?"Locked until selected again":key.modifierState==="latched"?"Latched for the next key":"Off. Select once to latch, twice to lock."):""
    Accessible.name:key.sleepKey?(controller.paused?"Resume input":"Pause input"):root.minimizedRecovery?"Restore keyboard":key.unavailableReason?key.unavailableReason:(key.label||key.modelData.symbol)
-   Accessible.onPressAction:controller.clickCommand(key.command)
+   Accessible.onPressAction:if(!root.transitioning)controller.clickCommand(key.command)
   }
+ }
  }
  Rectangle {
   id:signInTrackerStatus;objectName:"signInTrackerStatus"
@@ -695,6 +741,14 @@ Window {
         onActivated:controller.keyboardTheme=root.themeIds[currentIndex]
         Accessible.name:"Keyboard theme"
        }
+       Desktop.Label {text:"Transition"}
+       SettingsComboBox {
+        objectName:"keyboardTransitionSelector";Layout.fillWidth:true;model:root.transitionNames
+        currentIndex:Math.max(0,root.transitionIds.indexOf(controller.keyboardTransition))
+        onActivated:controller.keyboardTransition=root.transitionIds[currentIndex]
+        Accessible.name:"Transition"
+       }
+       SettingSlider {label:"Duration";displayValue:controller.transitionDurationMs+" ms";from:50;to:1000;stepSize:10;value:controller.transitionDurationMs;enabled:controller.keyboardTransition!=="instant";onMoved:controller.transitionDurationMs=Math.round(value)}
        Desktop.Label {text:"Latch style"}
        SettingsComboBox {
         objectName:"latchStyleSelector";Layout.fillWidth:true;model:["Outline","Fill","Underline","Pulse","Ripple","Sweep","Animated outline"]

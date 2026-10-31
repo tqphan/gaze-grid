@@ -181,6 +181,11 @@ The option defaults off and is retained with Save preferences.
 25 ms steps (default 0 ms). It applies to left, middle, right, and both clicks of
 a double-click. Save preferences retains the value. Drag and hold actions are unchanged.
 
+**Transition** selects Instant Switch (default), Soft Fade, Gentle Lift,
+Directional Slide, Subtle Zoom, or Row Reveal when switching keyboards.
+**Duration** sets the animation time from 50-1000 ms (default 180 ms).
+Keys remain inactive during animations. Save preferences retains both settings.
+
 Enable **Settings → Gaze & dwell → Cycle modifiers while hovering** to advance
 Shift, Ctrl, Alt, and Win at the configured repeat rate without looking away. The option
 defaults off, applies to modifier keys only, and is retained with Save preferences.

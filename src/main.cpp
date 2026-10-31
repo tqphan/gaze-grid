@@ -302,6 +302,40 @@ int main(int argc,char **argv){
 #ifdef GAZE_GRID_LINUX
  nativeCheckWindow=window;
 #endif
+ if(app.arguments().contains("--keyboard-transition-ui-check")){
+  controller.setGazeEnabled(false);controller.setProperty("transitionDurationMs",200);
+  controller.openLayout("keyboard-alphabet-14x4-bottom",false);window->show();
+  const QStringList styles{"instant","fade","lift","slide","zoom","rows"};
+  int index=0;bool returning=false;bool passed=true;
+  QTimer step;
+  auto keysLayer=window->findChild<QQuickItem*>("keyboardKeys");
+  QObject::connect(&step,&QTimer::timeout,&app,[&]{
+   if(returning){
+    passed=passed&&!window->property("transitioning").toBool()&&qAbs(window->property("revealProgress").toDouble()-1)<.001&&keysLayer&&keysLayer->isEnabled();
+    ++index;returning=false;
+   }
+   if(index==styles.size()){
+    QTextStream(stderr)<<(passed?"PASS":"FAIL")<<": keyboard transitions and input blocking"<<Qt::endl;
+    app.exit(passed?0:2);return;
+   }
+   controller.setProperty("keyboardTransition",styles[index]);
+   controller.openLayout(index%2?"keyboard-alphabet-14x4-bottom":"keyboard-numeric-14x4-bottom",true);
+   const bool animated=index>0;
+   passed=passed&&window->property("transitioning").toBool()==animated&&keysLayer&&keysLayer->isEnabled()!=animated;
+   if(animated){
+    QVariant hit;QMetaObject::invokeMethod(window,"keyAt",Q_RETURN_ARG(QVariant,hit),Q_ARG(QVariant,10),Q_ARG(QVariant,10));
+    passed=passed&&hit.toString().isEmpty()&&window->property("revealProgress").toDouble()<1;
+    QTimer::singleShot(70,&app,[&]{
+     const double progress=window->property("revealProgress").toDouble();
+     passed=passed&&window->property("transitioning").toBool()&&progress>0&&progress<1&&keysLayer&&!keysLayer->isEnabled();
+    });
+   }
+   returning=true;
+  });
+  QTimer::singleShot(100,&app,[&]{step.start(300);});
+  QTimer::singleShot(6000,&app,[&]{app.exit(3);});
+  return app.exec();
+ }
  if(app.arguments().contains("--gaze-indicator-ui-check")){
   auto overlay=window->findChild<QQuickItem*>("keyboardGazeIndicator");
   if(!overlay)return 1;

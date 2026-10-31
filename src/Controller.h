@@ -60,6 +60,9 @@ class Controller:public QObject{
  Q_PROPERTY(int restoreHeight READ restoreHeight WRITE setRestoreHeight NOTIFY geometryPreferencesChanged)
  Q_PROPERTY(int keyboardScale READ keyboardScale WRITE setKeyboardScale NOTIFY geometryPreferencesChanged)
  Q_PROPERTY(QString keyboardTheme MEMBER keyboardTheme NOTIFY changed)
+ Q_PROPERTY(QString keyboardTransition MEMBER keyboardTransition NOTIFY changed)
+ Q_PROPERTY(int transitionDurationMs MEMBER transitionDurationMs NOTIFY changed)
+ Q_PROPERTY(int layoutTransitionDirection MEMBER layoutTransitionDirection NOTIFY layoutChanged)
  Q_PROPERTY(int shortLabelScale MEMBER shortLabelScale NOTIFY changed)
  Q_PROPERTY(int longLabelScale MEMBER longLabelScale NOTIFY changed)
  Q_PROPERTY(int predictionTextScale MEMBER predictionTextScale NOTIFY changed)
@@ -355,6 +358,8 @@ private:
  int restoreOpacity=100;
  int recoveryCorner=2,recoveryWidth=64,recoveryHeight=64;
  QString keyboardTheme="system";
+ QString keyboardTransition="instant";
+ int transitionDurationMs=180,layoutTransitionDirection=1;
  int shortLabelScale=150;
  int longLabelScale=100;
  int predictionTextScale=100;
