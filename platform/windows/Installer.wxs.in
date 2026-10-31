@@ -91,7 +91,7 @@
       <!-- One direct shortcut serves either executable without MSI advertisement.
            Non-advertised shortcuts require their own HKCU registry key path. -->
       <Component Id="gaze_gridStartMenu" Guid="81AE68C6-C223-4B3A-8C6A-ACCE614CBA76" Win64="yes">
-        <Shortcut Id="gaze_gridStart" Name="gaze-grid" Icon="gaze_grid.exe" IconIndex="0" Advertise="no" Target="[INSTALL_ROOT]gaze-grid.exe" WorkingDirectory="INSTALL_ROOT" />
+        <Shortcut Id="gaze_gridStart" Name="Gaze Grid" Icon="gaze_grid.exe" IconIndex="0" Advertise="no" Target="[INSTALL_ROOT]gaze-grid.exe" WorkingDirectory="INSTALL_ROOT" />
         <RemoveFolder Id="Removegaze_gridMenu" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\gaze-grid\Installer" Name="StartMenu" Value="1" Type="integer" KeyPath="yes" />
       </Component>
