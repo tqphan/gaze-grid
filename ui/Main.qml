@@ -800,14 +800,14 @@ Window {
       }
      }
      SettingsCard {
-      title:"Startup";visible:Qt.platform.os==="windows"&&settingsCategory.currentIndex==1;Layout.fillWidth:true
+      title:"Startup";visible:Qt.platform.os==="windows"&&settingsCategory.currentIndex==8;Layout.fillWidth:true
       SettingsCheckBox {
        anchors.fill:parent;objectName:"windowsStartupToggle";text:"Start with Windows";checked:controller.startWithWindows
        onToggled:{controller.configureWindowsStartup(checked);checked=Qt.binding(function(){return controller.startWithWindows})}
       }
      }
      SettingsCard {
-      title:"Windows sign-in";visible:Qt.platform.os==="windows"&&settingsCategory.currentIndex==1;Layout.fillWidth:true
+      title:"Windows sign-in";visible:Qt.platform.os==="windows"&&settingsCategory.currentIndex==8;Layout.fillWidth:true
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
        Desktop.Label {text:"Use the current keyboard before entering your Windows password. This applies to this PC and disables prediction on the sign-in screen. Requires the trusted installation and administrator approval.";wrapMode:Text.Wrap;Layout.fillWidth:true}
