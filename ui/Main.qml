@@ -573,6 +573,10 @@ Window {
    id:targetProgressColorDialog;title:"Progress color"
    onAccepted:controller.targetProgressColor=selectedColor.toString()
   }
+  ColorDialog {
+   id:scrollZoneColorDialog;title:"Zone color"
+   onAccepted:controller.scrollZoneColor=selectedColor.toString()
+  }
   property var categoryNames:["Status","Keyboard","Gaze & dwell","Magnifier","Typing & speech","Conversations","Desktop access","Look to scroll","System"]
   property var categoryIcons:["dialog-information","input-keyboard","input-mouse","zoom-in","edit-text-frame-update","user-identity","preferences-desktop","transform-move","preferences-system"]
   property var categoryDescriptions:["Connection health.","Make your keyboard feel right for you.","Fine-tune eye tracking and selection timing.","Choose how you zoom and select targets.","Personalize prediction and spoken text.","","Manage keyboard and pointer access.","Adjust hands-free scrolling.","Manage application performance."]
@@ -1111,8 +1115,12 @@ Window {
        SettingSlider {label:"Zone opacity";displayValue:controller.scrollZoneOpacity+"%";from:5;to:100;stepSize:5;value:controller.scrollZoneOpacity;onMoved:controller.scrollZoneOpacity=value}
        RowLayout {
         Desktop.Label {text:"Zone color"}
-        Rectangle {width:24;height:24;radius:4;color:controller.scrollZoneColor}
-        Desktop.TextField {objectName:"scrollZoneColorField";text:controller.scrollZoneColor;placeholderText:"#RRGGBB";Accessible.name:"Zone color";validator:RegularExpressionValidator {regularExpression:/#[0-9a-fA-F]{6}/} onEditingFinished:{if(acceptableInput)controller.scrollZoneColor=text}}
+        SettingsButton {
+         objectName:"scrollZoneColorButton";Accessible.name:"Zone color"
+         text:controller.scrollZoneColor;leftPadding:44
+         Rectangle {x:12;anchors.verticalCenter:parent.verticalCenter;width:20;height:20;radius:10;color:controller.scrollZoneColor;border.width:1;border.color:Kirigami.Theme.textColor}
+         onClicked:{scrollZoneColorDialog.selectedColor=controller.scrollZoneColor;scrollZoneColorDialog.open()}
+        }
        }
       }
      }
