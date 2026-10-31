@@ -751,7 +751,7 @@ Window {
        SettingSlider {label:"Duration";displayValue:controller.transitionDurationMs+" ms";from:50;to:1000;stepSize:10;value:controller.transitionDurationMs;enabled:controller.keyboardTransition!=="instant";onMoved:controller.transitionDurationMs=Math.round(value)}
        Desktop.Label {text:"Latch style"}
        SettingsComboBox {
-        objectName:"latchStyleSelector";Layout.fillWidth:true;model:["Outline","Fill","Underline","Pulse","Ripple","Sweep","Animated outline"]
+        objectName:"latchStyleSelector";Layout.fillWidth:true;model:["Border Highlight","Solid Fill","Bottom Line","Soft Pulse","Expanding Ripple","Light Sweep","Moving Border"]
         currentIndex:Math.max(0,["outline","fill","underline","pulse","ripple","sweep","animated-outline"].indexOf(controller.latchStyle))
         onActivated:controller.latchStyle=["outline","fill","underline","pulse","ripple","sweep","animated-outline"][currentIndex]
         Accessible.name:"Latch style"
@@ -763,7 +763,7 @@ Window {
        }
        Desktop.Label {text:"Lock style"}
        SettingsComboBox {
-        objectName:"lockStyleSelector";Layout.fillWidth:true;model:["Outline","Fill","Underline","Pulse","Ripple","Sweep","Animated outline"]
+        objectName:"lockStyleSelector";Layout.fillWidth:true;model:["Border Highlight","Solid Fill","Bottom Line","Soft Pulse","Expanding Ripple","Light Sweep","Moving Border"]
         currentIndex:Math.max(0,["outline","fill","underline","pulse","ripple","sweep","animated-outline"].indexOf(controller.lockStyle))
         onActivated:controller.lockStyle=["outline","fill","underline","pulse","ripple","sweep","animated-outline"][currentIndex]
         Accessible.name:"Lock style"

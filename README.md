@@ -376,4 +376,4 @@ capitalization, including names and words absent from the dictionary. Selecting
 it keeps the word and applies the existing space-after-completion setting.
 Save preferences to retain the choice. Next-word predictions are unchanged.
 
-**Keyboard ? Appearance ? Latch style / Lock style** offers Outline, Fill, Underline, Pulse, Ripple, Sweep, and Animated outline independently, with previews. Save preferences to retain these styles.
+**Keyboard ? Appearance ? Latch style / Lock style** offers Border Highlight, Solid Fill, Bottom Line, Soft Pulse, Expanding Ripple, Light Sweep, and Moving Border independently, with previews. Save preferences to retain these styles.
