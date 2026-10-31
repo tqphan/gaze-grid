@@ -52,6 +52,7 @@ QString panelPlacementReason(const QVariantMap &layout){
 }
 }
 Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *tracker):tobii(tracker?*tracker:ownedTracker),signInMode(signIn){
+ if(localTestBuild())gameController.output=[](int,int,int){return false;};
  sensitiveInput=signInMode;
  zoomTimer.setInterval(33);connect(&zoomTimer,&QTimer::timeout,this,&Controller::updateMagnifierZoom);
  connect(&speech,&SpeechOutput::status,this,[this](QString message){actionStatus=message;emit changed();});
@@ -213,6 +214,7 @@ Controller::~Controller(){desktopActive=false;stopTracker();runner.cancel();endB
  QJsonObject obj;for(auto it=frequencies.begin();it!=frequencies.end();++it)obj[it.key()]=it.value();QSaveFile file(configFile("learned.json"));if(file.open(QIODevice::WriteOnly)){file.write(QJsonDocument(obj).toJson());file.commit();}
 }
 void Controller::connectDesktop(){
+ if(localTestBuild()){actionStatus="Local test: desktop output disabled";emit changed();return;}
  desktopOutputRequested=true;
  if(!desktopActive)return;
  portal.setRememberPermission(rememberDesktop);portal.connectPortal();
@@ -248,6 +250,7 @@ void Controller::stopTracker(){
  emit gazePoint(0,0,false);
 }
 void Controller::connectTobii(){
+ if(localTestBuild()){tobiiStatus="Local test: tracker disabled";emit changed();return;}
  if(!desktopActive||tobii.isRunning())return;
  trackerRetryTimer.stop();disconnect(&tobii,nullptr,this,nullptr);
  const auto generation=++trackerGeneration;
@@ -1136,6 +1139,7 @@ bool Controller::startsWithWindows()const{
 #endif
 }
 void Controller::configureWindowsStartup(bool enabled){
+ if(localTestBuild())return;
  if(signInMode||!desktopActive)return;
 #ifdef _WIN32
  QSettings run("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::Registry64Format);
@@ -1176,6 +1180,7 @@ QJsonObject Controller::signInPreferences() const{
  return values;
 }
 void Controller::syncSignInPreferences(){
+ if(localTestBuild())return;
  if(signInMode||!desktopActive)return;
 #ifdef _WIN32
  profileStatus=WindowsSignIn::configure(true,signInPreferences(),true)?"Current preferences copied to login and secure desktop. Prediction is disabled there.":"Could not sync preferences. Install the trusted version of gaze-grid and accept the administrator prompt.";
@@ -1183,6 +1188,7 @@ void Controller::syncSignInPreferences(){
 #endif
 }
 void Controller::configureSignIn(bool enabled){
+ if(localTestBuild())return;
  if(signInMode||!desktopActive)return;
 #ifdef _WIN32
  const auto values=signInPreferences();

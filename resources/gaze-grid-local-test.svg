@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>gaze-grid Local Test</title>
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="#e87809"/>
+  <g fill="#fff4dc">
+    <path d="M64 238C111 145 181 98 256 98S401 145 448 238Q451 248 440 242C369 193 316 166 256 166S143 193 72 242Q61 248 64 238Z"/>
+    <path d="M64 274C111 367 181 414 256 414S401 367 448 274Q451 264 440 270C369 319 316 346 256 346S143 319 72 270Q61 264 64 274Z"/>
+    <rect x="194" y="194" width="124" height="124" rx="27"/>
+  </g>
+  <path d="M218 218H294V238H268V294H244V238H218Z" fill="#8a3700"/>
+</svg>

@@ -18,6 +18,27 @@ The application is named gaze-grid; the build target is `gaze-grid`, with deskto
 
 ## Build and run on this machine
 
+### Isolated Windows testing
+
+Double-click **test-local.cmd** to build, run tests, and open a local preview.
+Sign-in tests are excluded from this workflow.
+Edit source files here, close the preview, and run it again to test a change.
+The installed app can keep running. This workflow never installs or publishes.
+
+The preview uses `build/local-test/`, with separate preferences and learned words
+in `build/local-test/local-profile/` and a separate copy of the keyboard pack.
+It starts with defaults and keeps its own settings between runs. Windows startup,
+sign-in changes, desktop keyboard/mouse output, and eye tracking are disabled in
+this build. Use it for appearance, layouts, and settings; hardware and desktop
+input need separate acceptance testing.
+
+In PowerShell, use `.\test-local.ps1`. Use `-NoBuild` to reopen the last build,
+or `-SkipTests` for a faster rebuild after tests have passed. To start with fresh
+test preferences, close the preview and rename `build/local-test/local-profile`.
+Your installed app's settings are never copied or modified. Keep experimental
+keyboard files inside the test build; opening an external XML file in the editor
+and saving it still modifies that selected file.
+
 ```sh
 cd /home/q/Downloads/OptiKey-Pro
 ./build.sh

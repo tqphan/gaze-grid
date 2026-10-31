@@ -4,7 +4,8 @@ param(
     [string]$QtRoot = 'C:\Qt',
     [string]$TobiiSdk = '',
     [switch]$Run,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$LocalTest
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -34,10 +35,13 @@ try {
     }
     $env:PATH = "$QtDirectory/bin;$compilerBin;$env:PATH"
     $build = Join-Path $PSScriptRoot 'build/windows-mingw'
+    if ($LocalTest) { $build = Join-Path $PSScriptRoot 'build/local-test' }
     $configure = @('-S', $PSScriptRoot, '-B', $build, '-G', 'Ninja', "-DCMAKE_MAKE_PROGRAM=$ninja",
         "-DCMAKE_C_COMPILER=$compilerBin/gcc.exe", "-DCMAKE_CXX_COMPILER=$compilerBin/g++.exe",
         "-DCMAKE_PREFIX_PATH=$QtDirectory", '-DGAZE_GRID_UIACCESS=OFF', '-DCMAKE_BUILD_TYPE=Release')
-    if (!$TobiiSdk) {
+    $configure += "-DGAZE_GRID_LOCAL_TEST=$($LocalTest.IsPresent.ToString().ToUpperInvariant())"
+    if ($LocalTest) { $TobiiSdk = '' }
+    if (!$TobiiSdk -and !$LocalTest) {
         $sdkHeaders = @(Get-ChildItem "$PSScriptRoot/../stream_engine_windows_x64_*/include/tobii/tobii.h" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending)
         if ($sdkHeaders.Count) { $TobiiSdk = (Resolve-Path (Join-Path $sdkHeaders[0].DirectoryName '../..')).Path }
     }
@@ -48,7 +52,6 @@ try {
     New-Item -ItemType Directory -Force "$build/platforms" | Out-Null
     Copy-Item "$QtDirectory/plugins/platforms/qoffscreen.dll", "$QtDirectory/plugins/platforms/qwindows.dll" "$build/platforms" -Force
     Set-Content "$build/qt.conf" "[Paths]`nPrefix=.`nPlugins=.`nQmlImports=qml"
-    if (!$SkipTests) { Invoke-Checked $ctest @('--test-dir', $build, '--output-on-failure') }
     # Deploy runtime DLLs and QML modules so Explorer can launch the executable.
     Invoke-Checked "$QtDirectory/bin/windeployqt.exe" @('--release', '--qmldir', "$build/windows-ui", "$build/gaze-grid.exe")
     # Repair incomplete copies left by an interrupted Qt deployment.
@@ -59,6 +62,7 @@ try {
     }
     New-Item -ItemType Directory -Force "$build/keyboards" | Out-Null
     Copy-Item "$PSScriptRoot/references/optikey-keyboard-en-us/*" "$build/keyboards" -Recurse -Force
+    if (!$SkipTests) { Invoke-Checked $ctest @('--test-dir', $build, '--output-on-failure') }
     # Exercise the actual Windows platform, beyond the offscreen test suite.
     $startup = New-Object System.Diagnostics.ProcessStartInfo
     $startup.FileName = "$build/gaze-grid.exe"

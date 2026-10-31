@@ -46,6 +46,7 @@
 #endif
 #include <windows.h>
 #include <dwmapi.h>
+#include <shobjidl.h>
 #endif
 #ifdef GAZE_GRID_LINUX
 #include <LayerShellQt/Window>
@@ -94,6 +95,8 @@ int main(int argc,char **argv){
  bool signInMode=false;
 #ifdef _WIN32
  const bool secureDesktop=WindowsSignIn::secureDesktop();
+ if(localTestBuild())SetCurrentProcessExplicitAppUserModelID(L"org.gaze_grid.gaze_grid.LocalTest");
+ if(localTestBuild()&&secureDesktop)return 2;
  bool signInCheck=false;
  for(int i=1;i<argc;++i){const auto argument=QString::fromLocal8Bit(argv[i]);signInMode|=argument=="--sign-in";signInCheck|=argument=="--sign-in-ui-check";}
  if(secureDesktop){
@@ -113,6 +116,7 @@ int main(int argc,char **argv){
  if(signInMode&&!secureDesktop)return 2;
  signInMode|=signInCheck;
  for(int i=1;i<argc;++i)if(QString::fromLocal8Bit(argv[i])=="--configure-sign-in"){
+  if(localTestBuild())return 2;
   // The elevated settings helper needs no GUI or user-supplied Qt plugins.
   QCoreApplication helper(argc,argv);return WindowsSignIn::setup(helper.arguments());
  }
@@ -122,7 +126,7 @@ int main(int argc,char **argv){
  for(int i=0;i<argc;++i)startupArguments<<QString::fromLocal8Bit(argv[i]);
  std::unique_ptr<WindowsDesktop::Instance> keyboardInstance;
  if(WindowsDesktop::keyboardInvocation(startupArguments)){
-  keyboardInstance=std::make_unique<WindowsDesktop::Instance>();
+  keyboardInstance=std::make_unique<WindowsDesktop::Instance>(localTestBuild()?L"gaze-grid.LocalTest":L"gaze-grid.Keyboard");
   if(keyboardInstance->duplicate())return 0;
   if(!keyboardInstance->owner()){
    fprintf(stderr,"Cannot acquire the keyboard desktop instance (Windows error %lu)\n",static_cast<unsigned long>(keyboardInstance->error()));return 2;
@@ -140,11 +144,12 @@ int main(int argc,char **argv){
  if(diagnose||audit)qputenv("QT_QPA_PLATFORM","offscreen");
  QQuickWindow::setDefaultAlphaBuffer(true);
  QApplication app(argc,argv);app.setOrganizationName("gaze-grid");app.setApplicationName("gaze-grid");app.setApplicationDisplayName("gaze-grid");app.setDesktopFileName("org.gaze_grid.gaze_grid");
+ if(localTestBuild()){app.setApplicationName("gaze-grid-local-test");app.setApplicationDisplayName("gaze-grid Local Test");}
 #ifdef _WIN32
  app.setStyle("Fusion"); // QWidget menus/editor must honor the same system palette as QML.
  WindowsTheme windowsTheme;
 #endif
- app.setWindowIcon(QIcon(":/resources/gaze-grid.svg"));
+ app.setWindowIcon(QIcon(localTestBuild()?":/resources/gaze-grid-local-test.svg":":/resources/gaze-grid.svg"));
  if(app.arguments().contains("--editor")){
   KeyboardEditor editor;
   int index=app.arguments().indexOf("--editor");
@@ -233,6 +238,15 @@ int main(int argc,char **argv){
 #else
  Controller controller;
 #endif
+ if(localTestBuild()&&app.arguments().contains("--local-isolation-check")){
+  controller.connectDesktop();controller.connectTobii();
+  controller.configureWindowsStartup(true);controller.configureWindowsStartup(false);
+  controller.syncSignInPreferences();controller.configureSignIn(true);controller.configureSignIn(false);
+  const bool isolated=!controller.ready()&&!controller.isTrackerConnected()
+      &&appConfigDirectory()==QCoreApplication::applicationDirPath()+"/local-check-profile";
+  QTextStream(stdout)<<(isolated?"PASS: local test isolation":"FAIL: local test isolation")<<Qt::endl;
+  return isolated?0:2;
+ }
 #ifdef GAZE_GRID_LINUX
  if(inputMethod){
   controller.configureInputMethod([&](QString text){return inputMethod->commitText(text);},[&](QString name,bool down){return inputMethod->sendKey(name,down);});
@@ -374,7 +388,7 @@ int main(int argc,char **argv){
 #endif
  app.setQuitOnLastWindowClosed(false);
  QSystemTrayIcon tray(app.windowIcon());
- tray.setToolTip("gaze-grid");
+ tray.setToolTip(app.applicationDisplayName());
  QMenu trayMenu;
  auto openSettings=trayMenu.addAction(QIcon::fromTheme("configure"),"Settings…");
  QObject::connect(openSettings,&QAction::triggered,&controller,[&]{controller.activate("Settings");});
@@ -1173,7 +1187,7 @@ int main(int argc,char **argv){
  // Only the owning normal-desktop instance announces itself. Secure copies
  // and rejected broker duplicates never send Win+U or an exit notification.
  bool accessibilityAnnounced=false;
- if(keyboardInstance&&!secureDesktop&&WindowsSignIn::registered()){
+ if(!localTestBuild()&&keyboardInstance&&!secureDesktop&&WindowsSignIn::registered()){
   auto announce=[&]{
    if(!accessibilityAnnounced&&WindowsDesktop::inputDesktopActive())
     accessibilityAnnounced=WindowsSignIn::notify(true);
