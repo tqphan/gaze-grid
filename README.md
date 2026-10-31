@@ -233,7 +233,7 @@ pack directory and select it in Settings → Keyboard after restarting. Placemen
 Virtual controller output and gaze/mouse joystick keys are available from the game toolbar’s **Gamepad** key. See [controller actions and setup](docs/game-controller.md).
 
 Key mode can be cycled through **Tap → Repeat → Hold → Toggle** in **Settings → Gaze & dwell**.
-Custom keyboard keys can use `<Action>CycleKeyMode</Action>`. In Settings > Keyboard selection, choose which modes it includes using the Tap, Repeat, Hold, and Toggle checkboxes. At least one mode must stay selected. Selected modes cycle in that order; use Save preferences to keep your choices.
+Custom keyboard keys can use `<Action>CycleKeyMode</Action>`. In Settings > Keyboard selection, choose which modes it includes using the Tap, Repeat, Hold, and Toggle checkboxes. At least one mode must stay selected. Selected modes cycle in that order; use Save preferences to keep your choices. Save preferences also remembers the current key and button modes between app launches.
 The mode covers all physical keyboard keys except modifiers (Shift, Ctrl, Alt and Super/Windows).
 Hold sends a physical key-down after the dwell delay and releases when mouse or gaze
 leaves the key; pause, tracking loss and layout changes also release it.

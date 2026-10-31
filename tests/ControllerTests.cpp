@@ -406,6 +406,32 @@ private slots:
   QCOMPARE(c.buttonMode(),QString("Repeat"));
   c.clickCommand("CycleButtonMode");QCOMPARE(c.buttonMode(),QString("Hold"));
  }
+ void currentCycleModesPersist(){
+  for(int steps=0;steps<4;++steps){
+   QString expectedKey,expectedButton;
+   {
+    Controller c;c.resetPreferences();
+    for(int i=0;i<steps;++i)c.clickCommand("CycleKeyMode");
+    for(int i=0;i<3-steps;++i)c.clickCommand("CycleButtonMode");
+    expectedKey=c.keyMode();expectedButton=c.buttonMode();
+    QVERIFY(c.savePreferences());
+   }
+   {
+    Controller c;QCOMPARE(c.keyMode(),expectedKey);QCOMPARE(c.buttonMode(),expectedButton);
+    c.resetPreferences();QCOMPARE(c.keyMode(),QString("Tap"));QCOMPARE(c.buttonMode(),QString("Tap"));
+   }
+  }
+ }
+ void savedCycleModesValidation(){
+  for(const auto &name:QStringList{"keyMode","buttonMode"}){
+   auto values=ProfileStore::defaults();values.remove(name);QVERIFY(ProfileStore::valid(values));
+   values[name]="invalid";QVERIFY(!ProfileStore::valid(values));
+   values[name]=1;QVERIFY(!ProfileStore::valid(values));
+  }
+  auto values=ProfileStore::defaults();values["keyMode"]="Toggle";values["keyCycleModes"]=QJsonArray{"Repeat","Hold"};
+  QString error;QVERIFY(ProfileStore(QDir(appConfigDirectory()).filePath("profile.json")).save(values,error));
+  Controller c;QCOMPARE(c.keyMode(),QString("Repeat"));c.resetPreferences();
+ }
  void selectedKeyCycleModesPersist(){
   {
    Controller c;c.resetPreferences();
