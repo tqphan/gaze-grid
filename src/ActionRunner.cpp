@@ -42,7 +42,12 @@ QString ActionRunner::signature(const QVariantList &commands){
 }
 bool ActionRunner::start(const QVariantList &commands){
     if(running){emit failed("An action is still running");return false;}
-    auto error=validate(commands,textOnly||(sendText&&(!canCommitText||canCommitText())));if(!error.isEmpty()){emit failed(error);return false;}
+    if(physicalText&&!textOnly&&physicalTextReady&&!physicalTextReady()){
+        for(const auto &entry:commands)if(entry.toMap()["tag"]=="Text"){
+            emit failed("System keyboard layout unavailable");return false;
+        }
+    }
+    auto error=validate(commands,textOnly||(!physicalText&&sendText&&(!canCommitText||canCommitText())));if(!error.isEmpty()){emit failed(error);return false;}
     auto plannedHeld=held;
     static const QSet<QString> modifiers{"LSHIFT","RSHIFT","LCONTROL","RCONTROL","LMENU","RMENU","LWIN","RWIN"};
     for(const auto &v:commands){auto c=v.toMap();auto tag=c["tag"].toString();auto name=KeyNames::canonical(c["text"].toString());
@@ -86,6 +91,7 @@ bool ActionRunner::key(QString name,bool down,bool persistent){
 }
 bool ActionRunner::tap(QString name){
     name=KeyNames::canonical(name);
+    if(editingLocal()){emit keyPressed(name);return sendLocalKey(name,heldKeys());}
     if(isHeld(name)){emit failed("Release the held key before typing it again: "+name);return false;}
     return key(name,true)&&key(name,false);
 }
@@ -105,13 +111,14 @@ void ActionRunner::step(){
         bool shortcut=shortcutHeld();
         QString effective=value;
         if(textOnly||!held.isEmpty())for(auto &ch:effective)ch=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));
-        if(!shortcut&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
-            if(!textOnly&&!tap("BACK")){fail("Could not remove the completion space");return;}
-            emit textCommitted("\b");
+        if(!shortcut&&(!physicalText||textOnly)&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
+            if((!textOnly||editingLocal())&&!tap("BACK")){fail("Could not remove the completion space");return;}
+            if(!editingLocal())emit textCommitted("\b");
         }
         QString composed;
-        if(textOnly){for(auto ch:value)composed+=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));}
-        else if(sendText&&(!canCommitText||canCommitText())&&held.isEmpty()){
+        if(editingLocal())ok=sendLocalText(effective,heldKeys());
+        else if(textOnly){for(auto ch:value)composed+=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));}
+        else if(!physicalText&&sendText&&(!canCommitText||canCommitText())&&held.isEmpty()){
             QString pending;
             auto flush=[&]{if(pending.isEmpty())return true;bool result=sendText(pending);if(result)composed+=pending;pending.clear();return result;};
             for(auto ch:value){
@@ -127,7 +134,7 @@ void ActionRunner::step(){
             if(!ok)break;composed+=KeyNames::usTypedCharacter(ch,upper);
         }
         }
-        if(ok&&(textOnly||!shortcut))emit textCommitted(composed);
+        if(ok&&!editingLocal()&&(textOnly||(!physicalText&&!shortcut)))emit textCommitted(composed);
     }else if(tag=="ChangeKeyboard"){
         bool back=command["attributes"].toMap().value("backreturnshere","true").toString().compare("false",Qt::CaseInsensitive)!=0;
         if(navigate)navigate(value.trimmed(),back);else ok=false;
@@ -135,7 +142,7 @@ void ActionRunner::step(){
         value=value.trimmed();auto name=KeyNames::functionKey(value);
         static const QSet<QString> modifiers{"LSHIFT","RSHIFT","LCONTROL","RCONTROL","LMENU","RMENU","LWIN","RWIN"};
         if(modifiers.contains(name))ok=queue.size()==1?cycleModifier(name):key(name,!isHeld(name),true);
-        else if(!name.isEmpty()){ok=tap(name);if(ok&&name=="BACK"&&!shortcutHeld())emit textCommitted("\b");}
+        else if(!name.isEmpty()){ok=tap(name);if(ok&&!editingLocal()&&name=="BACK"&&!shortcutHeld()&&(textOnly||!physicalText))emit textCommitted("\b");}
         else if(value=="SpeakLabel"){
             ok=bool(speakLabel);
             if(ok)speakLabel(command["label"].toString().trimmed());
@@ -143,7 +150,7 @@ void ActionRunner::step(){
         else ok=performAction&&performAction(value);
     }
     if(!running)return; // A navigation/pause action may cancel the runner.
-    if(!ok){fail("Action could not complete: "+tag+" "+(tag=="Text"?QString("[text]"):value.trimmed()));return;}
+    if(!ok){const auto localError=editingLocal()&&localInputError?localInputError():QString();fail(localError.isEmpty()?"Action could not complete: "+tag+" "+(tag=="Text"?QString("[text]"):value.trimmed()):localError);return;}
     if(consumesLatch){
         const auto copy=latched;
         for(const auto &name:copy)if(!key(name,false)){fail("Could not release latched modifier");return;}

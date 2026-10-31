@@ -8,6 +8,10 @@
 #include "ActionRunner.h"
 #include "ActionCatalog.h"
 #include "KeyNames.h"
+#include "SystemKeyboard.h"
+#ifndef _WIN32
+#include <xkbcommon/xkbcommon.h>
+#endif
 #include "ProfileStore.h"
 #include "PointerActions.h"
 #include "RelativePointer.h"
@@ -25,6 +29,90 @@ class CoreTests:public QObject{
  Q_OBJECT
 static QVariantMap cmd(QString tag,QString text){return {{"tag",tag},{"text",text}};}
 private slots:
+#ifndef _WIN32
+ void nativeXkbLabels(){
+  SystemKeyboard keyboard;QVERIFY(!keyboard.available());
+  auto context=xkb_context_new(XKB_CONTEXT_NO_FLAGS);QVERIFY(context);
+  quint32 shiftMask=0,capsMask=0,altGrMask=0;
+  auto load=[&](const char *layout,const char *variant=nullptr){
+   xkb_rule_names names{};names.layout=layout;names.variant=variant;
+   auto map=xkb_keymap_new_from_names(context,&names,XKB_KEYMAP_COMPILE_NO_FLAGS);
+   if(!map)return false;
+   auto mask=[&](const char *name){const auto index=xkb_keymap_mod_get_index(map,name);return index==XKB_MOD_INVALID?quint32(0):quint32(1)<<index;};
+   shiftMask=mask(XKB_MOD_NAME_SHIFT);capsMask=mask(XKB_MOD_NAME_CAPS);altGrMask=mask("Mod5");
+   char *source=xkb_keymap_get_as_string(map,XKB_KEYMAP_FORMAT_TEXT_V1);
+   const bool changed=keyboard.setKeymap(QByteArray(source));
+   free(source);xkb_keymap_unref(map);return changed;
+  };
+  QVERIFY(load("us"));QVERIFY(keyboard.available());
+  QCOMPARE(keyboard.label(16,{}),QString("q"));
+  QCOMPARE(keyboard.label(16,{true,false,false}),QString("Q"));
+  QCOMPARE(keyboard.label(16,{false,true,false}),QString("Q"));
+  QCOMPARE(keyboard.label(16,{true,true,false}),QString("q"));
+  QVERIFY(load("fr"));QCOMPARE(keyboard.label(16,{}),QString("a"));
+  QVERIFY(load("de"));QCOMPARE(keyboard.label(21,{}),QString("z"));
+  QCOMPARE(keyboard.label(16,{false,false,true}),QString("@"));
+  QVERIFY(load("ru"));QCOMPARE(keyboard.label(16,{}),QString::fromUtf8("й"));
+  QVERIFY(load("us","intl"));QCOMPARE(keyboard.label(40,{}),QString("acute"));
+  QVERIFY(load("us,de"));QVERIFY(!keyboard.available());
+  QVERIFY(keyboard.setModifiers(0,0,0,0));QVERIFY(keyboard.available());
+  QCOMPARE(keyboard.label(21,{}),QString("y"));
+  QVERIFY(keyboard.setModifiers(0,0,0,1));QCOMPARE(keyboard.label(21,{}),QString("z"));
+  QVERIFY(!keyboard.setModifiers(0,0,0,1));
+  QVERIFY(keyboard.setModifiers(shiftMask,0,0,1));QCOMPARE(keyboard.label(21,{}),QString("Z"));
+  QVERIFY(keyboard.setModifiers(0,shiftMask,0,1));QCOMPARE(keyboard.label(21,{}),QString("Z"));
+  QVERIFY(keyboard.setModifiers(0,0,capsMask,1));QCOMPARE(keyboard.label(21,{}),QString("Z"));
+  QVERIFY(keyboard.setModifiers(0,0,0,1));QCOMPARE(keyboard.label(21,{false,true,false}),QString("z"));
+  QVERIFY(keyboard.setModifiers(altGrMask,0,0,1));QCOMPARE(keyboard.label(16,{}),QString("@"));
+  QVERIFY(keyboard.setModifiers(0,0,0,99));QVERIFY(!keyboard.available());QVERIFY(keyboard.label(16,{}).isEmpty());
+  QVERIFY(load("us,ru"));QVERIFY(!keyboard.available()); // Old group and modifiers cannot survive a replacement map.
+  QVERIFY(keyboard.setModifiers(0,0,0,1));QCOMPARE(keyboard.label(16,{}),QString::fromUtf8("й"));
+  QVERIFY(load("us,ru"));QVERIFY(!keyboard.available()); // Identical bytes from a new device still need fresh state.
+  QVERIFY(keyboard.setKeymap("invalid"));QVERIFY(!keyboard.available());
+  QVERIFY(load("us"));QVERIFY(keyboard.setKeymap({}));QVERIFY(!keyboard.available());
+  xkb_context_unref(context);
+ }
+#endif
+ void systemLabelsPreservePersonalKeys(){
+  int translated=0;
+  auto translate=[&](int scan,SystemKeyboard::Modifiers m){++translated;return scan==16?(m.shift?QString("A"):QString("a")):QString("x");};
+  for(const auto &name:QDir(PACK_PATH).entryList({"*.xml"},QDir::Files)){
+   const auto layout=KeyboardLayout::fromXml(KeyboardPack::load(QDir(PACK_PATH).filePath(name)));
+   QVERIFY(!layout.contains("error"));const auto original=layout["keys"].toList();auto copy=original;
+   const auto personal=SystemKeyboard::labels(copy,{},[](int,SystemKeyboard::Modifiers){return QString();});
+   const auto system=SystemKeyboard::labels(copy,{},translate);
+   QCOMPARE(copy,original);QCOMPARE(system.size(),original.size());
+   for(int i=0;i<original.size();++i)QCOMPARE(personal[i].toString(),original[i].toMap()["label"].toString());
+  }
+  QVERIFY(translated>0);
+  const QVariantMap key{{"label","q"},{"shiftLabel","Q"},{"commands",QVariantList{cmd("Text","q")}}};
+  QCOMPARE(SystemKeyboard::labels({key},{},translate).front().toString(),QString("a"));
+  QCOMPARE(SystemKeyboard::labels({key},{true,false,false},translate).front().toString(),QString("A"));
+  auto macro=key;macro["commands"]=QVariantList{cmd("Text","q"),cmd("Action","Return")};
+  auto custom=key;custom["label"]="Personal";
+  QCOMPARE(SystemKeyboard::labels({macro,custom},{},translate),QVariantList({QString("q"),QString("Personal")}));
+ }
+ void systemTextUsesPhysicalInput(){
+  ActionRunner runner;runner.physicalText=true;QStringList events;int commits=0;
+  runner.sendKey=[&](QString name,bool down){events<<name+(down?"+":"-");return true;};
+  runner.sendText=[&](QString){++commits;return true;};
+  runner.physicalTextReady=[]{return true;};
+  QSignalSpy text(&runner,&ActionRunner::textCommitted),finished(&runner,&ActionRunner::finished);
+  QVERIFY(runner.start({cmd("Text","q")}));QTRY_COMPARE(finished.size(),1);
+  QCOMPARE(events,QStringList({"Q+","Q-"}));QCOMPARE(commits,0);QCOMPARE(text.size(),0);
+  events.clear();QVERIFY(!runner.start({cmd("Text",QString::fromUtf8("qé"))}));QVERIFY(events.isEmpty());
+  runner.physicalTextReady=[]{return false;};events.clear();
+  QVERIFY(!runner.start({cmd("Text","q")}));QVERIFY(events.isEmpty());
+  runner.textOnly=true;
+  QVERIFY(runner.start({cmd("Text","q")}));QTRY_COMPARE(finished.size(),2);
+  QCOMPARE(text.size(),1);QCOMPARE(text.front().front().toString(),QString("q"));QVERIFY(events.isEmpty());
+ }
+ void systemKeyboardProfileCompatibility(){
+  auto profile=ProfileStore::defaults();QCOMPARE(profile["systemKeyboard"].toBool(),false);QVERIFY(ProfileStore::valid(profile));
+  profile.remove("systemKeyboard");QVERIFY(ProfileStore::valid(profile));
+  profile["systemKeyboard"]=true;QVERIFY(ProfileStore::valid(profile));
+  profile["systemKeyboard"]="system";QVERIFY(!ProfileStore::valid(profile));
+ }
  void bundledDwellGroups(){
   const QStringList groups{"Alphabet","Numbers","Punctuations","Modifiers","Functions","Predictions","Conversations","Navigation","Editing","Mouse","Gamepad","Others"};
   const QDir dir(PACK_PATH);

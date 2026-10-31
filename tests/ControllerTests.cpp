@@ -15,8 +15,34 @@
 #include <QScreen>
 #include <QWindow>
 #include <QSemaphore>
+#include <QStringListModel>
 #include <atomic>
 namespace {
+class LocalImeEditor:public QObject {
+ Q_OBJECT
+ Q_PROPERTY(QString committedText MEMBER text)
+ Q_PROPERTY(QString text MEMBER text)
+ Q_PROPERTY(bool readOnly MEMBER readOnly)
+public:
+ QString text;bool readOnly=false;
+ Q_INVOKABLE void prepareInput(){}
+};
+class LocalImeEngine:public QObject {
+ Q_OBJECT
+ Q_PROPERTY(QObject* candidateModel READ candidateModel CONSTANT)
+ Q_PROPERTY(QStringList availableLocales READ availableLocales CONSTANT)
+ Q_PROPERTY(QString locale MEMBER locale NOTIFY candidatesChanged)
+public:
+ QStringListModel model;
+ QString locale="en_US";int selected=-1;
+ QObject *candidateModel(){return &model;}
+ QStringList availableLocales()const{return {"en_US","ja_JP"};}
+ Q_INVOKABLE QVariant setLocale(QVariant value){if(!availableLocales().contains(value.toString()))return false;locale=value.toString();model.setStringList({});emit candidatesChanged();return true;}
+ Q_INVOKABLE QVariant selectCandidate(QVariant value){selected=value.toInt();model.setStringList({});emit candidatesChanged();return true;}
+ void replace(const QStringList &values){model.setStringList(values);emit candidatesChanged();}
+signals:
+ void candidatesChanged();
+};
 class RetryTracker:public TobiiInput {
 public:
  explicit RetryTracker(int failures=0):failures(failures){}
@@ -51,6 +77,53 @@ class ControllerTests:public QObject {
   c.setProperty("layout",QVariantMap{{"layoutMode","canvas"},{"activateoverlappingkeys",true},{"keys",content}});
  }
 private slots:
+ void localImeCandidatesPageAndRejectStaleDwell(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.setSystemKeyboard(true);c.openLayout("keyboard-conversation-bottom",false);
+  LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());
+  engine.replace({"one","two","three","four","five","six","seven","eight"});
+  QCOMPARE(c.displaySuggestions().size(),6);const auto stale=c.suggestionPrefix()+"0";
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
+  QCOMPARE(c.displaySuggestions(),QStringList({"seven","eight"}));c.clickCommand(stale);QCOMPARE(engine.selected,-1);
+  const auto current=c.suggestionPrefix()+"1";engine.replace({"replacement"});c.clickCommand(current);QCOMPARE(engine.selected,-1);
+  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.displaySuggestions().isEmpty());
+  engine.replace({"paused"});const auto beforePause=c.suggestionPrefix()+"0";c.togglePause();c.clickCommand(beforePause);QCOMPARE(engine.selected,0);
+  c.togglePause();c.setSystemKeyboard(false);QVERIFY(!c.localImeActive());QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void localImeLanguagePersistsAndValidates(){
+  Controller c;c.resetPreferences();LocalImeEngine engine;c.attachScratchpadInputEngine(&engine);
+  c.setLocalImeLocale("ja_JP");QCOMPARE(c.localImeLocale(),QString("ja_JP"));QCOMPARE(engine.locale,QString("ja_JP"));
+  c.setLocalImeLocale("invalid");QCOMPARE(c.localImeLocale(),QString("ja_JP"));QVERIFY(c.savePreferences());
+  {Controller restored;QCOMPARE(restored.localImeLocale(),QString("ja_JP"));}
+  auto profile=ProfileStore::defaults();profile["localImeLocale"]="ja_JP";QVERIFY(ProfileStore::valid(profile));
+  profile["localImeLocale"]="../invalid";QVERIFY(!ProfileStore::valid(profile));
+  profile["localImeLocale"]=false;QVERIFY(!ProfileStore::valid(profile));
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void qtScratchpadAcceptsOnlyLocalCommittedText(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  QVERIFY(!c.scratchpadEditable());QVERIFY(!c.setScratchpadText("desktop text"));
+  c.openLayout("keyboard-conversation-bottom",false);QVERIFY(c.scratchpadEditable());
+  const auto value=QString::fromUtf8("日本語 😀 é");QVERIFY(c.setScratchpadText(value));
+  QCOMPARE(c.property("scratchpad").toString(),value);
+  QVERIFY(!c.setScratchpadText(QString(QChar(0xd800))));QCOMPARE(c.property("scratchpad").toString(),value);
+  c.togglePause();QVERIFY(!c.setScratchpadText("paused"));c.togglePause();
+  c.openLayout("keyboard-alphabet-14x4-bottom",false);QVERIFY(!c.scratchpadEditable());
+  QVERIFY(!c.setScratchpadText("external"));QCOMPARE(c.property("scratchpad").toString(),value);
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void personalKeyboardRemainsDefault(){
+  Controller c;c.resetPreferences();QVERIFY(!c.systemKeyboard());
+  c.openLayout("keyboard-alphabet-14x4-bottom",false);
+  const auto layout=c.property("layout").toMap();
+  const auto labels=c.keyboardLabels();QVERIFY(!labels.isEmpty());
+  c.setSystemKeyboard(true);QVERIFY(c.systemKeyboard());
+  QCOMPARE(c.property("layout").toMap(),layout);
+  QVERIFY(c.savePreferences());
+  {Controller restored;QVERIFY(restored.systemKeyboard());}
+  c.setSystemKeyboard(false);QCOMPARE(c.keyboardLabels(),labels);QCOMPARE(c.property("layout").toMap(),layout);
+  c.resetPreferences();QVERIFY(!c.systemKeyboard());QVERIFY(c.savePreferences());
+ }
  void transitionPreferences(){
   Controller c;c.resetPreferences();QCOMPARE(c.property("keyboardTransition").toString(),QString("instant"));
   QCOMPARE(c.property("transitionDurationMs").toInt(),180);

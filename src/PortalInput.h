@@ -7,6 +7,7 @@
 #include <QDBusMessage>
 #include <QDBusContext>
 #include <QSet>
+#include <QHash>
 #include "DisplayMapping.h"
 #include <functional>
 struct ei;struct ei_device;class QSocketNotifier;
@@ -37,6 +38,8 @@ public:
 signals:
  void status(QString message);
  void readyChanged();
+ void keyboardKeymapChanged(QByteArray keymap);
+ void keyboardModifiersChanged(uint depressed,uint latched,uint locked,uint group);
 private slots:
  void response(uint code,const QVariantMap &results);
  void sessionClosed();
@@ -57,6 +60,9 @@ private:
  QSet<ei_device*> devices;
  QSet<int> held,heldButtons;
  ei_device *device(int capability);
+ void updateKeyboardKeymap();
+ ei_device *keymapDevice=nullptr;
+ QHash<ei_device*,QList<uint>> keyboardStates;
  DisplayMapping::Mapping absoluteMapping(QList<ei_device*> &owners)const;
 };
 

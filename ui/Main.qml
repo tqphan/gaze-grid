@@ -11,9 +11,15 @@ Window {
  title: "gaze-grid"
  // Keep the native surface translucent for its entire lifetime.
  color:"transparent"
- flags: Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus | Qt.WindowStaysOnTopHint
+ flags: Qt.FramelessWindowHint | (controller.scratchpadEditable?0:Qt.WindowDoesNotAcceptFocus) | Qt.WindowStaysOnTopHint
  property string hovered: ""
  property bool canvasDragging:false
+ Loader {
+  active:controller.localImeEnabled&&controller.scratchpadEditable&&controller.systemKeyboard
+  source:active?"LocalInputMethod.qml":""
+  onLoaded:controller.attachScratchpadInputEngine(item)
+  onActiveChanged:if(!active)controller.attachScratchpadInputEngine(null)
+ }
  property point canvasPoint:Qt.point(0,0)
  // Keep coordinates current before entering edit mode as well.
  HoverHandler {id:canvasHover}
@@ -140,7 +146,7 @@ Window {
    if(px>=item.x&&py>=item.y&&px<item.x+item.width&&py<item.y+item.height){
     if(controller.sizeMoveMode)return "key:"+i
     if(item.modelData.kind==="SuggestionRow") {
-     let n=Math.floor((px-item.x)/item.predictionWidth);return n<item.predictionCount&&n<controller.suggestions.length&&controller.suggestions[n].trim().length>0?"suggest:"+n:""
+     let n=Math.floor((px-item.x)/item.predictionWidth);return n<item.predictionCount&&n<controller.displaySuggestions.length&&controller.displaySuggestions[n].trim().length>0?controller.suggestionPrefix+n:""
     }
     if(item.modelData.kind==="Scratchpad")return ""
     return "key:"+i
@@ -301,7 +307,7 @@ Window {
    property bool resumeKey:controller.paused&&sleepKey
    enabled:!controller.paused||sleepKey
    property string unavailableReason:modelData.unavailableReason || ""
-   property string label:root.minimizedRecovery?["↘","↙","↗","↖"][controller.restoreCorner]:controller.shifted&&modelData.shiftLabel?modelData.shiftLabel:modelData.label
+   property string label:root.minimizedRecovery?["↘","↙","↗","↖"][controller.restoreCorner]:(controller.keyboardLabels[index]!==undefined?controller.keyboardLabels[index]:modelData.label)
    property real symbolMargin:controller.layout.symbolmargin!==undefined?Math.max(0,Number(controller.layout.symbolmargin)):12
    property color foreground:root.keyboardForeground
    property real foregroundOpacity:root.styleOpacity(modelData.style,"foregroundopacity")
@@ -332,10 +338,14 @@ Window {
     border.width:controller.sizeMoveSelection===key.index?5:2;border.color:root.dwellColor
    }
    HeldIndicator {anchors.fill:parent;anchors.margins:2;style:key.heldStyle;color:root.dwellColor}
-   Text {
+   ScratchpadEditor {
     anchors.fill:parent;anchors.margins:12;visible:key.modelData.kind==="Scratchpad";clip:true
+    objectName:"scratchpadEditor:"+key.index
+    Component.onCompleted:if(key.modelData.kind==="Scratchpad")controller.attachScratchpad(this)
     opacity:key.foregroundOpacity
-    text:controller.scratchpad;color:key.foreground;wrapMode:Text.Wrap
+    committedText:controller.scratchpad;color:key.foreground
+    readOnly:!controller.scratchpadEditable||controller.paused||!controller.desktopActive
+    onCommittedTextEdited:value=>controller.setScratchpadText(value)
     font.pixelSize:24*controller.scratchpadTextScale/100;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
    }
    Column {
@@ -403,7 +413,7 @@ Window {
    }
    MouseArea {
     objectName:"keyMouseArea:"+key.index
-    anchors.fill:parent;hoverEnabled:true;enabled:true
+    anchors.fill:parent;hoverEnabled:true;enabled:key.modelData.kind!=="Scratchpad"||!controller.scratchpadEditable
     onEntered:root.hovered=(key.modelData.kind==="DynamicKey"||key.modelData.kind==="Joystick")?key.command:""
     onPositionChanged:mouse=>{key.pointerX=mouse.x;key.pointerY=mouse.y;if(key.modelData.kind==="Joystick")root.hovered=key.command}
     onExited:if(root.hovered===key.command)root.hovered=""
@@ -416,15 +426,17 @@ Window {
      Rectangle {
       id:predictionSlot
       required property int index
-      property string predictionText:index<controller.suggestions.length?controller.suggestions[index]:""
+      property string predictionText:index<controller.displaySuggestions.length?controller.displaySuggestions[index]:""
       property bool hasPrediction:predictionText.trim().length>0
-      property string command:"suggest:"+index
+      property string command:controller.suggestionPrefix+index
+      property string previousCommand:""
+      onCommandChanged:{if(root.hovered===previousCommand)root.hovered="";previousCommand=command}
       property bool active:key.enabled&&hasPrediction&&(root.usingGaze ? root.gazeTarget===command : root.hovered===command)
-      onHasPredictionChanged:if(!hasPrediction&&root.hovered==="suggest:"+index)root.hovered=""
+      onHasPredictionChanged:if(!hasPrediction&&root.hovered===command)root.hovered=""
       width:key.predictionWidth;height:key.height;color:"transparent";border.color:root.keyboardBorder
       Rectangle {anchors.fill:parent;color:root.dwellColor;opacity:predictionSlot.active?0.18:0}
-      Text {anchors.fill:parent;anchors.margins:4;text:predictionSlot.predictionText;opacity:key.foregroundOpacity;color:key.foreground;font.pixelSize:Math.min(24,key.height*.28)*controller.predictionTextScale/100;fontSizeMode:Text.Fit;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
-      MouseArea {objectName:"predictionMouseArea:"+index;anchors.fill:parent;hoverEnabled:true;enabled:predictionSlot.hasPrediction;onEntered:root.hovered="suggest:"+index;onExited:if(root.hovered==="suggest:"+index)root.hovered="";onClicked:controller.clickCommand("suggest:"+index)}
+      Text {anchors.fill:parent;anchors.margins:4;text:predictionSlot.predictionText;textFormat:Text.PlainText;opacity:key.foregroundOpacity;color:key.foreground;font.pixelSize:Math.min(24,key.height*.28)*controller.predictionTextScale/100;fontSizeMode:Text.Fit;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
+      MouseArea {objectName:"predictionMouseArea:"+index;anchors.fill:parent;hoverEnabled:true;enabled:predictionSlot.hasPrediction;onEntered:root.hovered=predictionSlot.command;onPositionChanged:root.hovered=predictionSlot.command;onExited:if(root.hovered===predictionSlot.command)root.hovered="";onClicked:controller.clickCommand(predictionSlot.command)}
       DwellIndicator {objectName:"predictionProgress:"+index;anchors.left:parent.left;anchors.bottom:parent.bottom;width:progress>0?parent.width:0;height:parent.height;progress:predictionSlot.active?root.progress:0;style:controller.dwellIndicatorStyle;color:root.dwellColor}
      }
     }
@@ -716,6 +728,27 @@ Window {
         }
        }
        SettingsCheckBox {id:includeHidden;text:"Include layouts hidden by the XML pack"}
+       RowLayout {
+        visible:controller.localImeEnabled&&controller.systemKeyboard
+        Desktop.Label {text:"Language"}
+        SettingsComboBox {
+         objectName:"localImeLanguageSelector";Layout.fillWidth:true
+         model:controller.localImeLocales
+         currentIndex:model.indexOf(controller.localImeLocale)
+         displayText:currentIndex>=0?Qt.locale(currentText).nativeLanguageName+" ("+currentText+")":controller.localImeLocale
+         onActivated:controller.localImeLocale=currentText
+        }
+       }
+       RowLayout {
+        Desktop.Label {text:"Keyboard source"}
+        SettingsComboBox {
+         objectName:"keyboardSourceSelector";Layout.fillWidth:true
+         model:["Personal (English US)","System"]
+         currentIndex:controller.systemKeyboard?1:0
+         enabled:!controller.signInMode
+         onActivated:controller.systemKeyboard=currentIndex===1
+        }
+       }
        SettingsCheckBox {
         visible:controller.layout.layoutMode==="canvas"
         text:"Save move/resize changes to original XML"

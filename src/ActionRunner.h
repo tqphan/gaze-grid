@@ -11,6 +11,10 @@ public:
     explicit ActionRunner(QObject *parent=nullptr);
     std::function<bool(QString,bool)> sendKey;
     std::function<bool(QString)> sendText;
+    std::function<bool(QString,QStringList)> sendLocalText;
+    std::function<bool(QString,QStringList)> sendLocalKey;
+    std::function<bool()> canEditLocal;
+    std::function<QString()> localInputError;
     std::function<bool()> canCommitText;
     std::function<bool(QString)> removeSpaceBeforeText;
     std::function<bool(QString)> supportsPhysicalKey;
@@ -19,6 +23,8 @@ public:
     std::function<bool(QString)> supportsAction;
     std::function<void(QString,bool)> navigate;
     bool textOnly=false; // Conversation keyboards never send desktop input.
+    bool physicalText=false; // System layout: let the target compose physical input.
+    std::function<bool()> physicalTextReady;
     bool capsLock=false;
     bool start(const QVariantList &commands);
     void cancel(bool preserveModifiers=false,bool preserveToggles=false);
@@ -46,6 +52,7 @@ signals:
     void finished();
     void cancelled();
 private:
+    bool editingLocal()const{return textOnly&&sendLocalText&&sendLocalKey&&(!canEditLocal||canEditLocal());}
     void step();
     bool key(QString name,bool down,bool persistent=false);
     bool tap(QString name);

@@ -13,6 +13,8 @@
 #include "GameController.h"
 #include "ScreenshotPortal.h"
 #include "SpeechOutput.h"
+#include "SystemKeyboard.h"
+#include "LocalScratchpadInput.h"
 class Controller:public QObject{
  Q_OBJECT
  Q_PROPERTY(QVariantList speechProfiles READ getSpeechProfiles NOTIFY speechProfilesChanged)
@@ -82,8 +84,17 @@ class Controller:public QObject{
  Q_PROPERTY(QStringList heldKeys READ heldKeys NOTIFY changed)
  Q_PROPERTY(QVariantMap modifierStates READ modifierStates NOTIFY changed)
  Q_PROPERTY(bool literal MEMBER literal NOTIFY changed)
+ Q_PROPERTY(bool systemKeyboard READ systemKeyboard WRITE setSystemKeyboard NOTIFY changed)
+ Q_PROPERTY(QVariantList keyboardLabels READ keyboardLabels NOTIFY keyboardLabelsChanged)
  Q_PROPERTY(QString mappingJson READ mappingJson NOTIFY changed)
  Q_PROPERTY(QString scratchpad MEMBER scratchpad NOTIFY changed)
+ Q_PROPERTY(bool scratchpadEditable READ scratchpadEditable NOTIFY changed)
+ Q_PROPERTY(bool localImeEnabled READ localImeEnabled CONSTANT)
+ Q_PROPERTY(bool localImeActive READ localImeActive NOTIFY changed)
+ Q_PROPERTY(QStringList localImeLocales READ localImeLocales NOTIFY changed)
+ Q_PROPERTY(QString localImeLocale READ localImeLocale WRITE setLocalImeLocale NOTIFY changed)
+ Q_PROPERTY(QStringList displaySuggestions READ displaySuggestions NOTIFY changed)
+ Q_PROPERTY(QString suggestionPrefix READ suggestionPrefix NOTIFY changed)
  Q_PROPERTY(QStringList suggestions MEMBER suggestions NOTIFY changed)
  Q_PROPERTY(bool learning READ learningEnabled WRITE setLearning NOTIFY changed)
  Q_PROPERTY(QString typedWordSuggestionMode READ typedWordSuggestionMode WRITE setTypedWordSuggestionMode NOTIFY changed)
@@ -199,6 +210,9 @@ public:
  void setSmoothWhenChangingGazeTarget(bool enabled);
  Q_INVOKABLE bool saveMappings(QString json);
  Q_INVOKABLE bool savePreferences();
+ bool systemKeyboard()const{return runner.physicalText;}
+ void setSystemKeyboard(bool enabled);
+ QVariantList keyboardLabels()const{return keyboardLabelValues;}
  Q_INVOKABLE void resetPreferences();
  Q_INVOKABLE void connectDesktop();
  Q_INVOKABLE void forgetDesktopPermission(){portal.forgetPermission();rememberDesktop=false;emit changed();}
@@ -252,7 +266,19 @@ public:
  // Used only by deterministic external-input integration checks.
  bool executeCommands(const QVariantList &commands){return desktopActive&&runner.start(commands);}
  bool executingCommands()const{return runner.busy();}
+ bool scratchpadEditable()const{return runner.textOnly&&!nativeMode&&!signInMode;}
+ Q_INVOKABLE bool setScratchpadText(const QString &text);
+ bool localImeEnabled()const{return localIme;}
+ Q_INVOKABLE void attachScratchpad(QObject *editor);
+ Q_INVOKABLE void attachScratchpadInputEngine(QObject *engine);
+ bool localImeActive()const{return systemKeyboard()&&scratchpadEditable()&&desktopActive&&!paused&&!sensitiveInput&&localInput.attached()&&localInput.inputEngine();}
+ QStringList localImeLocales()const{return localInput.availableLocales();}
+ QString localImeLocale()const{return wantedImeLocale.isEmpty()?localInput.locale():wantedImeLocale;}
+ void setLocalImeLocale(const QString &locale);
+ QStringList displaySuggestions()const;
+ QString suggestionPrefix()const;
 signals:
+ void keyboardLabelsChanged();
  void speechProfilesChanged();
  void geometryPreferencesChanged();
  void settingsRequested();
@@ -262,7 +288,22 @@ signals:
  void magnifierFrameChanged();
  void layoutChanged();
  void gazePoint(double x,double y,bool valid);
+private slots:
+ void refreshLocalIme();
 private:
+ int suggestionPageSize()const;
+ bool imeTarget(const QString &target,int &index)const;
+ QString wantedImeLocale;
+ QStringList imeCandidateSnapshot;
+ int imeCandidateOffset=0;
+ quint64 imeRevision=0;
+ QList<QMetaObject::Connection> imeConnections;
+ SystemKeyboard systemLayout;
+ LocalScratchpadInput localInput;
+ bool localIme=false;
+ bool systemCaps=false;
+ QVariantList keyboardLabelValues;
+ void refreshKeyboardLabels();
  QVariantList speechProfiles;
  int speechProfileIndex=0;
  void applySpeechProfile();

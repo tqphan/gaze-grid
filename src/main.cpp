@@ -138,6 +138,9 @@ int main(int argc,char **argv){
  qputenv("QT_QUICK_CONTROLS_STYLE","Fusion");
 #endif
  bool inputMethodMode=false;for(int i=1;i<argc;++i)inputMethodMode|=QString::fromLocal8Bit(argv[i])=="--input-method";
+ bool localIme=false;for(int i=1;i<argc;++i)localIme|=QString::fromLocal8Bit(argv[i])=="--local-ime";
+ if(localIme&&inputMethodMode){QTextStream(stderr)<<"--local-ime cannot be combined with --input-method\n";return 2;}
+ if(localIme){qputenv("QT_IM_MODULE","qtvirtualkeyboard");qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");}
  if(inputMethodMode&&qEnvironmentVariableIsEmpty("WAYLAND_SOCKET")){QTextStream(stderr)<<"Input-method mode must be launched by KWin through Virtual Keyboard settings or a nested test session.\n";return 2;}
  bool diagnose=false,audit=false,smoke=false,portalCheck=false,inputCheck=false,inputTarget=false,pointerCheck=false,pointerTarget=false;
  for(int i=1;i<argc;++i){QString arg=argv[i];diagnose|=arg=="--diagnose";audit|=arg=="--validate-keyboards";smoke|=arg=="--smoke";portalCheck|=arg=="--portal-check";inputCheck|=arg=="--input-check";inputTarget|=arg=="--input-target";pointerCheck|=arg=="--pointer-check";pointerTarget|=arg=="--pointer-target";}
@@ -495,7 +498,7 @@ int main(int argc,char **argv){
    if(!inputMethod||top||fullScreen){auto layer=LayerShellQt::Window::get(window);layer->setScope("gaze-grid-keyboard");layer->setScreen(screen);layer->setLayer(LayerShellQt::Window::LayerOverlay);
    layer->setAnchors(minimized?LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop)|LayerShellQt::Window::AnchorLeft:LayerShellQt::Window::Anchors(top?LayerShellQt::Window::AnchorTop:LayerShellQt::Window::AnchorBottom));
    layer->setMargins(minimized?QMargins(x,y,0,0):top?QMargins(0,offset,0,0):QMargins(0,0,0,-offset));layer->setDesiredSize(QSize(width,height));
-   layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);layer->setActivateOnShow(false);layer->setExclusiveZone(inputMethod||minimized||fullScreen?-1:0);
+   layer->setKeyboardInteractivity(controller.scratchpadEditable()?LayerShellQt::Window::KeyboardInteractivityOnDemand:LayerShellQt::Window::KeyboardInteractivityNone);layer->setActivateOnShow(false);layer->setExclusiveZone(inputMethod||minimized||fullScreen?-1:0);
    }
    if(target){target->setScreen(screen);target->resize(size);auto overlay=LayerShellQt::Window::get(target);overlay->setScope("gaze-grid-target");overlay->setScreen(screen);overlay->setLayer(LayerShellQt::Window::LayerOverlay);overlay->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop)|LayerShellQt::Window::AnchorLeft);overlay->setDesiredSize(size);overlay->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);overlay->setExclusiveZone(-1);}
    if(scrollZones){auto overlay=LayerShellQt::Window::get(scrollZones);overlay->setScope("gaze-grid-scroll-zones");overlay->setScreen(screen);overlay->setLayer(LayerShellQt::Window::LayerOverlay);overlay->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop)|LayerShellQt::Window::AnchorLeft);overlay->setDesiredSize(size);overlay->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);overlay->setActivateOnShow(false);overlay->setExclusiveZone(-1);}

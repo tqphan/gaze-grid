@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <QUuid>
 #include <libei.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include "AppPaths.h"
 #include <QDir>
@@ -123,17 +124,40 @@ void PortalInput::dispatch(){
   auto type=ei_event_get_type(event);auto d=ei_event_get_device(event);
   if(type==EI_EVENT_SEAT_ADDED)ei_seat_bind_capabilities(ei_event_get_seat(event),EI_DEVICE_CAP_KEYBOARD,EI_DEVICE_CAP_POINTER,EI_DEVICE_CAP_POINTER_ABSOLUTE,EI_DEVICE_CAP_BUTTON,EI_DEVICE_CAP_SCROLL,nullptr);
   if(type==EI_EVENT_DEVICE_RESUMED){if(!devices.contains(d)){devices.insert(ei_device_ref(d));ei_device_start_emulating(d,1);}}
+  if(type==EI_EVENT_KEYBOARD_MODIFIERS){
+   const QList<uint> state{ei_event_keyboard_get_xkb_mods_depressed(event),ei_event_keyboard_get_xkb_mods_latched(event),ei_event_keyboard_get_xkb_mods_locked(event),ei_event_keyboard_get_xkb_group(event)};
+   keyboardStates[d]=state;
+   if(d==keymapDevice)emit keyboardModifiersChanged(state[0],state[1],state[2],state[3]);
+  }
   if(type==EI_EVENT_DEVICE_PAUSED||type==EI_EVENT_DEVICE_REMOVED){
+   if(keymapDevice==d){keymapDevice=nullptr;emit keyboardKeymapChanged({});}
+   keyboardStates.remove(d);
    if(devices.remove(d))ei_device_unref(d);
    held.clear();heldButtons.clear();setReady(false);emit status("Desktop input device paused or removed");
   }
   bool disconnected=type==EI_EVENT_DISCONNECT;ei_event_unref(event);
   if(disconnected){emit status("Desktop input disconnected");close();return;}
  }
+ updateKeyboardKeymap();
  bool v=device(EI_DEVICE_CAP_KEYBOARD)&&device(EI_DEVICE_CAP_POINTER)&&device(EI_DEVICE_CAP_BUTTON);
  if(v&&!available)emit status("Desktop connected — libei input ready"+permissionNotice);setReady(v);
 }
 ei_device *PortalInput::device(int cap){for(auto d:devices)if(ei_device_has_capability(d,static_cast<ei_device_capability>(cap)))return d;return nullptr;}
+void PortalInput::updateKeyboardKeymap(){
+ auto keyboard=device(EI_DEVICE_CAP_KEYBOARD);if(keyboard==keymapDevice)return;
+ keymapDevice=keyboard;QByteArray source;
+ auto map=keyboard?ei_device_keyboard_get_keymap(keyboard):nullptr;
+ if(map&&ei_keymap_get_type(map)==EI_KEYMAP_TYPE_XKB){
+  const auto size=ei_keymap_get_size(map);
+  if(size>0&&size<=4*1024*1024){
+   auto data=mmap(nullptr,size,PROT_READ,MAP_PRIVATE,ei_keymap_get_fd(map),0);
+   if(data!=MAP_FAILED){source=QByteArray(static_cast<const char*>(data),qsizetype(size));munmap(data,size);}
+  }
+ }
+ emit keyboardKeymapChanged(source);
+ const auto state=keyboardStates.value(keyboard);
+ if(state.size()==4)emit keyboardModifiersChanged(state[0],state[1],state[2],state[3]);
+}
 bool PortalInput::notify(const QString &method,const QVariantList &args){
  if(!available||eisMode)return false;
  QVariantList all{QVariant::fromValue(QDBusObjectPath(session)),QVariantMap{}};all+=args;
@@ -199,6 +223,8 @@ void PortalInput::close(){
  if(context){auto d=device(EI_DEVICE_CAP_KEYBOARD);if(d){for(int code:held)ei_device_keyboard_key(d,code,false);ei_device_frame(d,ei_now(context));}}
  if(context){auto d=device(EI_DEVICE_CAP_BUTTON);if(d){for(int code:heldButtons)ei_device_button_button(d,code,false);ei_device_frame(d,ei_now(context));}}
  heldButtons.clear();held.clear();setReady(false);pending=false;
+ if(keymapDevice){keymapDevice=nullptr;emit keyboardKeymapChanged({});}
+ keyboardStates.clear();
  if(notifier){delete notifier;notifier=nullptr;}
  for(auto d:devices){ei_device_stop_emulating(d);ei_device_unref(d);}devices.clear();
  if(context){ei_unref(context);context=nullptr;}eisMode=false;
