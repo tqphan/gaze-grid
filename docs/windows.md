@@ -1,7 +1,7 @@
 # Windows build, integration and MSI releases
 
 Supported CI platforms are Linux x64 (Arch Linux userspace) and Windows x64
-(MSVC 2022, Qt 6.8). macOS and Windows ARM64 are not currently supported.
+(MSVC 2022, Qt 6.12 LTS). macOS and Windows ARM64 are not currently supported.
 The root CMake project now builds the full application on Windows. The earlier
 `platform/windows` project remains available for isolated input-adapter tests.
 
@@ -41,7 +41,7 @@ Windows CI; running the Linux suite does not validate those paths.
 
 ## Development build
 
-Install Visual Studio 2022 C++ tools, Windows SDK, CMake 3.24+, and Qt 6.8 MSVC
+Install Visual Studio 2022 C++ tools, Windows SDK, CMake 3.24+, and Qt 6.12 LTS MSVC
 x64 (including SVG). Put Qt's `bin` on PATH and set `CMAKE_PREFIX_PATH` to its
 installation. CMake fetches ViGEmClient at pinned commit
 `b66d02d57e32cc8595369c53418b843e958649b4`; for offline builds, pass
@@ -323,7 +323,7 @@ that tracker support was compiled in, even on CI machines without Tobii hardware
 
 ### Qt MinGW quick start
 
-With Qt 6 MinGW x64, its matching compiler, CMake and Ninja installed under C:\Qt, run `.\build.ps1 -Run` or double-click `run.cmd`. The script configures an unsigned development build, runs tests, and deploys Qt beside the executable. Use `-QtDirectory` to select a kit, `-QtRoot` for a different Qt installation root, and `-TobiiSdk` for eye-tracker SDK headers. Signed UIAccess releases still require MSVC.
+With Qt 6.12 LTS MinGW x64, its matching compiler, CMake and Ninja installed under C:\Qt, run `.\build.ps1 -Run` or double-click `run.cmd`. The script configures an unsigned development build, runs tests, and deploys Qt beside the executable. Use `-QtDirectory` to select a kit, `-QtRoot` for a different Qt installation root, and `-TobiiSdk` for eye-tracker SDK headers. Signed UIAccess releases still require MSVC.
 
 ## Start with Windows
 

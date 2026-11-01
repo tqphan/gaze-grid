@@ -19,8 +19,8 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
 Push-Location $PSScriptRoot
 try {
     if (!$QtDirectory) {
-        $kits = @(Get-ChildItem "$QtRoot/*/mingw_64/lib/cmake/Qt6/Qt6Config.cmake" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending)
-        if (!$kits.Count) { throw 'No Qt MinGW kit found. Install a Qt 6 MinGW x64 kit or pass -QtDirectory.' }
+        $kits = @(Get-ChildItem "$QtRoot/6.12.*/mingw_64/lib/cmake/Qt6/Qt6Config.cmake" -ErrorAction SilentlyContinue | Sort-Object { [version]$_.Directory.Parent.Parent.Parent.Parent.Name } -Descending)
+        if (!$kits.Count) { throw 'No Qt 6.12 LTS MinGW kit found. Install a Qt 6.12 MinGW x64 kit or pass -QtDirectory.' }
         $QtDirectory = (Resolve-Path (Join-Path $kits[0].DirectoryName '../../..')).Path
     }
     $QtDirectory = (Resolve-Path $QtDirectory).Path
@@ -55,6 +55,8 @@ try {
     Set-Content "$build/qt.conf" "[Paths]`nPrefix=.`nPlugins=.`nQmlImports=qml"
     # Deploy runtime DLLs and QML modules so Explorer can launch the executable.
     & "$PSScriptRoot/platform/windows/Deploy-Qt.ps1" -Application "$build/gaze-grid.exe" -Directory $build -QtDirectory $QtDirectory -QmlDirectory "$build/windows-ui" -LocalIme:$LocalIme
+    # The application deployment does not include the test runner's Qt module.
+    Copy-Item -LiteralPath "$QtDirectory/bin/Qt6Test.dll" -Destination $build -Force
     # Repair incomplete copies left by an interrupted Qt deployment.
     Get-ChildItem "$build/*.dll" | Where-Object Length -eq 0 | ForEach-Object {
         $source = Join-Path "$QtDirectory/bin" $_.Name

@@ -30,8 +30,7 @@ if ($LocalIme -and (!(Test-Path "$keyboardQml/qmldir") -or !(Test-Path $keyboard
 }
 $deployArguments = @('--release', '--qmldir', $scan, '--dir', $Directory, $Application)
 if ($NoCompilerRuntime) { $deployArguments = @('--no-compiler-runtime') + $deployArguments }
-# The module-wide --no-virtualkeyboard switch is absent from Qt 6.8.
-# Exclude the optional context plugin using the option shared by supported kits.
+# Exclude the optional context plugin when local IME support is disabled.
 if (!$LocalIme) { $deployArguments = @('--exclude-plugins', 'qtvirtualkeyboardplugin') + $deployArguments }
 $previousPath = $env:PATH
 try {
