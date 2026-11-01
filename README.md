@@ -37,7 +37,7 @@ The engine's locale list is broader than the gaze input paths verified here: Eng
 
 Candidate notifications are coalesced until the current engine update returns, avoiding reads of a partially replaced candidate list. Input is rejected while the requested language is still loading.
 
-On Windows, `./build.ps1 -LocalIme` bundles the optional engine, its layout/extension plugins and data using `platform/windows/Deploy-Qt.ps1`. The signed release script accepts the same switch. The selected Qt kit must contain Qt Virtual Keyboard when this switch is used; ordinary deployment excludes it. Launch with `--local-ime` to enable the experimental route, then select System and a language. Personal remains the default.
+On Windows, `./build.ps1 -LocalIme` bundles the optional engine, its layout/extension plugins and data using `platform/windows/Deploy-Qt.ps1`. The signed release script accepts the same switch. The selected Qt kit must contain Qt Virtual Keyboard when this switch is used; ordinary deployment excludes it. Launch with `--local-ime` to enable the experimental route, then select System and a language. Personal remains the default. The Windows release installer includes this optional module; launch the installed executable with `--local-ime` to activate it for that process.
 
 
 With gaze input enabled, a connected eye tracker keeps gaze dwell active. Tracker-invalid samples or non-finite coordinates pause gaze selection; they do not switch to mouse dwell. Sample timestamps and gaps between samples do not invalidate gaze: the last valid point remains active until invalid input, disconnection, or another input reset. Mouse dwell is used when the tracker disconnects or gaze input is disabled. Settings shows the same connection-based input mode.

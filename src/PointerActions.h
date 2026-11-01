@@ -59,7 +59,8 @@ public:
     bool clampScrollGaze=true,cancelScrollOffscreen=false;
     bool active=false,choosing=false,sourceChosen=false,following=false;
     int phase=0,dragStep=0;
-    int clickDurationMs=0,pendingClickButton=272;
+    int clickDurationMs=0,pendingClickButton=272,pendingClickDurationMs=0;
+    QElapsedTimer clickClock;
     QString instruction;
     QSizeF displaySize;
     LookScroll lookScroll;

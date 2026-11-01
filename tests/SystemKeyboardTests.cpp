@@ -1,7 +1,7 @@
 #include <QtTest>
 #include <algorithm>
 #include "WindowsKeyboardLayout.h"
-#ifdef _WIN32
+#ifdef GAZE_GRID_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -89,7 +89,7 @@ private slots:
         QVERIFY(keyboard.translate(16,{}).text.isEmpty());key=255;
         QVERIFY(keyboard.translate(16,{}).text.isEmpty());QCOMPARE(calls,0);
     }
-#ifdef _WIN32
+#ifdef GAZE_GRID_WINDOWS
     void nativeTranslationLeavesThreadStateUntouched(){
         using Layout=WindowsKeyboardLayout;
         const HKL original=GetKeyboardLayout(0);QVERIFY(original);

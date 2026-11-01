@@ -9,7 +9,7 @@
 #include "ActionCatalog.h"
 #include "KeyNames.h"
 #include "SystemKeyboard.h"
-#ifndef _WIN32
+#ifndef GAZE_GRID_WINDOWS
 #include <xkbcommon/xkbcommon.h>
 #endif
 #include "ProfileStore.h"
@@ -29,7 +29,7 @@ class CoreTests:public QObject{
  Q_OBJECT
 static QVariantMap cmd(QString tag,QString text){return {{"tag",tag},{"text",text}};}
 private slots:
-#ifndef _WIN32
+#ifndef GAZE_GRID_WINDOWS
  void nativeXkbLabels(){
   SystemKeyboard keyboard;QVERIFY(!keyboard.available());
   auto context=xkb_context_new(XKB_CONTEXT_NO_FLAGS);QVERIFY(context);
@@ -466,7 +466,7 @@ private slots:
  void desktopPermissionTokensArePrivateAndSingleUse(){
   QTemporaryDir dir;const auto path=dir.filePath("nested/permission.json");PortalPermissionStore store(path);QString error;
   QVERIFY(store.save("private-test-token",error));QVERIFY(error.isEmpty());
-#ifndef _WIN32
+#ifndef GAZE_GRID_WINDOWS
   // Portal permission persistence is Linux-only; these bits do not describe Windows ACLs.
   const auto permissions=QFile::permissions(path);QVERIFY(!(permissions&(QFileDevice::ReadGroup|QFileDevice::WriteGroup|QFileDevice::ReadOther|QFileDevice::WriteOther)));
 #endif

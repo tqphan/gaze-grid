@@ -50,6 +50,8 @@ bool PointerActions::click(int code){
     if(!setButton(code,true))return false;
     if(clickDurationMs==0)return setButton(code,false);
     pendingClickButton=code;
+    pendingClickDurationMs=clickDurationMs;
+    clickClock.start();
     phase=current.action=="MouseMoveAndLeftDoubleClick"&&phase!=3?4:5;
     timer.start(clickDurationMs);return true;
 }
@@ -99,6 +101,10 @@ void PointerActions::tick(){
     }else if(phase==2)finish(setButton(272,false));
     else if(phase==3){const bool ok=click(272);if(!ok||phase!=5)finish(ok);}
     else if(phase==4||phase==5){
+        // A platform timer can wake at a rounded millisecond boundary. Never
+        // release before the requested hold duration has actually elapsed.
+        const auto remaining=pendingClickDurationMs-clickClock.elapsed();
+        if(remaining>0){timer.start(int(remaining));return;}
         const bool anotherClick=phase==4;
         if(!setButton(pendingClickButton,false)){finish(false);return;}
         if(anotherClick){phase=3;timer.start(90);}else finish(true);

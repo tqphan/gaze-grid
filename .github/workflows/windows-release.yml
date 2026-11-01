@@ -36,6 +36,7 @@ jobs:
         with:
           version: '6.8.3'
           arch: win64_msvc2022_64
+          modules: qtvirtualkeyboard
           cache: true
       - name: Restore pinned Tobii SDK headers (no runtime binaries)
         shell: pwsh
@@ -62,15 +63,16 @@ jobs:
           (Join-Path $env:WIX 'bin') | Out-File $env:GITHUB_PATH -Append
       - name: Build signed MSI
         shell: pwsh
-        run: ./platform/windows/Build-Release.ps1 -CertificateThumbprint $env:SIGNING_THUMBPRINT -TobiiSdk "$env:RUNNER_TEMP/tobii-sdk"
+        run: ./platform/windows/Build-Release.ps1 -CertificateThumbprint $env:SIGNING_THUMBPRINT -TobiiSdk "$env:RUNNER_TEMP/tobii-sdk" -LocalIme
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
+          GAZE_GRID_TEST_LOCAL_IME: '1'
       - name: Verify MSI installation, signed application launch and uninstall
         shell: pwsh
         run: |
           $msi = (Get-ChildItem build/windows/*.msi | Select-Object -First 1).FullName
-          ./platform/windows/Test-Installed.ps1 -Msi $msi -CertificateThumbprint $env:SIGNING_THUMBPRINT -ExpectTobii
+          ./platform/windows/Test-Installed.ps1 -Msi $msi -CertificateThumbprint $env:SIGNING_THUMBPRINT -ExpectTobii -ExpectLocalIme
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software

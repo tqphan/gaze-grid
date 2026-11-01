@@ -1,6 +1,6 @@
 # Run only on an isolated Windows test machine: temporarily removes this test root.
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Msi, [Parameter(Mandatory)][string]$CertificateThumbprint, [switch]$ExpectTobii)
+param([Parameter(Mandatory)][string]$Msi, [Parameter(Mandatory)][string]$CertificateThumbprint, [switch]$ExpectTobii, [switch]$ExpectLocalIme)
 $ErrorActionPreference = 'Stop'
 $path = (Resolve-Path $Msi).Path
 & "$PSScriptRoot/Assert-NoTobiiRuntime.ps1" -Msi $path
@@ -143,6 +143,15 @@ try {
     $null = $process.Handle
     if (!$process.WaitForExit(30000)) { $process.Kill(); throw 'Installed application timed out.' }
     if ($process.ExitCode -ne 0) { throw "Installed application failed: $($process.ExitCode)" }
+    if ($ExpectLocalIme) {
+        foreach ($component in @('platforminputcontexts/qtvirtualkeyboardplugin.dll','qml/QtQuick/VirtualKeyboard/qmldir','qml/QtQuick/VirtualKeyboard/Plugins/OpenWNN/qtvkbopenwnnplugin.dll','qml/QtQuick/VirtualKeyboard/Plugins/Pinyin/qtvkbpinyinplugin.dll')) {
+            if (!(Test-Path (Join-Path (Split-Path $installed) $component))) { throw "Installed IME component missing: $component" }
+        }
+        $ime = Start-Process $installed -Verb Open -ArgumentList @('--local-ime','--smoke') -WorkingDirectory $env:TEMP -PassThru
+        $null = $ime.Handle
+        if (!$ime.WaitForExit(30000)) { $ime.Kill(); throw 'Installed IME startup timed out.' }
+        if ($ime.ExitCode -ne 0) { throw "Installed IME startup failed: $($ime.ExitCode)" }
+    }
     if ($mode -eq 'default') { Test-KeyboardInstanceLifecycle }
 } finally { Run-Msi '/x' }
 $remainingStartup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
