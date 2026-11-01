@@ -1,0 +1,24 @@
+{
+  "language": "pol",
+  "tokenization": "word",
+  "name": "Polish",
+  "source": "https://downloads.tatoeba.org/exports/per_language/pol/pol_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:02.689289+00:00",
+  "source_sha256": "c19c3769c4979099f0e0bcb479e5cdbf9f43555eec24db7cb5165f090cc9e51a",
+  "model_sha256": "f5e1e13eb8b6f381891cc67b3b99ee0cf133f34830000ddcfce4716b45a53d8a",
+  "training_sentences": 127837,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 537510,
+  "counts": {
+    "unigrams": 27134,
+    "b": 35549,
+    "t": 25382,
+    "q": 18432
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

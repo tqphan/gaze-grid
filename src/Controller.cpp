@@ -44,6 +44,7 @@ bool bypassPlatformMappings(bool literal){
 }
 QVariantMap command(QString tag,QString value){return {{"tag",tag},{"text",value}};}
 QString configFile(const QString &name){auto dir=appConfigDirectory();QDir().mkpath(dir);return QDir(dir).filePath(name);}
+QString learnedFile(const QString &language){return configFile(language=="eng"?QString("learned.json"):"learned-"+language+".json");}
 QString panelPlacementReason(const QVariantMap &layout){
 
  if(layout.value("verticaloffset","0").toString().remove('%').toDouble()!=0||layout.value("horizontaloffset","0").toString().remove('%').toDouble()!=0)
@@ -70,6 +71,12 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  connect(this,&Controller::changed,this,&Controller::refreshKeyboardLabels);
  connect(this,&Controller::layoutChanged,this,&Controller::refreshKeyboardLabels);
  systemLayout.refresh();
+ runner.physicalKeyText=[this](QString name){
+  if(name=="SPACE")return QString(" ");
+  if(name=="TAB")return QString("\t");
+  if(name=="RETURN")return QString("\n");
+  return systemLayout.label(KeyNames::linuxCode(name),{runner.shifted(),systemCaps,runner.isHeld("RMENU")});
+ };
  runner.physicalTextReady=[this]{return systemLayout.available()&&portal.ready();};
 #ifndef _WIN32
  connect(&portal,&PortalInput::keyboardKeymapChanged,this,[this](const QByteArray &source){
@@ -177,9 +184,11 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
   if(!item.contains("error")&&item["hidefromkeyboardmenu"].toString().compare("true",Qt::CaseInsensitive)!=0)menuLayoutNames<<name;
  }
  if(!signInMode){
- QFile words(":/resources/EnglishUS.dic");if(words.open(QIODevice::ReadOnly)){dictionary=QString::fromUtf8(words.readAll()).remove(QChar(0xfeff)).split('\n',Qt::SkipEmptyParts);for(auto &word:dictionary)word=word.trimmed();dictionary.sort(Qt::CaseInsensitive);}
- WordPrediction::prepare(dictionary);
- QFile learned(configFile("learned.json"));if(learned.open(QIODevice::ReadOnly)){auto obj=QJsonDocument::fromJson(learned.readAll()).object();for(auto it=obj.begin();it!=obj.end();++it)frequencies[it.key()]=qBound(0,it.value().toInt(),1000000);}
+ predictionLanguageValue=profile.values["predictionLanguage"].toString("eng");
+ if(!WordPrediction::languages().contains(predictionLanguageValue))predictionLanguageValue="eng";
+ dictionary=WordPrediction::dictionary(predictionLanguageValue);
+ WordPrediction::prepare(dictionary,predictionLanguageValue);
+ QFile learned(learnedFile(predictionLanguageValue));if(learned.open(QIODevice::ReadOnly)){auto obj=QJsonDocument::fromJson(learned.readAll()).object();for(auto it=obj.begin();it!=obj.end();++it)frequencies[it.key()]=qBound(0,it.value().toInt(),1000000);}
  }
 #ifndef _WIN32
  QString mappingError;QFile mappings(configFile("linux-mappings.json"));
@@ -213,6 +222,10 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  });
  connect(&pointer,&PointerActions::completed,this,[this](bool ok){actionStatus=pointer.prompt();runner.resume(ok);emit changed();});
  runner.sendKey=[this](QString name,bool down){return (!down||desktopActive)&&portal.key(KeyNames::linuxCode(name),down);};
+#ifdef _WIN32
+ runner.sendText=[this](QString text){return desktopActive&&!paused&&!sensitiveInput&&portal.text(text);};
+ runner.canCommitText=[this]{return desktopActive&&!paused&&!sensitiveInput&&portal.ready();};
+#endif
  runner.supportsPhysicalKey=[this](QString){return desktopActive&&portal.ready()&&(!systemKeyboard()||systemLayout.available());};
  connect(&gameController,&GameController::changed,this,&Controller::changed);
  connect(&gameController,&GameController::failed,this,[this](QString error){activeJoystick=-1;actionStatus=error;emit changed();});
@@ -253,7 +266,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
 }
 Controller::~Controller(){desktopActive=false;stopTracker();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();portal.releaseAll();portal.close();
  if(signInMode)return;
- QJsonObject obj;for(auto it=frequencies.begin();it!=frequencies.end();++it)obj[it.key()]=it.value();QSaveFile file(configFile("learned.json"));if(file.open(QIODevice::WriteOnly)){file.write(QJsonDocument(obj).toJson());file.commit();}
+ QJsonObject obj;for(auto it=frequencies.begin();it!=frequencies.end();++it)obj[it.key()]=it.value();QSaveFile file(learnedFile(predictionLanguageValue));if(file.open(QIODevice::WriteOnly)){file.write(QJsonDocument(obj).toJson());file.commit();}
 }
 void Controller::connectDesktop(){
  if(localTestBuild()){actionStatus="Local test: desktop output disabled";emit changed();return;}
@@ -380,6 +393,7 @@ bool Controller::savePreferences(){
  values["buttonMode"]=buttonModeValue;
  values["systemKeyboard"]=systemKeyboard();
  values["localImeLocale"]=wantedImeLocale;
+ values["predictionLanguage"]=predictionLanguageValue;
  values["groupDwellTimes"]=QJsonObject::fromVariantMap(groupDwellValues);
  values["speechProfiles"]=QJsonArray::fromVariantList(speechProfiles);
  values["activeSpeechProfile"]=speechProfileIndex;
@@ -414,6 +428,7 @@ void Controller::resetPreferences(){
  latchStyle="outline";lockStyle="fill";
  dwellIndicatorStyle="bar";
  groupDwellValues.clear();
+ setPredictionLanguage("eng");
  dwellMs=values["dwellMs"].toInt();literal=false;learning=false;predictionModeValue="context";typedWordMode="fallback";nextWordEnabled=true;completionSpaceEnabled=true;sentenceStartersEnabled=true;backStack.clear();
  repeatIntervalMs=750;
  setKeyCycleModes({"Tap","Repeat","Hold","Toggle"});
@@ -801,9 +816,11 @@ void Controller::activate(QString key){
  if(key.startsWith("suggest:")){
   bool valid=false;int i=key.mid(8).toInt(&valid);if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()||(!runner.textOnly&&!ready()))return;
   if(!runner.heldKeys().isEmpty()){actionStatus="Release held keys before accepting a suggestion";emit changed();return;}
-  QString prefix=WordPrediction::prefix(typingContext());auto word=suggestions[i];
-  const auto text=word.mid(prefix.size())+(completionSpaceEnabled?QString(" "):QString());
-  if(runner.start({command("Text",text)}))pendingCompletionText=completionSpaceEnabled?text:QString();
+  QString prefix=WordPrediction::prefix(typingContext(),predictionLanguageValue);auto word=suggestions[i];
+  const bool space=completionSpaceEnabled&&!WordPrediction::characterLanguage(predictionLanguageValue);
+  const auto text=word.mid(prefix.size())+(space?QString(" "):QString());
+  auto completion=command("Text",text);completion["literalCompletion"]=systemKeyboard();
+  if(runner.start({completion}))pendingCompletionText=space?text:QString();
   return;
  }
  if(!key.startsWith("key:"))return;
@@ -1106,7 +1123,7 @@ void Controller::updateText(QString text){
  pendingCompletionText.clear();completionSpaceContext.clear();
  if(sensitiveInput)return;
  auto &context=typingContext();
- for(auto ch:text){if(ch=='\b'){if(!context.isEmpty()){QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,context);boundary.toEnd();context.truncate(qMax(0,boundary.toPreviousBoundary()));}}else{if(ch.isSpace()&&learning){QString word=WordPrediction::completedWord(context);if(!word.isEmpty()&&word.size()<64)frequencies[word]=qMin(1000000,frequencies.value(word)+1);}context+=ch;}}
+ for(auto ch:text){if(ch=='\b'){if(!context.isEmpty()){QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,context);boundary.toEnd();context.truncate(qMax(0,boundary.toPreviousBoundary()));}}else{if(ch.isSpace()&&learning){QString word=WordPrediction::characterLanguage(predictionLanguageValue)?QString():WordPrediction::completedWord(context);if(!word.isEmpty()&&word.size()<64)frequencies[word]=qMin(1000000,frequencies.value(word)+1);}context+=ch;}}
  if(context.size()>4096)context=context.right(4096);
  if(completion&&context.endsWith(' '))completionSpaceContext=context;
  updateSuggestions();
@@ -1120,10 +1137,22 @@ bool Controller::takeCompletionSpace(const QString &text){
  return ch.isPunct()||(ch.unicode()<128&&ch.isSymbol());
 }
 QStringList Controller::predictionSuggestions(int limit)const{
- if(systemKeyboard())return {};
+ if(systemKeyboard()&&scratchpadEditable())return {};
  const auto &context=typingContext();
- if(sensitiveInput||predictionModeValue=="off"||(!context.isEmpty()&&!nextWordEnabled&&WordPrediction::prefix(context).isEmpty()))return {};
- return WordPrediction::suggest(context,dictionary,learning?frequencies:QMap<QString,int>{},limit,predictionModeValue=="context",sentenceStartersEnabled,typedWordMode);
+ if(sensitiveInput||predictionModeValue=="off"||(!context.isEmpty()&&!nextWordEnabled&&WordPrediction::prefix(context,predictionLanguageValue).isEmpty()))return {};
+ return WordPrediction::suggest(context,dictionary,learning?frequencies:QMap<QString,int>{},limit,predictionModeValue=="context",sentenceStartersEnabled,typedWordMode,predictionLanguageValue);
+}
+QStringList Controller::predictionLanguages()const{return WordPrediction::languages();}
+void Controller::setPredictionLanguage(const QString &language){
+ if(signInMode||language==predictionLanguageValue||!WordPrediction::languages().contains(language))return;
+ runner.cancel();dwell.reset();
+ QJsonObject counts;for(auto it=frequencies.cbegin();it!=frequencies.cend();++it)counts[it.key()]=it.value();
+ QSaveFile saved(learnedFile(predictionLanguageValue));if(saved.open(QIODevice::WriteOnly)){saved.write(QJsonDocument(counts).toJson());saved.commit();}
+ predictionLanguageValue=language;frequencies.clear();
+ QFile learned(learnedFile(language));if(learned.open(QIODevice::ReadOnly)){const auto obj=QJsonDocument::fromJson(learned.readAll()).object();for(auto it=obj.begin();it!=obj.end();++it)frequencies[it.key()]=qBound(0,it.value().toInt(),1000000);}
+ dictionary=WordPrediction::dictionary(language);WordPrediction::prepare(dictionary,language);
+ predictionContext.clear();completionSpaceContext.clear();pendingCompletionText.clear();
+ updateSuggestions();
 }
 void Controller::setPredictionMode(QString mode){
  if(signInMode)return;
@@ -1155,7 +1184,7 @@ void Controller::updateSuggestions(){
  suggestionOffset=0;
  suggestions=predictionSuggestions();emit changed();
 }
-void Controller::resetLearning(){if(signInMode)return;frequencies.clear();QFile::remove(configFile("learned.json"));updateSuggestions();}
+void Controller::resetLearning(){if(signInMode)return;frequencies.clear();QFile::remove(learnedFile(predictionLanguageValue));updateSuggestions();}
 void Controller::speak(){if(desktopActive&&!sensitiveInput)speech.speak(scratchpad);}
 void Controller::stopSpeech(){speech.stop();}
 

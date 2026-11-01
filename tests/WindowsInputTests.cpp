@@ -30,6 +30,20 @@ private slots:
         QVERIFY(!input.key("UNKNOWN",true));
         QVERIFY(input.releaseAll());QCOMPARE(events.size(),6);
     }
+    void unicodeTextBypassesPhysicalLayout(){
+        QList<WindowsInput::Event> events;
+        WindowsInput input([&](const auto &event){events.append(event);return true;});
+        const auto text=QString::fromUtf8("caf\xc3\xa9 \xe4\xbd\xa0");
+        QVERIFY(input.text(text));QCOMPARE(events.size(),text.size()*2);
+        for(int i=0;i<text.size();++i){
+            QCOMPARE(events[i*2].kind,WindowsInput::Event::Key);
+            QCOMPARE(events[i*2].virtualKey,0);QCOMPARE(events[i*2].scan,text[i].unicode());
+            QCOMPARE(events[i*2].flags,4u);QCOMPARE(events[i*2+1].flags,6u);
+        }
+        events.clear();QVERIFY(!input.text(QString(QChar(0))));QVERIFY(events.isEmpty());
+        QVERIFY(input.key("LSHIFT",true));events.clear();QVERIFY(!input.text("hello"));QVERIFY(events.isEmpty());
+        QVERIFY(input.releaseAll());
+    }
     void pointer(){
         QList<WindowsInput::Event> events;
         WindowsInput input([&](const auto &e){events.append(e);return true;});

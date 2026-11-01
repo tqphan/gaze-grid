@@ -15,6 +15,7 @@ public:
  void forgetPermission(){}
  void close(){relativePointer.reset();releaseAll();if(available){available=false;emit readyChanged();}}
  bool key(int code,bool down);
+ bool text(const QString &text){return available&&input.text(text);}
  bool move(double dx,double dy){return available&&input.move(dx,dy);}
  bool click(){if(!button(272,true))return false;return button(272,false);}
  bool button(int code,bool down){return available&&input.button(code,down);}

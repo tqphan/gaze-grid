@@ -49,6 +49,16 @@ bool WindowsInput::key(const QString &name,bool down){
     if(down)heldKeys.insert(canonical);else heldKeys.remove(canonical);
     return true;
 }
+bool WindowsInput::text(const QString &text){
+    if(!send||!heldKeys.isEmpty()||!text.isValidUtf16()||text.contains(QChar(0)))return false;
+    for(auto ch:text){
+        Event event;event.kind=Event::Key;event.scan=ch.unicode();event.flags=0x0004; // KEYEVENTF_UNICODE
+        if(!send(event))return false;
+        event.flags|=0x0002;
+        if(!send(event))return false;
+    }
+    return true;
+}
 bool WindowsInput::button(int code,bool down){
     Event event;
     switch(code){

@@ -1,0 +1,24 @@
+{
+  "language": "tha",
+  "tokenization": "character",
+  "name": "Thai",
+  "source": "https://downloads.tatoeba.org/exports/per_language/tha/tha_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:28.190040+00:00",
+  "source_sha256": "d03a70b0189cf410e3b6ce4d6e0daa4062a01518d71ed1efd2fbed619669e5a4",
+  "model_sha256": "687d9553c6fe64518a5d20e52c2392723bea45a93ceb8d9ddd8a9d40f77f52fb",
+  "training_sentences": 6496,
+  "heldout_sentences": 330,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 73693,
+  "counts": {
+    "unigrams": 423,
+    "b": 2876,
+    "t": 6329,
+    "q": 7302
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

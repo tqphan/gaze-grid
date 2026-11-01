@@ -1017,6 +1017,16 @@ Window {
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
        SettingSlider {objectName:"predictionTextSizeSlider";label:"Prediction text size";displayValue:controller.predictionTextScale+"%";from:50;to:300;stepSize:5;value:controller.predictionTextScale;onMoved:controller.predictionTextScale=value}
+       Desktop.Label {text:"Language"}
+       SettingsComboBox {
+        id:predictionLanguageBox;objectName:"predictionLanguageSelector";Layout.fillWidth:true
+        model:controller.predictionLanguages
+        property var names:({eng:"English",spa:"Spanish",fra:"French",deu:"German",por:"Portuguese",ita:"Italian",nld:"Dutch",rus:"Russian",ukr:"Ukrainian",pol:"Polish",tur:"Turkish",vie:"Vietnamese",ind:"Indonesian",ara:"Arabic",cmn:"Chinese",jpn:"Japanese",kor:"Korean",tha:"Thai"})
+        currentIndex:model.indexOf(controller.predictionLanguage)
+        displayText:names[controller.predictionLanguage]||controller.predictionLanguage
+        delegate:Desktop.ItemDelegate {width:predictionLanguageBox.width;text:predictionLanguageBox.names[modelData]||modelData}
+        onActivated:controller.predictionLanguage=currentText
+       }
        Desktop.Label {text:"Prediction style"}
        SettingsComboBox {
         objectName:"predictionModeSelector";Layout.fillWidth:true

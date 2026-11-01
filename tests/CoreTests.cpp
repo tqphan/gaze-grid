@@ -141,6 +141,27 @@ private slots:
   QVERIFY(runner.start({cmd("Text","q")}));QTRY_COMPARE(finished.size(),2);
   QCOMPARE(text.size(),1);QCOMPARE(text.front().front().toString(),QString("q"));QVERIFY(events.isEmpty());
  }
+ void systemPredictionTracksTranslatedKeys(){
+  ActionRunner runner;runner.physicalText=true;
+  runner.physicalTextReady=[]{return true;};
+  runner.sendKey=[](QString,bool){return true;};
+  runner.physicalKeyText=[&](QString name){return name=="Q"?(runner.shifted()?QString("A"):QString("a")):QString();};
+  QString inserted;runner.sendText=[&](QString value){inserted=value;return true;};
+  QSignalSpy text(&runner,&ActionRunner::textCommitted),finished(&runner,&ActionRunner::finished);
+  QVERIFY(runner.start({cmd("Text","q")}));QTRY_COMPARE(finished.size(),1);
+  QCOMPARE(text.takeFirst().front().toString(),QString("a"));
+  QVERIFY(runner.start({cmd("Action","LShift")}));QTRY_COMPARE(finished.size(),2);
+  QVERIFY(runner.start({cmd("Text","q")}));QTRY_COMPARE(finished.size(),3);
+  QCOMPARE(text.takeFirst().front().toString(),QString("A"));
+  QVERIFY(runner.start({cmd("Action","Back")}));QTRY_COMPARE(finished.size(),4);
+  QCOMPARE(text.takeFirst().front().toString(),QString("\b"));
+  QVERIFY(runner.start({cmd("KeyDown","LCONTROL"),cmd("Text","q"),cmd("KeyUp","LCONTROL")}));QTRY_COMPARE(finished.size(),5);
+  QVERIFY(text.isEmpty());
+  auto completion=cmd("Text",QString::fromUtf8("caf\xc3\xa9 "));completion["literalCompletion"]=true;
+  QVERIFY(runner.start({completion}));QTRY_COMPARE(finished.size(),6);
+  QCOMPARE(inserted,completion["text"].toString());
+  QCOMPARE(text.takeFirst().front().toString(),inserted);
+ }
  void systemKeyboardProfileCompatibility(){
   auto profile=ProfileStore::defaults();QCOMPARE(profile["systemKeyboard"].toBool(),false);QVERIFY(ProfileStore::valid(profile));
   profile.remove("systemKeyboard");QVERIFY(ProfileStore::valid(profile));
@@ -554,7 +575,7 @@ private slots:
   QCOMPARE(WordPrediction::suggest("he",words,{},1).size(),1);
   QVERIFY(WordPrediction::suggest("he",words,{},0).isEmpty());
   QVERIFY(WordPrediction::suggest("123he",words,{}).isEmpty());
-  QVERIFY(WordPrediction::suggest("hé",words,{}).isEmpty());
+  QCOMPARE(WordPrediction::suggest("hé",words,{}).first(),QString("héllo"));
   QVERIFY(WordPrediction::suggest("",words,{}).isEmpty());
   QCOMPARE(WordPrediction::suggest("",words,{},8,true,true),WordPrediction::suggest(" ",words,{}));
  }
@@ -591,6 +612,25 @@ private slots:
   const auto next=WordPrediction::suggest("Finished. ",words,{});
   QVERIFY(!next.isEmpty());QVERIFY(next.first().front().isUpper());
   QVERIFY(WordPrediction::suggest("Finished.",words,{}).isEmpty());
+ }
+ void multilingualModelsAndUnicode(){
+  QCOMPARE(WordPrediction::prefix(QString::fromUtf8("\xc3\xa9")),QString::fromUtf8("\xc3\xa9"));
+  for(const auto &language:WordPrediction::languages()){
+   const auto words=WordPrediction::dictionary(language);QVERIFY2(words.size()>20,qPrintable(language));
+   const auto starters=WordPrediction::suggest("",words,{},8,true,true,"never",language);
+   QVERIFY2(!starters.isEmpty(),qPrintable(language));
+   if(WordPrediction::characterLanguage(language)){
+    QVERIFY(WordPrediction::prefix(starters.first(),language).isEmpty());
+    QVERIFY(!WordPrediction::suggest(starters.first(),words,{},8,true,true,"never",language).isEmpty());
+   }else{
+    const auto word=*std::find_if(words.cbegin(),words.cend(),[](const QString &value){return value.size()>3;});
+    const auto results=WordPrediction::suggest(word.left(2),words,{},1000,false,false,"never",language);
+    QVERIFY2(results.contains(word)||results.contains(word.left(2)+word.mid(2).toUpper()),qPrintable(language+":"+word));
+   }
+  }
+  auto values=ProfileStore::defaults();
+  for(const auto &language:WordPrediction::languages()){values["predictionLanguage"]=language;QVERIFY(ProfileStore::valid(values));}
+  values["predictionLanguage"]="../invalid";QVERIFY(!ProfileStore::valid(values));
  }
  void predictionPreservesFullContextRankings_data(){
   QTest::addColumn<QString>("text");QTest::addColumn<QStringList>("expected");

@@ -1,0 +1,24 @@
+{
+  "language": "ara",
+  "tokenization": "word",
+  "name": "Arabic",
+  "source": "https://downloads.tatoeba.org/exports/per_language/ara/ara_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:12.081733+00:00",
+  "source_sha256": "b42168cdba8d91a9d61de62690a217c7fe854d609db1a2fd1f0150ff0128bb60",
+  "model_sha256": "37351560cc0c029c59c16953582fcb3dd86d6ad69e56e6208de9def2eb966d2a",
+  "training_sentences": 62655,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 234274,
+  "counts": {
+    "unigrams": 18119,
+    "b": 13186,
+    "t": 8383,
+    "q": 7175
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

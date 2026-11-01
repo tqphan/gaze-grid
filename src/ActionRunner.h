@@ -25,6 +25,7 @@ public:
     bool textOnly=false; // Conversation keyboards never send desktop input.
     bool physicalText=false; // System layout: let the target compose physical input.
     std::function<bool()> physicalTextReady;
+    std::function<QString(QString)> physicalKeyText; // Best-effort prediction context.
     bool capsLock=false;
     bool start(const QVariantList &commands);
     void cancel(bool preserveModifiers=false,bool preserveToggles=false);

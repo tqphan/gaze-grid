@@ -1,0 +1,24 @@
+{
+  "language": "vie",
+  "tokenization": "word",
+  "name": "Vietnamese",
+  "source": "https://downloads.tatoeba.org/exports/per_language/vie/vie_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:09.856762+00:00",
+  "source_sha256": "daa2b5a44148c077dc12176eb69f475ce5b3646ab10abda8ba6c55595e7be980",
+  "model_sha256": "19660ed7687068c5e01637ea46726aa919b24ff1f5e87c5d204e907f58a41f18",
+  "training_sentences": 31398,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 205139,
+  "counts": {
+    "unigrams": 3399,
+    "b": 15791,
+    "t": 13844,
+    "q": 8873
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

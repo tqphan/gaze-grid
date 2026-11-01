@@ -20,6 +20,7 @@ public:
     WindowsInput(const WindowsInput &)=delete;
     WindowsInput &operator=(const WindowsInput &)=delete;
     bool key(const QString &name,bool down);
+    bool text(const QString &text);
     bool button(int code,bool down); // Existing pointer codes: 272/273/274.
     bool move(double dx,double dy);
     bool moveAbsolute(double x,double y);

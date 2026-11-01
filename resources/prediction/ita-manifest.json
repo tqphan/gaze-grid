@@ -1,0 +1,24 @@
+{
+  "language": "ita",
+  "tokenization": "word",
+  "name": "Italian",
+  "source": "https://downloads.tatoeba.org/exports/per_language/ita/ita_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:43:37.130748+00:00",
+  "source_sha256": "c04777ebff5d80c850bc828fda67aed2b594fc59fb01c7b54565586bd2c24007",
+  "model_sha256": "bf15d80c99450e5580364d343488efc8f808de636e9465ef4cc5a01abd15aa2f",
+  "training_sentences": 200000,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 1090625,
+  "counts": {
+    "unigrams": 25441,
+    "b": 63741,
+    "t": 68409,
+    "q": 52926
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

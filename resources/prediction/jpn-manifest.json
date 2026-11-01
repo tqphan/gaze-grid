@@ -1,0 +1,24 @@
+{
+  "language": "jpn",
+  "tokenization": "character",
+  "name": "Japanese",
+  "source": "https://downloads.tatoeba.org/exports/per_language/jpn/jpn_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:27.399906+00:00",
+  "source_sha256": "2aa65d2dc7bdf3c47716605bd184b6d55e54c362e08ead1787bc3152d18af373",
+  "model_sha256": "2013132985faf3c418ba8ed22ca0bdf9a5689e877c41bdd558f29fe6229f0597",
+  "training_sentences": 200000,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 1062979,
+  "counts": {
+    "unigrams": 2813,
+    "b": 48276,
+    "t": 100000,
+    "q": 80000
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

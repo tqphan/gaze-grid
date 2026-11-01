@@ -1,0 +1,24 @@
+{
+  "language": "ukr",
+  "tokenization": "word",
+  "name": "Ukrainian",
+  "source": "https://downloads.tatoeba.org/exports/per_language/ukr/ukr_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:43:58.712746+00:00",
+  "source_sha256": "ac8b6bd1be8c17e3a8c8abf579a13485c3b6e0097d6bb4b38a3998ad8326c2d2",
+  "model_sha256": "ec77b634ca551ffaa56e9d3321fefd95ceffde6b77345001d2f687aa41695bd8",
+  "training_sentences": 176195,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 714793,
+  "counts": {
+    "unigrams": 24532,
+    "b": 39801,
+    "t": 34845,
+    "q": 27068
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

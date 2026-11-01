@@ -1,0 +1,24 @@
+{
+  "language": "nld",
+  "tokenization": "word",
+  "name": "Dutch",
+  "source": "https://downloads.tatoeba.org/exports/per_language/nld/nld_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:43:44.560999+00:00",
+  "source_sha256": "ad90540e392f783c42c7a48693d0045cc7b4f94bb879a3360fa7b9022c59975b",
+  "model_sha256": "6355d1c34ce07a69cb07eb5a46692982cad9fc5d2e0993ef65e6dc285eddbc55",
+  "training_sentences": 189543,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 797684,
+  "counts": {
+    "unigrams": 20433,
+    "b": 53801,
+    "t": 54151,
+    "q": 36238
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

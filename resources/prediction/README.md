@@ -100,3 +100,5 @@ then zlib). Its TSV payload starts with `gaze-grid-prediction-v1`, followed by
 `q / preceding-word / preceding-word / preceding-word / word / count` records. `<s>` marks a
 sentence boundary. Context counts are interpolated with lower-order probabilities;
 personal counts apply a multiplier capped at two.
+
+See [MULTILINGUAL.md](MULTILINGUAL.md) for the additional Tatoeba languages, training, attribution, and evaluation.

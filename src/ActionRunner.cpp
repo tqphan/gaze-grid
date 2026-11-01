@@ -49,7 +49,8 @@ bool ActionRunner::start(const QVariantList &commands){
     }
     auto validationCommands=commands;
     if(physicalText)for(auto &entry:validationCommands){auto command=entry.toMap();if(command["tag"]=="Text"&&command.contains("systemText")){command["text"]=command["systemText"];entry=command;}}
-    auto error=validate(validationCommands,textOnly||(!physicalText&&sendText&&(!canCommitText||canCommitText())));if(!error.isEmpty()){emit failed(error);return false;}
+    const bool literalCompletion=commands.size()==1&&commands.front().toMap().value("literalCompletion").toBool();
+    auto error=validate(validationCommands,textOnly||((!physicalText||literalCompletion)&&sendText&&(!canCommitText||canCommitText())));if(!error.isEmpty()){emit failed(error);return false;}
     auto plannedHeld=held;
     static const QSet<QString> modifiers{"LSHIFT","RSHIFT","LCONTROL","RCONTROL","LMENU","RMENU","LWIN","RWIN"};
     for(const auto &v:validationCommands){auto c=v.toMap();auto tag=c["tag"].toString();auto name=KeyNames::canonical(c["text"].toString());
@@ -119,7 +120,11 @@ void ActionRunner::step(){
             if(!editingLocal())emit textCommitted("\b");
         }
         QString composed;
-        if(editingLocal())ok=sendLocalText(effective,heldKeys());
+        if(command.value("literalCompletion").toBool()&&!textOnly){
+            ok=held.isEmpty()&&sendText&&(!canCommitText||canCommitText())&&sendText(value);
+            if(ok)composed=value;
+        }
+        else if(editingLocal())ok=sendLocalText(effective,heldKeys());
         else if(textOnly){for(auto ch:value)composed+=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));}
         else if(!physicalText&&sendText&&(!canCommitText||canCommitText())&&held.isEmpty()){
             QString pending;
@@ -133,11 +138,12 @@ void ActionRunner::step(){
         for(auto ch:value){auto [name,needsShift]=KeyNames::usCharacter(ch);bool ownShift=needsShift&&!shifted();
             bool upper=shifted()||needsShift;
             if(ownShift&&!key("LSHIFT",true)){ok=false;break;}
+            const auto translated=physicalText&&physicalKeyText?physicalKeyText(name):QString();
             ok=tap(name);if(ownShift)ok=key("LSHIFT",false)&&ok;
-            if(!ok)break;composed+=KeyNames::usTypedCharacter(ch,upper);
+            if(!ok)break;composed+=physicalText?translated:QString(KeyNames::usTypedCharacter(ch,upper));
         }
         }
-        if(ok&&!editingLocal()&&(textOnly||(!physicalText&&!shortcut)))emit textCommitted(composed);
+        if(ok&&!editingLocal()&&(textOnly||!shortcut)&&(!physicalText||textOnly||!composed.isEmpty()))emit textCommitted(composed);
     }else if(tag=="ChangeKeyboard"){
         bool back=command["attributes"].toMap().value("backreturnshere","true").toString().compare("false",Qt::CaseInsensitive)!=0;
         if(navigate)navigate(value.trimmed(),back);else ok=false;
@@ -145,7 +151,7 @@ void ActionRunner::step(){
         value=value.trimmed();auto name=KeyNames::functionKey(value);
         static const QSet<QString> modifiers{"LSHIFT","RSHIFT","LCONTROL","RCONTROL","LMENU","RMENU","LWIN","RWIN"};
         if(modifiers.contains(name))ok=queue.size()==1?cycleModifier(name):key(name,!isHeld(name),true);
-        else if(!name.isEmpty()){ok=tap(name);if(ok&&!editingLocal()&&name=="BACK"&&!shortcutHeld()&&(textOnly||!physicalText))emit textCommitted("\b");}
+        else if(!name.isEmpty()){ok=tap(name);if(ok&&!editingLocal()&&name=="BACK"&&!shortcutHeld())emit textCommitted("\b");}
         else if(value=="SpeakLabel"){
             ok=bool(speakLabel);
             if(ok)speakLabel(command["label"].toString().trimmed());

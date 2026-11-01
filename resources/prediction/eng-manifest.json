@@ -1,0 +1,24 @@
+{
+  "language": "eng",
+  "tokenization": "word",
+  "name": "English",
+  "source": "https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:42:46.490528+00:00",
+  "source_sha256": "07f33d399f0a55b917202abbd901f23c39c54a6dd562252985ce8c7e168db6ef",
+  "model_sha256": "4423998413925e7ec22fa9989cc0a622473c5227996dbf97a02f3462b1755e46",
+  "training_sentences": 200000,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 1093571,
+  "counts": {
+    "unigrams": 18353,
+    "b": 69829,
+    "t": 79744,
+    "q": 55563
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

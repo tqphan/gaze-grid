@@ -1,0 +1,24 @@
+{
+  "language": "kor",
+  "tokenization": "word",
+  "name": "Korean",
+  "source": "https://downloads.tatoeba.org/exports/per_language/kor/kor_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:27.857816+00:00",
+  "source_sha256": "2c06d3d3aa02ac15b08af5c0ad3b9b41d9d9e1fa6aa0a5e3d1e39ce57d59c51e",
+  "model_sha256": "cd7ba018109cd212aeebb9491cdeff7c2ab48386d1f336fef7cc010523101253",
+  "training_sentences": 14472,
+  "heldout_sentences": 738,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 53877,
+  "counts": {
+    "unigrams": 6308,
+    "b": 2137,
+    "t": 1293,
+    "q": 1186
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

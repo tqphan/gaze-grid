@@ -1,0 +1,24 @@
+{
+  "language": "spa",
+  "tokenization": "word",
+  "name": "Spanish",
+  "source": "https://downloads.tatoeba.org/exports/per_language/spa/spa_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:42:56.654590+00:00",
+  "source_sha256": "bc7e22e31dec6557dd5cf5ce3547f1f2519a62c76a0699c9a5a5c84a83bae71c",
+  "model_sha256": "c4f289d844327069d2d242703abb152d7a5a3b128124b5e1feeb41f702f74fc9",
+  "training_sentences": 200000,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 1020208,
+  "counts": {
+    "unigrams": 25905,
+    "b": 66527,
+    "t": 68335,
+    "q": 46341
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

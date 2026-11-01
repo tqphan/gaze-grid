@@ -1,0 +1,24 @@
+{
+  "language": "rus",
+  "tokenization": "word",
+  "name": "Russian",
+  "source": "https://downloads.tatoeba.org/exports/per_language/rus/rus_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:43:53.426598+00:00",
+  "source_sha256": "0f79340e1d2410e04b1c28c223d34ef0fa94270e1d9dc91ea91858a31860e1e2",
+  "model_sha256": "bfdfb23ba0364583d12e210a35230da56eaa2118848729a4ab6612005b086806",
+  "training_sentences": 200000,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 1013879,
+  "counts": {
+    "unigrams": 40292,
+    "b": 57193,
+    "t": 45649,
+    "q": 33342
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

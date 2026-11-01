@@ -10,6 +10,42 @@
 
 int main(int argc,char **argv){
  QCoreApplication app(argc,argv);
+ if(app.arguments().value(1)=="--language"){
+  const auto language=app.arguments().value(2);
+  if(!WordPrediction::languages().contains(language)&&language!="eng-tatoeba")return 2;
+  QElapsedTimer clock;clock.start();const auto vocabulary=WordPrediction::dictionary(language);
+  WordPrediction::prepare(vocabulary,language);const double startup=clock.nsecsElapsed()/1e6;
+  const bool characters=WordPrediction::characterLanguage(language);
+  auto predict=[&](const QString &text){return WordPrediction::suggest(text,vocabulary,{},3,true,true,"never",language);};
+  if(app.arguments().value(3)=="--probe"){
+   for(const auto &text:app.arguments().mid(4))QTextStream(stdout)<<text<<" -> "<<predict(text).join(", ")<<'\n';return 0;
+  }
+  QFile input(app.arguments().value(3));if(!input.open(QIODevice::ReadOnly))return 2;
+  int sentences=0,next=0,nextHits=0,completion=0,completionHits=0,covered=0,total=0;QList<double> latency;
+  while(!input.atEnd()&&sentences<200){
+   const auto row=QJsonDocument::fromJson(input.readLine()).object();const auto words=row["words"].toArray();++sentences;
+   QString context;
+   for(const auto &item:words){
+    const auto word=item.toString();++total;covered+=vocabulary.contains(word);
+    if(!context.isEmpty()){
+     ++next;clock.restart();auto result=predict(context);latency<<clock.nsecsElapsed()/1e6;
+     for(auto &entry:result)entry=entry.toLower();nextHits+=result.contains(word);
+    }
+    if(!characters&&word.size()>2){
+     ++completion;auto result=predict(context+word.left(2));for(auto &entry:result)entry=entry.toLower();completionHits+=result.contains(word);
+    }
+    context+=word+(characters?QString():QString(" "));
+   }
+  }
+  if(next==0||latency.isEmpty())return 2;
+  std::sort(latency.begin(),latency.end());
+  const QJsonObject report{{"language",language},{"tokenization",characters?"character":"word"},{"sentences",sentences},
+   {"tokens",total},{"vocabulary_coverage_percent",100.0*covered/qMax(1,total)},
+   {"next_token_events",next},{"next_token_top3_percent",100.0*nextHits/next},
+   {"completion_events",completion},{"completion_top3_percent",completion?QJsonValue(100.0*completionHits/completion):QJsonValue()},
+   {"warm_p95_ms",latency[int(latency.size()*.95)]},{"cold_initialization_ms",startup},{"learning",false}};
+  QTextStream(stdout)<<QJsonDocument(report).toJson();return 0;
+ }
  QFile dict(":/resources/EnglishUS.dic");if(!dict.open(QIODevice::ReadOnly))return 2;
  auto words=QString::fromUtf8(dict.readAll()).remove(QChar(0xfeff)).toLower().split('\n',Qt::SkipEmptyParts);
  for(auto &word:words)word=word.trimmed();

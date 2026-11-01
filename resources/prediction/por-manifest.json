@@ -1,0 +1,24 @@
+{
+  "language": "por",
+  "tokenization": "word",
+  "name": "Portuguese",
+  "source": "https://downloads.tatoeba.org/exports/per_language/por/por_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:43:28.740492+00:00",
+  "source_sha256": "57c5f792d79a2293cd4be3cd9fd59c90978a9677e8de8f3dc9ef8d0380282be5",
+  "model_sha256": "7f3ab56482f1bfcbe5f027a6d68dd8d2527cb0c811d82fe67e1af81a6286246e",
+  "training_sentences": 200000,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 969136,
+  "counts": {
+    "unigrams": 24737,
+    "b": 65476,
+    "t": 63324,
+    "q": 43382
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

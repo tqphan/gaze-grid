@@ -1,0 +1,24 @@
+{
+  "language": "ind",
+  "tokenization": "word",
+  "name": "Indonesian",
+  "source": "https://downloads.tatoeba.org/exports/per_language/ind/ind_sentences.tsv.bz2",
+  "license": "CC BY 2.0 FR",
+  "attribution": "Tatoeba contributors (https://tatoeba.org)",
+  "retrieved_utc": "2026-11-01T22:44:10.582911+00:00",
+  "source_sha256": "ba0fc102e418f3950ceeae69b6100fd0b52f8e97b504500a179cf997d3c38860",
+  "model_sha256": "4bdc21048d955f8791f23c49e269b78d144d2f6e0879c4daae1992d34e56d46b",
+  "training_sentences": 26531,
+  "heldout_sentences": 1000,
+  "maximum_training_sentences": 200000,
+  "compressed_bytes": 111633,
+  "counts": {
+    "unigrams": 5811,
+    "b": 8264,
+    "t": 5324,
+    "q": 3851
+  },
+  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
+  "selection": "Export order, first maximum eligible training sentences",
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+}

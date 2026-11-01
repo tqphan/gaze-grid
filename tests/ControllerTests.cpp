@@ -119,10 +119,21 @@ private slots:
   const auto labels=c.keyboardLabels();QVERIFY(!labels.isEmpty());
   c.setSystemKeyboard(true);QVERIFY(c.systemKeyboard());
   QCOMPARE(c.property("layout").toMap(),layout);
+  QVERIFY(!c.displaySuggestions().isEmpty());
+  c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
+  c.setPredictionMode("context");QVERIFY(!c.displaySuggestions().isEmpty());
   QVERIFY(c.savePreferences());
   {Controller restored;QVERIFY(restored.systemKeyboard());}
   c.setSystemKeyboard(false);QCOMPARE(c.keyboardLabels(),labels);QCOMPARE(c.property("layout").toMap(),layout);
   c.resetPreferences();QVERIFY(!c.systemKeyboard());QVERIFY(c.savePreferences());
+ }
+ void predictionLanguagePersists(){
+  Controller c;c.resetPreferences();QCOMPARE(c.predictionLanguage(),QString("eng"));
+  c.setPredictionLanguage("spa");QCOMPARE(c.predictionLanguage(),QString("spa"));QVERIFY(c.savePreferences());
+  {Controller restored;QCOMPARE(restored.predictionLanguage(),QString("spa"));}
+  c.setPredictionLanguage("invalid");QCOMPARE(c.predictionLanguage(),QString("spa"));
+  c.setPredictionLanguage("jpn");QCOMPARE(c.predictionLanguage(),QString("jpn"));
+  c.resetPreferences();QCOMPARE(c.predictionLanguage(),QString("eng"));QVERIFY(c.savePreferences());
  }
  void transitionPreferences(){
   Controller c;c.resetPreferences();QCOMPARE(c.property("keyboardTransition").toString(),QString("instant"));
