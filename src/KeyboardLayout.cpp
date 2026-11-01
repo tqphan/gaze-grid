@@ -2,6 +2,7 @@
 #include "DwellGroups.h"
 #include "ActionRunner.h"
 #include "KeyboardPack.h"
+#include "KeyNames.h"
 #include <QDomDocument>
 #include <QFile>
 #include <QSaveFile>
@@ -69,6 +70,18 @@ QVariantMap KeyboardLayout::fromXml(const QVariantMap &root){
                 if(child["tag"]=="Action"&&child["text"].toString().trimmed()=="SpeakLabel")child["label"]=field(n,"Label");
                 commands<<child;
             }}
+            // Physical identity is separate from the personal label and literal text.
+            const auto physical=field(n,"PhysicalKey").trimmed();
+            int physicalFields=0;for(const auto &child:n["children"].toList())if(child.toMap()["tag"]=="PhysicalKey")++physicalFields;
+            if(physicalFields>1||(physicalFields==1&&physical.isEmpty()))return {{"error","PhysicalKey must name one printable US key"}};
+            if(!physical.isEmpty()){
+                const auto name=KeyNames::canonical(physical);
+                QString systemText;
+                for(int ch=32;ch<127;++ch)if(KeyNames::usCharacter(QChar(ch))==qMakePair(name,false)){systemText=QChar(ch);break;}
+                if(tag!="DynamicKey"||commands.size()!=1||commands.front().toMap()["tag"]!="Text"||systemText.isEmpty())
+                    return {{"error","PhysicalKey requires one Text command and a printable US key name"}};
+                auto command=commands.front().toMap();command["physicalKey"]=name;command["systemText"]=systemText;commands={command};
+            }
             QString mode;
             if(attr.contains("mode")){
                 const auto value=attr["mode"].toString().trimmed().toLower();

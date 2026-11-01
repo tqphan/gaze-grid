@@ -39,7 +39,7 @@ public:
     static QString validate(const QVariantList &commands,bool unicodeText=false);
     static QString signature(const QVariantList &commands);
     bool shifted()const;
-    static QPair<QString,bool> dwellKey(const QVariantList &commands);
+    static QPair<QString,bool> dwellKey(const QVariantList &commands,bool system=false);
     bool beginDwellHold(const QVariantList &commands,const QString &owner={});
     void endDwellHold(const QString &owner={});
     bool toggleDwellKey(const QVariantList &commands);

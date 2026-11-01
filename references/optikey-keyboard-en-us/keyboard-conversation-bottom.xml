@@ -255,60 +255,70 @@
     <DynamicKey>
       <ShiftDownLabel>Q</ShiftDownLabel>
       <Label>q</Label>
+      <PhysicalKey>Q</PhysicalKey>
       <Text>q</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>W</ShiftDownLabel>
       <Label>w</Label>
+      <PhysicalKey>W</PhysicalKey>
       <Text>w</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>E</ShiftDownLabel>
       <Label>e</Label>
+      <PhysicalKey>E</PhysicalKey>
       <Text>e</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>R</ShiftDownLabel>
       <Label>r</Label>
+      <PhysicalKey>R</PhysicalKey>
       <Text>r</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>T</ShiftDownLabel>
       <Label>t</Label>
+      <PhysicalKey>T</PhysicalKey>
       <Text>t</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>Y</ShiftDownLabel>
       <Label>y</Label>
+      <PhysicalKey>Y</PhysicalKey>
       <Text>y</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>U</ShiftDownLabel>
       <Label>u</Label>
+      <PhysicalKey>U</PhysicalKey>
       <Text>u</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>I</ShiftDownLabel>
       <Label>i</Label>
+      <PhysicalKey>I</PhysicalKey>
       <Text>i</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>O</ShiftDownLabel>
       <Label>o</Label>
+      <PhysicalKey>O</PhysicalKey>
       <Text>o</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>P</ShiftDownLabel>
       <Label>p</Label>
+      <PhysicalKey>P</PhysicalKey>
       <Text>p</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
@@ -342,54 +352,63 @@
     <DynamicKey>
       <ShiftDownLabel>A</ShiftDownLabel>
       <Label>a</Label>
+      <PhysicalKey>A</PhysicalKey>
       <Text>a</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>S</ShiftDownLabel>
       <Label>s</Label>
+      <PhysicalKey>S</PhysicalKey>
       <Text>s</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>D</ShiftDownLabel>
       <Label>d</Label>
+      <PhysicalKey>D</PhysicalKey>
       <Text>d</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>F</ShiftDownLabel>
       <Label>f</Label>
+      <PhysicalKey>F</PhysicalKey>
       <Text>f</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>G</ShiftDownLabel>
       <Label>g</Label>
+      <PhysicalKey>G</PhysicalKey>
       <Text>g</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>H</ShiftDownLabel>
       <Label>h</Label>
+      <PhysicalKey>H</PhysicalKey>
       <Text>h</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>J</ShiftDownLabel>
       <Label>j</Label>
+      <PhysicalKey>J</PhysicalKey>
       <Text>j</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>K</ShiftDownLabel>
       <Label>k</Label>
+      <PhysicalKey>K</PhysicalKey>
       <Text>k</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>L</ShiftDownLabel>
       <Label>l</Label>
+      <PhysicalKey>L</PhysicalKey>
       <Text>l</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
@@ -434,42 +453,49 @@
     <DynamicKey>
       <ShiftDownLabel>Z</ShiftDownLabel>
       <Label>z</Label>
+      <PhysicalKey>Z</PhysicalKey>
       <Text>z</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>X</ShiftDownLabel>
       <Label>x</Label>
+      <PhysicalKey>X</PhysicalKey>
       <Text>x</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>C</ShiftDownLabel>
       <Label>c</Label>
+      <PhysicalKey>C</PhysicalKey>
       <Text>c</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>V</ShiftDownLabel>
       <Label>v</Label>
+      <PhysicalKey>V</PhysicalKey>
       <Text>v</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>B</ShiftDownLabel>
       <Label>b</Label>
+      <PhysicalKey>B</PhysicalKey>
       <Text>b</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>N</ShiftDownLabel>
       <Label>n</Label>
+      <PhysicalKey>N</PhysicalKey>
       <Text>n</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>M</ShiftDownLabel>
       <Label>m</Label>
+      <PhysicalKey>M</PhysicalKey>
       <Text>m</Text>
       <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>

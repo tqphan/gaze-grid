@@ -173,12 +173,14 @@
     <DynamicKey>
       <ShiftDownLabel>F</ShiftDownLabel>
       <Label>f</Label>  
+      <PhysicalKey>F</PhysicalKey>
       <Text>f</Text>
     <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
     <DynamicKey>
       <ShiftDownLabel>Q</ShiftDownLabel>
       <Label>q</Label>  
+      <PhysicalKey>Q</PhysicalKey>
       <Text>q</Text>
     <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>
@@ -191,6 +193,7 @@
     <DynamicKey>
       <ShiftDownLabel>E</ShiftDownLabel>
       <Label>e</Label>  
+      <PhysicalKey>E</PhysicalKey>
       <Text>e</Text>
     <KeyGroup>Alphabet</KeyGroup>
     </DynamicKey>

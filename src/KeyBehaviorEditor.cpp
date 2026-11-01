@@ -181,6 +181,10 @@ void KeyBehaviorEditor::load(const QDomElement &key, const QString &keyboardPath
 }
 void KeyBehaviorEditor::writeTo(QDomDocument &document, QDomElement key) const {
     if (!modified) return;
+    // A key changed into an action or macro no longer represents a typing position.
+    if(steps.size()!=1||steps.front().tagName()!="Text"){
+        for(auto mapping=key.firstChildElement("PhysicalKey");!mapping.isNull();mapping=key.firstChildElement("PhysicalKey"))key.removeChild(mapping);
+    }
     QDomNode marker;
     for (auto child = key.firstChild(); !child.isNull();) {
         auto next = child.nextSibling();

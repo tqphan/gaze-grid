@@ -92,6 +92,40 @@ private slots:
   auto custom=key;custom["label"]="Personal";
   QCOMPARE(SystemKeyboard::labels({macro,custom},{},translate),QVariantList({QString("q"),QString("Personal")}));
  }
+ void explicitPhysicalKey(){
+  QTemporaryDir dir;QFile file(dir.filePath("physical.xml"));
+  auto load=[&](QString content){
+   if(!file.open(QIODevice::WriteOnly|QIODevice::Truncate))return QVariantMap{{"error","test file"}};
+   file.write(("<Keyboard><Grid><Rows>1</Rows><Cols>1</Cols></Grid><Content><DynamicKey><Label>Personal</Label>"+content+"</DynamicKey></Content></Keyboard>").toUtf8());file.close();
+   return KeyboardLayout::fromXml(KeyboardPack::load(file.fileName()));
+  };
+  const auto layout=load("<PhysicalKey>q</PhysicalKey><Text>a</Text>");
+  QVERIFY2(!layout.contains("error"),qPrintable(layout["error"].toString()));
+  const auto keys=layout["keys"].toList(),commands=keys.front().toMap()["commands"].toList();
+  QCOMPARE(commands.front().toMap()["physicalKey"].toString(),QString("Q"));
+  QCOMPARE(SystemKeyboard::labels(keys,{},[](int scan,SystemKeyboard::Modifiers){return scan==16?QString("mapped"):QString("wrong");}).front().toString(),QString("mapped"));
+  QCOMPARE(SystemKeyboard::labels(keys,{},[](int,SystemKeyboard::Modifiers){return QString();}).front().toString(),QString("Personal"));
+  ActionRunner runner;QStringList events;
+  runner.sendKey=[&](QString name,bool down){events<<name+(down?"+":"-");return true;};
+  QSignalSpy finished(&runner,&ActionRunner::finished);
+  QVERIFY(runner.start(commands));QTRY_COMPARE(finished.size(),1);
+  QCOMPARE(events,QStringList({"A+","A-"}));events.clear();
+  runner.physicalText=true;
+  QVERIFY(runner.start(commands));QTRY_COMPARE(finished.size(),2);
+  QCOMPARE(events,QStringList({"Q+","Q-"}));events.clear();
+  QVERIFY(runner.beginDwellHold(commands));runner.endDwellHold();
+  QCOMPARE(events,QStringList({"Q+","Q-"}));events.clear();
+  QVERIFY(runner.toggleDwellKey(commands));QVERIFY(runner.isToggled(commands));
+  QVERIFY(runner.toggleDwellKey(commands));QVERIFY(!runner.isToggled(commands));
+  QCOMPARE(events,QStringList({"Q+","Q-"}));
+  runner.textOnly=true;QString local;
+  runner.sendLocalText=[&](QString text,QStringList){local=text;return true;};runner.sendLocalKey=[](QString,QStringList){return true;};
+  QVERIFY(runner.start(commands));QTRY_COMPARE(finished.size(),3);QCOMPARE(local,QString("q"));
+  runner.physicalText=false;
+  QVERIFY(runner.start(commands));QTRY_COMPARE(finished.size(),4);QCOMPARE(local,QString("a"));
+  for(const QString content:{"<PhysicalKey/><Text>q</Text>","<PhysicalKey>Q</PhysicalKey><PhysicalKey>A</PhysicalKey><Text>q</Text>","<PhysicalKey>Unknown</PhysicalKey><Text>q</Text>","<PhysicalKey>LSHIFT</PhysicalKey><Text>q</Text>","<PhysicalKey>Q</PhysicalKey><Text>q</Text><Action>Return</Action>","<PhysicalKey>Q</PhysicalKey><Action>Return</Action>"})
+   QVERIFY(load(content).contains("error"));
+ }
  void systemTextUsesPhysicalInput(){
   ActionRunner runner;runner.physicalText=true;QStringList events;int commits=0;
   runner.sendKey=[&](QString name,bool down){events<<name+(down?"+":"-");return true;};

@@ -82,6 +82,15 @@ private slots:
         QCOMPARE(key.firstChildElement("ChangeKeyboard").attribute("custom"),QString("keep"));
         QCOMPARE(key.firstChildElement("Text").text(),QString(" "));
     }
+    void physicalMappingSurvivesTextEditsButNotMacros() {
+        QDomDocument doc;QVERIFY(doc.setContent(QString("<DynamicKey><Label>q</Label><PhysicalKey>Q</PhysicalKey><Text>q</Text></DynamicKey>")));
+        KeyBehaviorEditor behavior;behavior.load(doc.documentElement(),{});
+        auto text=behavior.findChild<QPlainTextEdit *>("typedText");QVERIFY(text);text->setPlainText("a");
+        behavior.writeTo(doc,doc.documentElement());
+        QCOMPARE(doc.documentElement().firstChildElement("PhysicalKey").text(),QString("Q"));
+        behavior.addStep("Wait","10");behavior.writeTo(doc,doc.documentElement());
+        QVERIFY(doc.documentElement().firstChildElement("PhysicalKey").isNull());
+    }
     void shortcutBuilderAndActionChoices() {
         KeyBehaviorEditor behavior;QDomDocument doc;doc.setContent(QString("<DynamicKey/>"));behavior.load(doc.documentElement(),{});
         auto choices=behavior.findChild<QComboBox *>("applicationAction");QVERIFY(choices);

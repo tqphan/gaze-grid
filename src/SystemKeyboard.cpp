@@ -91,11 +91,12 @@ QVariantList SystemKeyboard::labels(const QVariantList &keys,Modifiers modifiers
         const auto key=entry.toMap();
         QString text=modifiers.shift&&!key["shiftLabel"].toString().isEmpty()?key["shiftLabel"].toString():key["label"].toString();
         const auto commands=key["commands"].toList();
-        // Only plain character keys opt in. Macros, symbols and custom labels retain their meaning.
+        // Explicit typing positions opt in; older files infer only matching plain character labels.
         if(commands.size()==1&&key["symbol"].toString().isEmpty()){
             const auto command=commands.front().toMap();const auto value=command["text"].toString();
-            if(command["tag"]=="Text"&&value.size()==1&&!value.front().isSpace()&&key["label"].toString()==value){
-                const auto [name,shift]=KeyNames::usCharacter(value.front());
+            const auto physical=command["physicalKey"].toString();
+            if(command["tag"]=="Text"&&(!physical.isEmpty()||(value.size()==1&&!value.front().isSpace()&&key["label"].toString()==value))){
+                const auto [name,shift]=physical.isEmpty()?KeyNames::usCharacter(value.front()):qMakePair(physical,false);
                 auto state=modifiers;state.shift|=shift;
                 const auto translated=translate(KeyNames::linuxCode(name),state);
                 if(!translated.isEmpty()&&translated.front().isPrint())text=translated;

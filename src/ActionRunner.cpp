@@ -47,10 +47,12 @@ bool ActionRunner::start(const QVariantList &commands){
             emit failed("System keyboard layout unavailable");return false;
         }
     }
-    auto error=validate(commands,textOnly||(!physicalText&&sendText&&(!canCommitText||canCommitText())));if(!error.isEmpty()){emit failed(error);return false;}
+    auto validationCommands=commands;
+    if(physicalText)for(auto &entry:validationCommands){auto command=entry.toMap();if(command["tag"]=="Text"&&command.contains("systemText")){command["text"]=command["systemText"];entry=command;}}
+    auto error=validate(validationCommands,textOnly||(!physicalText&&sendText&&(!canCommitText||canCommitText())));if(!error.isEmpty()){emit failed(error);return false;}
     auto plannedHeld=held;
     static const QSet<QString> modifiers{"LSHIFT","RSHIFT","LCONTROL","RCONTROL","LMENU","RMENU","LWIN","RWIN"};
-    for(const auto &v:commands){auto c=v.toMap();auto tag=c["tag"].toString();auto name=KeyNames::canonical(c["text"].toString());
+    for(const auto &v:validationCommands){auto c=v.toMap();auto tag=c["tag"].toString();auto name=KeyNames::canonical(c["text"].toString());
         bool toggle=tag=="KeyToggle"||(tag=="Action"&&modifiers.contains(KeyNames::functionKey(name)));
         if(tag=="KeyDown"||tag=="KeyUp"||toggle){
             if(!textOnly&&supportsPhysicalKey&&!supportsPhysicalKey(name)){emit failed("Authorize desktop control for held keys and shortcuts");return false;}
@@ -102,6 +104,7 @@ void ActionRunner::step(){
         running=false;queue.clear();emit stateChanged();emit finished();return;
     }
     auto command=queue[index++].toMap();auto tag=command["tag"].toString();QString value=command["text"].toString();bool ok=true;
+    if(physicalText&&tag=="Text"&&command.contains("systemText"))value=command["systemText"].toString();
     const bool consumesLatch=(tag=="Text"&&!value.isEmpty())||(tag=="Action"&&!KeyNames::functionKey(value).isEmpty()&&!modifierKeys.contains(KeyNames::functionKey(value)));
     if(tag=="Wait"){timer.start(value.toInt());return;}
     if(tag=="KeyDown")ok=key(value,true);
@@ -161,10 +164,10 @@ void ActionRunner::step(){
 void ActionRunner::suspend(){if(running){timer.stop();waiting=true;}}
 void ActionRunner::resume(bool success){if(!running||!waiting)return;waiting=false;if(!success){fail("Pointer action failed");return;}timer.start(0);}
 
-QPair<QString,bool> ActionRunner::dwellKey(const QVariantList &commands){
+QPair<QString,bool> ActionRunner::dwellKey(const QVariantList &commands,bool system){
     if(commands.size()!=1)return {};
     const auto c=commands.front().toMap();
-    const auto text=c["text"].toString();
+    const auto text=(system&&c.contains("systemText")?c["systemText"]:c["text"]).toString();
     if(c["tag"]=="Text"&&text.size()==1){
         return KeyNames::usCharacter(text.front());
     }
@@ -177,7 +180,7 @@ QPair<QString,bool> ActionRunner::dwellKey(const QVariantList &commands){
 bool ActionRunner::beginDwellHold(const QVariantList &commands,const QString &owner){
     if(running||textOnly)return false;
     endDwellHold(owner);
-    const auto [name,shift]=dwellKey(commands);
+    const auto [name,shift]=dwellKey(commands,physicalText);
     bool owned=false;
     for(const auto &hold:dwellHolds)if(hold.first==name)owned=true;
     if(name.isEmpty()||(isHeld(name)&&!owned))return false;
@@ -211,7 +214,7 @@ void ActionRunner::endDwellHold(const QString &owner){
 
 bool ActionRunner::toggleDwellKey(const QVariantList &commands){
     if(running||textOnly)return false;
-    const auto [name,shift]=dwellKey(commands);
+    const auto [name,shift]=dwellKey(commands,physicalText);
     if(name.isEmpty())return false;
     if(toggledKeys.contains(name)){
         if(!key(name,false)){fail("Could not release toggled key");return false;}
@@ -249,6 +252,6 @@ bool ActionRunner::isToggled(const QVariantList &commands)const{
         const auto name=KeyNames::canonical(command["text"].toString());
         return !modifierKeys.contains(name)&&isHeld(name);
     }
-    const auto name=dwellKey(commands).first;
+    const auto name=dwellKey(commands,physicalText).first;
     return !name.isEmpty()&&toggledKeys.contains(name)&&isHeld(name);
 }
