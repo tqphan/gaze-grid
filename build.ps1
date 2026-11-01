@@ -5,7 +5,8 @@ param(
     [string]$TobiiSdk = '',
     [switch]$Run,
     [switch]$SkipTests,
-    [switch]$LocalTest
+    [switch]$LocalTest,
+    [switch]$LocalIme
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -53,7 +54,7 @@ try {
     Copy-Item "$QtDirectory/plugins/platforms/qoffscreen.dll", "$QtDirectory/plugins/platforms/qwindows.dll" "$build/platforms" -Force
     Set-Content "$build/qt.conf" "[Paths]`nPrefix=.`nPlugins=.`nQmlImports=qml"
     # Deploy runtime DLLs and QML modules so Explorer can launch the executable.
-    Invoke-Checked "$QtDirectory/bin/windeployqt.exe" @('--release', '--qmldir', "$build/windows-ui", "$build/gaze-grid.exe")
+    & "$PSScriptRoot/platform/windows/Deploy-Qt.ps1" -Application "$build/gaze-grid.exe" -Directory $build -QtDirectory $QtDirectory -QmlDirectory "$build/windows-ui" -LocalIme:$LocalIme
     # Repair incomplete copies left by an interrupted Qt deployment.
     Get-ChildItem "$build/*.dll" | Where-Object Length -eq 0 | ForEach-Object {
         $source = Join-Path "$QtDirectory/bin" $_.Name

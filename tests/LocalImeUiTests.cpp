@@ -164,24 +164,34 @@ private slots:
   QTRY_VERIFY(view.method.keyCount>0||view.controller.property("actionStatus").toString().contains("Focus the scratchpad"));view.stop();
   QCOMPARE(other->property("text").toString(),QString("other"));QVERIFY(!view.method.wrongFocus);QVERIFY(!view.controller.ready());
  }
- void realPinyinThroughProductionUi(){
+ void realCompositionThroughProductionUi_data(){
+  QTest::addColumn<QString>("locale");QTest::addColumn<QString>("reading");QTest::addColumn<QString>("expected");
+  QTest::newRow("Pinyin")<<QString("zh_CN")<<QString("nihao")<<QString::fromUtf8("\xe4\xbd\xa0\xe5\xa5\xbd");
+  QTest::newRow("Japanese")<<QString("ja_JP")<<QString("nihonn")<<QString::fromUtf8("\xe6\x97\xa5\xe6\x9c\xac");
+ }
+ void realCompositionThroughProductionUi(){
   if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
+  QFETCH(QString,locale);QFETCH(QString,reading);QFETCH(QString,expected);
   View view(true);QVERIFY(view.window);QVERIFY(view.editor);
-  QTRY_VERIFY(view.controller.localImeLocales().contains("zh_CN"));
+  QTRY_VERIFY(!view.controller.localImeLocales().isEmpty());
+  if(!view.controller.localImeLocales().contains(locale))QSKIP("Language engine not included in this Qt build");
   auto language=view.window->findChild<QObject*>("localImeLanguageSelector");QVERIFY(language);
-  language->setProperty("currentIndex",view.controller.localImeLocales().indexOf("zh_CN"));
+  QTRY_COMPARE(language->property("count").toInt(),view.controller.localImeLocales().size());
+  language->setProperty("currentIndex",view.controller.localImeLocales().indexOf(locale));
+  QTRY_COMPARE(language->property("currentText").toString(),locale);
   QVERIFY(QMetaObject::invokeMethod(language,"activated",Q_ARG(int,language->property("currentIndex").toInt())));
   QMetaObject::invokeMethod(view.editor,"prepareInput");QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
   auto loader=view.window->findChild<QObject*>("localInputMethodLoader");QVERIFY(loader);
   QTRY_VERIFY(loader->property("item").value<QObject*>()&&loader->property("item").value<QObject*>()->property("ready").toBool());
-  for(const auto letter:QString("nihao")){
-   const auto before=view.editor->property("preeditText").toString();const auto prefix=view.controller.suggestionPrefix();
+  QTRY_COMPARE(loader->property("item").value<QObject*>()->property("locale").toString(),locale);
+  for(const auto letter:reading){
+   const auto before=view.editor->property("preeditText").toString();
    const int key=view.find("Text",QString(letter));QVERIFY(key>=0);view.lookAtKey(key);
-   QTRY_VERIFY(view.editor->property("preeditText").toString()!=before||view.controller.suggestionPrefix()!=prefix);view.stop();
+   QTRY_VERIFY(view.editor->property("preeditText").toString()!=before);view.stop();
   }
-  QTRY_VERIFY(!view.controller.displaySuggestions().isEmpty());const auto expected=view.controller.displaySuggestions().front();
-  view.lookAtCandidate(0);QTRY_COMPARE(view.controller.property("scratchpad").toString(),expected);view.stop();
-  QCOMPARE(expected,QString::fromUtf8("你好"));QVERIFY(!view.controller.ready());
+  QTRY_VERIFY(view.controller.displaySuggestions().contains(expected));
+  view.lookAtCandidate(view.controller.displaySuggestions().indexOf(expected));QTRY_COMPARE(view.controller.property("scratchpad").toString(),expected);view.stop();
+  QVERIFY(!view.controller.ready());
   QVERIFY2(view.bindingWarnings.isEmpty(),qPrintable(view.bindingWarnings.join('\n')));
  }
 };

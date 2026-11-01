@@ -72,7 +72,7 @@ private slots:
    candidateChanges.clear();
    QVERIFY2(input.text("nihao",{},true),qPrintable(input.error()));
    QTRY_VERIFY(!input.candidates().isEmpty());
-   QVERIFY(!candidateChanges.isEmpty());
+   QTRY_VERIFY(!candidateChanges.isEmpty());
    const auto expected=input.candidates().front();QVERIFY(!expected.isEmpty());
    QVERIFY2(input.selectCandidate(0,expected),qPrintable(input.error()));
    QTRY_COMPARE(editor->property("text").toString(),expected);
@@ -92,6 +92,37 @@ private slots:
   QVERIFY(!input.selectCandidate(-1,"invalid"));QVERIFY(!input.selectCandidate(2,"invalid"));
   QVERIFY(input.selectCandidate(1,QString::fromUtf8("二本")));
   QCOMPARE(editor->property("text").toString(),QString::fromUtf8("二本"));QVERIFY(input.candidates().isEmpty());
+ }
+ void realJapaneseCompositionEditingAndCancellation(){
+  if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional Qt Virtual Keyboard runtime test");
+  QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));
+  std::unique_ptr<QObject> editor(component.create());QVERIFY2(editor,qPrintable(component.errorString()));
+  QQmlComponent adapterComponent(&engine,QUrl::fromLocalFile(LOCAL_IME_QML));
+  std::unique_ptr<QObject> adapter(adapterComponent.create());QVERIFY2(adapter,qPrintable(adapterComponent.errorString()));
+  QQuickWindow window;window.resize(600,200);window.show();
+  auto item=qobject_cast<QQuickItem*>(editor.get());QVERIFY(item);item->setParentItem(window.contentItem());item->setSize({600,200});
+  auto panel=qobject_cast<QQuickItem*>(adapter.get());QVERIFY(panel);panel->setParentItem(window.contentItem());
+  editor->setProperty("readOnly",false);item->forceActiveFocus();window.requestActivate();
+  QTRY_COMPARE(QGuiApplication::focusObject(),editor.get());
+  LocalScratchpadInput input;input.setEditor(editor.get());input.setEngine(adapter.get());
+  QTRY_VERIFY(!input.availableLocales().isEmpty());qInfo()<<"Engine locales:"<<input.availableLocales();
+  if(!input.availableLocales().contains("ja_JP"))QSKIP("Japanese engine not included in this Qt build");
+  QVERIFY(input.setLocale("ja_JP"));QTRY_COMPARE(input.locale(),QString("ja_JP"));
+  QTRY_VERIFY(adapter->property("ready").toBool());
+  QVERIFY(input.text("nihonn",{},true));
+  qInfo()<<"Japanese preedit:"<<editor->property("preeditText")<<"candidates:"<<input.candidates().mid(0,20);
+  const QString expected=QString::fromUtf8("\xe6\x97\xa5\xe6\x9c\xac");
+  QTRY_VERIFY(input.candidates().contains(expected));
+  QVERIFY(input.selectCandidate(input.candidates().indexOf(expected),expected));
+  QTRY_COMPARE(editor->property("text").toString(),expected);
+  QVERIFY(input.key("BACK",{},true));QTRY_COMPARE(editor->property("text").toString(),expected.left(1));
+  QVERIFY(input.clear());QVERIFY(input.text("ka",{},true));
+  QTRY_VERIFY(editor->property("inputMethodComposing").toBool());
+  input.cancelComposition();QTRY_VERIFY(!editor->property("inputMethodComposing").toBool());
+  QVERIFY(editor->property("text").toString().isEmpty());
+  QVERIFY(input.setLocale("en_US"));QTRY_COMPARE(input.locale(),QString("en_US"));
+  QVERIFY(input.text("ok",{},true));QVERIFY(input.key("SPACE",{},true));
+  QTRY_COMPARE(editor->property("text").toString(),QString("ok "));
  }
  void gazeTextUsesCursorSelectionAndQtBackspace(){
   QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));

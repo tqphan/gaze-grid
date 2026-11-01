@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory)][string]$CertificateThumbprint,
     [string]$BuildDirectory = 'build/windows',
-    [string]$TobiiSdk = ''
+    [string]$TobiiSdk = '',
+    [switch]$LocalIme
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -61,8 +62,9 @@ $deploy = "$build/deploy"
 if (Test-Path $deploy) { Remove-Item -Recurse -Force $deploy }
 New-Item -ItemType Directory $deploy | Out-Null
 # Only scan Qt-only generated QML; the source directory also contains KDE imports.
-Copy-Item "$root/ui/*.qml" "$build/windows-ui/" -Exclude Main.qml
-Invoke-Checked windeployqt @('--release', '--no-compiler-runtime', '--qmldir', "$build/windows-ui", '--dir', $deploy, $exe)
+$qtDirectory = (& qmake -query QT_INSTALL_PREFIX).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Could not locate the Qt installation.' }
+& "$PSScriptRoot/Deploy-Qt.ps1" -Application $exe -Directory $deploy -QtDirectory $qtDirectory -QmlDirectory "$build/windows-ui" -LocalIme:$LocalIme -NoCompilerRuntime
 # --diagnose uses Qt's offscreen platform, which windeployqt omits by default.
 $pluginDirectory = (& qmake -query QT_INSTALL_PLUGINS).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not locate Qt platform plugins.' }

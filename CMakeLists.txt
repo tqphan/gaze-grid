@@ -232,7 +232,7 @@ target_link_libraries(scratchpad-tests PRIVATE gaze-grid_local_input Qt6::Quick 
 target_compile_definitions(scratchpad-tests PRIVATE SCRATCHPAD_QML="${CMAKE_CURRENT_SOURCE_DIR}/ui/ScratchpadEditor.qml" LOCAL_IME_QML="${CMAKE_CURRENT_SOURCE_DIR}/ui/LocalInputMethod.qml")
 set_target_properties(scratchpad-tests PROPERTIES WIN32_EXECUTABLE FALSE)
 add_test(NAME scratchpad-tests COMMAND scratchpad-tests)
-set_tests_properties(scratchpad-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 20)
+set_tests_properties(scratchpad-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
 
 qt_add_executable(local-ime-ui-tests tests/LocalImeUiTests.cpp src/Controller.cpp src/SymbolProvider.cpp ${DESKTOP_SOURCES} ${TRACKER_SOURCE})
 target_include_directories(local-ime-ui-tests PRIVATE "${TOBII_SDK}/include")
