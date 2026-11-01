@@ -7,6 +7,7 @@
 #include <QQuickItem>
 #include <QQuickItemGrabResult>
 #include <QEventLoop>
+#include <QElapsedTimer>
 #include <QScreen>
 #include <QJsonDocument>
 #include <QSaveFile>
@@ -320,37 +321,45 @@ int main(int argc,char **argv){
  nativeCheckWindow=window;
 #endif
  if(app.arguments().contains("--keyboard-transition-ui-check")){
-  controller.setGazeEnabled(false);controller.setProperty("transitionDurationMs",200);
+  controller.setGazeEnabled(false);controller.setProperty("transitionDurationMs",600);
   controller.openLayout("keyboard-alphabet-14x4-bottom",false);window->show();
   const QStringList styles{"instant","fade","lift","slide","zoom","rows"};
-  int index=0;bool returning=false;bool passed=true;
-  QTimer step;
+  int index=0;bool waiting=false,sawIntermediate=false;
+  QTimer step;step.setInterval(10);QElapsedTimer phase;
   auto keysLayer=window->findChild<QQuickItem*>("keyboardKeys");
+  auto fail=[&](const QString &stage){
+   step.stop();QTextStream(stderr)<<"FAIL: keyboard transition "<<styles.value(index)<<" "<<stage
+    <<" running="<<window->property("transitioning").toBool()<<" progress="<<window->property("revealProgress").toDouble()
+    <<" keysEnabled="<<(keysLayer&&keysLayer->isEnabled())<<Qt::endl;app.exit(2);
+  };
   QObject::connect(&step,&QTimer::timeout,&app,[&]{
-   if(returning){
-    passed=passed&&!window->property("transitioning").toBool()&&qAbs(window->property("revealProgress").toDouble()-1)<.001&&keysLayer&&keysLayer->isEnabled();
-    ++index;returning=false;
+   const bool running=window->property("transitioning").toBool();
+   const double progress=window->property("revealProgress").toDouble();
+   if(waiting){
+    if(running){
+     if(!keysLayer||keysLayer->isEnabled()){fail("input enabled during animation");return;}
+     sawIntermediate=sawIntermediate||(progress>0&&progress<1);
+     if(phase.elapsed()>3000)fail("animation did not finish");
+     return;
+    }
+    if(qAbs(progress-1)>=.001||!keysLayer||!keysLayer->isEnabled()||!sawIntermediate){fail("incomplete reveal or input recovery");return;}
+    ++index;waiting=false;
    }
    if(index==styles.size()){
-    QTextStream(stderr)<<(passed?"PASS":"FAIL")<<": keyboard transitions and input blocking"<<Qt::endl;
-    app.exit(passed?0:2);return;
+    step.stop();QTextStream(stderr)<<"PASS: keyboard transitions and input blocking"<<Qt::endl;app.exit(0);return;
    }
    controller.setProperty("keyboardTransition",styles[index]);
    controller.openLayout(index%2?"keyboard-alphabet-14x4-bottom":"keyboard-numeric-14x4-bottom",true);
    const bool animated=index>0;
-   passed=passed&&window->property("transitioning").toBool()==animated&&keysLayer&&keysLayer->isEnabled()!=animated;
+   if(window->property("transitioning").toBool()!=animated||!keysLayer||keysLayer->isEnabled()==animated){fail("unexpected initial state");return;}
    if(animated){
     QVariant hit;QMetaObject::invokeMethod(window,"keyAt",Q_RETURN_ARG(QVariant,hit),Q_ARG(QVariant,10),Q_ARG(QVariant,10));
-    passed=passed&&hit.toString().isEmpty()&&window->property("revealProgress").toDouble()<1;
-    QTimer::singleShot(70,&app,[&]{
-     const double progress=window->property("revealProgress").toDouble();
-     passed=passed&&window->property("transitioning").toBool()&&progress>0&&progress<1&&keysLayer&&!keysLayer->isEnabled();
-    });
-   }
-   returning=true;
+    if(!hit.toString().isEmpty()||window->property("revealProgress").toDouble()>=1){fail("hit testing active during reveal");return;}
+    waiting=true;sawIntermediate=false;phase.start();
+   }else ++index;
   });
-  QTimer::singleShot(100,&app,[&]{step.start(300);});
-  QTimer::singleShot(6000,&app,[&]{app.exit(3);});
+  QTimer::singleShot(100,&step,qOverload<>(&QTimer::start));
+  QTimer::singleShot(15000,&app,[&]{fail("check timed out");});
   return app.exec();
  }
  if(app.arguments().contains("--gaze-indicator-ui-check")){
