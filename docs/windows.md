@@ -157,6 +157,9 @@ Microsoft documents the signature and secure-location requirements in
 
 ## Completion options
 
+**Start with Windows** is selected by default during setup. Uncheck it, or pass
+`GAZE_GRID_STARTUP=0` for a silent installation, to disable desktop startup.
+
 After a successful interactive installation, the completion screen offers
 **Launch gaze-grid after setup**, selected by default. Uncheck it to finish
 without opening the app. Clicking **Finish** launches the installed executable

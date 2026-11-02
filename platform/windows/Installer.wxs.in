@@ -8,7 +8,7 @@
       <RegistrySearch Id="SavedMode" Root="HKLM" Key="Software\gaze-grid\Installer" Name="TrustCertificate" Type="raw" Win64="yes" />
     </Property>
     <SetProperty Id="GAZE_GRID_TRUST_CERTIFICATE" Value="[GAZE_GRID_SAVED_MODE]" After="AppSearch" Sequence="both">Installed AND GAZE_GRID_SAVED_MODE</SetProperty>
-    <Property Id="GAZE_GRID_STARTUP" Secure="yes" />
+    <Property Id="GAZE_GRID_STARTUP" Value="1" Secure="yes" />
     <Property Id="GAZE_GRID_SIGN_IN" Value="1" Secure="yes" />
     <Property Id="GAZE_GRID_SAVED_SIGN_IN" Secure="yes">
       <RegistrySearch Id="SavedSignIn" Root="HKLM" Key="Software\gaze-grid\Installer" Name="SignIn" Type="raw" Win64="yes" />
