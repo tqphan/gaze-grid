@@ -88,14 +88,18 @@ Window {
   controller.joystick(-1,0,0,false);controller.hover("");controller.dwellAt(0,0,false);root.progress=0;root.targetProgress=0}
  property bool gazeValid: false
  property point gaze: Qt.point(-1,-1)
- readonly property var themeIds:["system","midnight","ocean","forest","paper","high-contrast"]
- readonly property var themeNames:["System","Midnight","Ocean","Forest","Warm Paper","High Contrast"]
+ readonly property var themeIds:["system","midnight","ocean","forest","paper","pink","purple","orange","yellow","high-contrast"]
+ readonly property var themeNames:["System Default","Midnight Sky","Ocean Blue","Forest Green","Warm Paper","Flamingo Pink","Royal Purple","Sunset Orange","Sunshine Yellow","High Contrast"]
  readonly property var themePalettes:({
   "high-contrast":{background:"#000000",key:"#000000",text:"#ffffff",border:"#ffffff",accent:"#ffff00"},
   midnight:{background:"#111827",key:"#1f2937",text:"#f3f4f6",border:"#64748b",accent:"#c4b5fd"},
   ocean:{background:"#082f49",key:"#0c4a6e",text:"#f0f9ff",border:"#38bdf8",accent:"#67e8f9"},
   forest:{background:"#102b24",key:"#1b4332",text:"#f0fdf4",border:"#6b9e80",accent:"#a7f3d0"},
-  paper:{background:"#e9dfcd",key:"#fff8eb",text:"#3d3026",border:"#95816b",accent:"#92400e"}
+  paper:{background:"#e9dfcd",key:"#fff8eb",text:"#3d3026",border:"#95816b",accent:"#92400e"},
+  pink:{background:"#f8d7e6",key:"#fff0f6",text:"#571b38",border:"#b65b86",accent:"#b51263"},
+  purple:{background:"#2e164b",key:"#482369",text:"#faf0ff",border:"#b88cdb",accent:"#dfb5ff"},
+  orange:{background:"#ffdbb5",key:"#fff1e2",text:"#542807",border:"#b56b30",accent:"#a63f00"},
+  yellow:{background:"#f7e69a",key:"#fff9d6",text:"#493b08",border:"#9b842d",accent:"#856000"}
  })
  readonly property var keyboardPalette:themePalettes[controller.keyboardTheme]||null
  readonly property color keyboardBackground:keyboardPalette?keyboardPalette.background:Kirigami.Theme.backgroundColor

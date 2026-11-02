@@ -111,7 +111,7 @@ bool ProfileStore::valid(const QJsonObject &v){
         &&(!v.contains("keyboardScale")||(v["keyboardScale"].isDouble()&&v["keyboardScale"].toDouble()==v["keyboardScale"].toInt()&&v["keyboardScale"].toInt()>=50&&v["keyboardScale"].toInt()<=150))
         &&(!v.contains("transitionDurationMs")||(v["transitionDurationMs"].isDouble()&&v["transitionDurationMs"].toDouble()==v["transitionDurationMs"].toInt()&&v["transitionDurationMs"].toInt()>=50&&v["transitionDurationMs"].toInt()<=1000))
         &&(!v.contains("keyboardTransition")||(v["keyboardTransition"].isString()&&QStringList{"instant","fade","lift","slide","zoom","rows"}.contains(v["keyboardTransition"].toString())))
-        &&(!v.contains("keyboardTheme")||(v["keyboardTheme"].isString()&&QStringList{"system","midnight","ocean","forest","paper","high-contrast"}.contains(v["keyboardTheme"].toString())))
+        &&(!v.contains("keyboardTheme")||(v["keyboardTheme"].isString()&&QStringList{"system","midnight","ocean","forest","paper","pink","purple","orange","yellow","high-contrast"}.contains(v["keyboardTheme"].toString())))
         &&(!v.contains("highContrast")||v["highContrast"].isBool())
         &&(!v.contains("liveZoom")||v["liveZoom"].isBool())
         &&(!v.contains("progressiveZoom")||v["progressiveZoom"].isBool())
