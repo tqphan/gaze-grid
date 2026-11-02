@@ -1219,6 +1219,43 @@ private slots:
  void navigationPreservesBackFlag(){ActionRunner runner;QString target;bool back=true;runner.navigate=[&](QString name,bool b){target=name;back=b;};auto c=cmd("ChangeKeyboard","main-14x1-top");c["attributes"]=QVariantMap{{"backreturnshere","false"}};runner.start({c});QTRY_COMPARE(target,QString("main-14x1-top"));QVERIFY(!back);}
  void shiftIsOwnedAndReleased(){ActionRunner runner;QStringList events;runner.sendKey=[&](QString key,bool down){events<<key+(down?"+":"-");return true;};QSignalSpy done(&runner,&ActionRunner::finished);runner.start({cmd("Text","A!")});QTRY_COMPARE(done.count(),1);QCOMPARE(events,QStringList({"LSHIFT+","A+","A-","LSHIFT-","LSHIFT+","1+","1-","LSHIFT-"}));}
 
+ void dwellGraceValidation(){
+  auto values=ProfileStore::defaults();QCOMPARE(values["dwellGraceMs"].toInt(),0);
+  for(const auto &value:QJsonArray{-1,1001,1.5,"150"}){
+   values["dwellGraceMs"]=value;QVERIFY(!ProfileStore::valid(values));
+  }
+  values.remove("dwellGraceMs");QVERIFY(ProfileStore::valid(values));
+  values["dwellGraceMs"]=150;QVERIFY(ProfileStore::valid(values));
+ }
+ void dwellGracePausesAndResumes(){
+  Dwell d;
+  QVERIFY(!d.update("a",0,500,false,-1,150));
+  QVERIFY(!d.update("a",100,500,false,-1,150));
+  QVERIFY(!d.update("",125,500,false,-1,150));
+  QCOMPARE(d.progress(200,500),0.0);
+  QVERIFY(!d.update("a",225,500,false,-1,150));
+  QCOMPARE(d.progress(225,500),0.2);
+  QVERIFY(!d.update("a",400,500,false,-1,150));
+  QVERIFY(!d.update("a",575,500,false,-1,150));
+  QVERIFY(d.update("a",625,500,false,-1,150));
+ }
+ void dwellGraceSwitchStartsImmediatelyAndExpires(){
+  Dwell d;
+  d.update("a",0,500,false,-1,150);d.update("a",100,500,false,-1,150);
+  QVERIFY(!d.update("b",125,500,false,-1,150));
+  QCOMPARE(d.progress(125,500),0.0);
+  d.update("b",225,500,false,-1,150);QCOMPARE(d.progress(225,500),0.2);
+  d.update("a",250,500,false,-1,150);QCOMPARE(d.progress(250,500),0.2);
+  d.update("",275,500,false,-1,150);d.update("",400,500,false,-1,150);
+  d.update("a",450,500,false,-1,150);QCOMPARE(d.progress(450,500),0.0);
+ }
+ void dwellGraceZeroAndConsumedTargetsReset(){
+  Dwell d;
+  d.update("a",0,500);d.update("a",100,500);d.update("",125,500);
+  d.update("a",150,500);QCOMPARE(d.progress(150,500),0.0);
+  d.consume("a",150);d.update("",175,500,false,-1,150);
+  d.update("a",200,500,false,-1,150);QCOMPARE(d.progress(200,500),0.0);
+ }
  void dwellRequiresContinuousPresence(){
   Dwell d;QVERIFY(!d.update("a",0,500));
   for(int t=100;t<500;t+=100)QVERIFY(!d.update("a",t,500));

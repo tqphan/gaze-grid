@@ -354,6 +354,20 @@ private slots:
   c.hoverKeys({});c.hoverKeys(targets);QTest::qWait(20);c.hoverKeys(targets);
   QTRY_COMPARE(c.property("scratchpad").toString(),QString("AbAb"));
  }
+ void overlapDwellGraceResumesOnlySelectedKeys(){
+  RetryTracker tracker;Controller c(false,{},&tracker);
+  c.setGazeEnabled(true);QTRY_VERIFY(c.isTrackerConnected());
+  overlapLayout(c,{overlapKey("Text","a",500),overlapKey("Text","b",500)});
+  c.setDwellGraceMs(150);
+  c.hoverKeys({"key:0"});QTest::qWait(60);
+  const double before=c.hoverKeys({"key:0"})["key:0"].toDouble();QVERIFY(before>0);
+  c.hoverKeys({"key:1"});QTest::qWait(50);
+  QVERIFY(c.hoverKeys({"key:1"})["key:1"].toDouble()>0);
+  const double resumed=c.hoverKeys({"key:0"})["key:0"].toDouble();
+  QVERIFY(qAbs(resumed-before)<.03);QVERIFY(c.property("scratchpad").toString().isEmpty());
+  c.hoverKeys({});QTest::qWait(170);
+  QCOMPARE(c.hoverKeys({"key:0"})["key:0"].toDouble(),0.0);
+ }
  void overlapDwellKeepsIndependentTimers(){
   Controller c;overlapLayout(c,{overlapKey("Text","a",10),overlapKey("Text","b",100)});
   c.hoverKeys({"key:0","key:1"});QTest::qWait(20);c.hoverKeys({"key:0","key:1"});
@@ -1040,6 +1054,23 @@ private slots:
   controller.setGazeSmoothingLevel(0);sample(.41,.42);QCOMPARE(points.last()[0].toDouble(),.41);
   controller.setGazeSmoothingLevel(2);sample(.6,.6);QCOMPARE(points.last()[0].toDouble(),.6);
   controller.setSmoothWhenChangingGazeTarget(true);sample(.2,.2);QCOMPARE(points.last()[0].toDouble(),.2);
+ }
+ void dwellGraceExclusiveSwitchAndMouseInput(){
+  RetryTracker tracker;Controller c(false,{},&tracker);
+  c.setGazeEnabled(true);QTRY_VERIFY(c.isTrackerConnected());
+  overlapLayout(c,{overlapKey("Text","a",500),overlapKey("Text","b",500)});
+  auto layout=c.property("layout").toMap();layout["activateoverlappingkeys"]=false;c.setProperty("layout",layout);
+  c.setDwellGraceMs(150);
+  c.hover("key:0");QTest::qWait(60);const double before=c.hover("key:0");QVERIFY(before>0);
+  QCOMPARE(c.hover("key:1"),0.0);QTest::qWait(50);QVERIFY(c.hover("key:1")>0);
+  QVERIFY(qAbs(c.hover("key:0")-before)<.03);
+  c.setGazeEnabled(false);c.hover("key:0");QTest::qWait(60);QVERIFY(c.hover("key:0")>0);
+  c.hover("");QCOMPARE(c.hover("key:0"),0.0);
+ }
+ void dwellGracePreferences(){
+  {Controller c;c.resetPreferences();QCOMPARE(c.dwellGraceMs(),0);
+   c.setDwellGraceMs(150);QVERIFY(c.savePreferences());}
+  {Controller c;QCOMPARE(c.dwellGraceMs(),150);c.resetPreferences();QCOMPARE(c.dwellGraceMs(),0);}
  }
  void invalidGazeTolerancePausesBothDwellsAndExpires(){
   auto values=ProfileStore::defaults();values["gazeEnabled"]=true;values["invalidGazeToleranceMs"]=300;

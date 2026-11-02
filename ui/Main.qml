@@ -224,7 +224,7 @@ Window {
     }
    }
    if(joystickIndex<0)controller.joystick(-1,0,0,false)
-   if(root.overlapTargets.length>0){
+   if(root.overlapEnabled&&(root.overlapTargets.length>0||target==="")){
     root.overlapProgress=controller.hoverKeys(root.overlapTargets)
     root.progress=0
    }else{
@@ -881,6 +881,7 @@ Window {
        SettingsCheckBox {text:"Clamp off-screen gaze for keyboard keys";checked:controller.clampGazeForKeyboard;onToggled:controller.clampGazeForKeyboard=checked}
        SettingsCheckBox {text:"Clamp off-screen gaze for point selection";checked:controller.clampGazeForPointSelection;onToggled:controller.clampGazeForPointSelection=checked}
        Desktop.Label {text:"Clamping places off-screen gaze at the nearest screen edge. When off, coordinates stay unchanged. Off-screen gaze remains valid.";wrapMode:Text.Wrap;Layout.fillWidth:true;opacity:0.6}
+       SettingSlider {label:"Dwell grace";displayValue:controller.dwellGraceMs+" ms";from:0;to:1000;stepSize:25;value:controller.dwellGraceMs;onMoved:controller.dwellGraceMs=value}
        SettingSlider {label:"Invalid gaze tolerance";displayValue:controller.invalidGazeToleranceMs+" ms";from:0;to:1000;stepSize:25;value:controller.invalidGazeToleranceMs;onMoved:controller.invalidGazeToleranceMs=value}
        Desktop.Label {text:"Pause dwell during brief tracking loss. Resume when gaze returns, or reset after this time. 0 ms resets immediately.";wrapMode:Text.Wrap;Layout.fillWidth:true;opacity:0.6}
        Tool {id:tobii;text:"Connect eye tracker";command:"Tobii"}

@@ -1,10 +1,20 @@
 #include "Dwell.h"
 #include <algorithm>
-bool Dwell::update(const QString &target, qint64 now, int duration, bool repeat, int repeatDuration) {
-    if (target.isEmpty() || now < last || (!fired && last >= 0 && now-last > 200)) reset();
+bool Dwell::update(const QString &target, qint64 now, int duration, bool repeat, int repeatDuration, int graceMs) {
+    if (now < last || (!fired && last >= 0 && now-last > 200)) reset();
+    if (graceMs<=0) saved.clear();
+    for(auto it=saved.begin();it!=saved.end();)
+        if(now-it->left>graceMs) it=saved.erase(it); else ++it;
+    if(target!=current){
+        // Preserve only unfinished initial dwell; holds and repeats end on leave.
+        if(graceMs>0&&!current.isEmpty()&&!fired&&!repeating)
+            saved[current]={std::max(qint64(0),last-started),now};
+        current=target;started=now;fired=false;repeating=false;
+        const auto previous=saved.find(target);
+        if(previous!=saved.end()){started=now-previous->elapsed;saved.erase(previous);}
+    }
+    if(target.isEmpty()){last=now;return false;}
     last=now;
-    if (target.isEmpty()) return false;
-    if (target != current) { current=target; started=now; fired=false; repeating=false; }
     if (repeating && !repeat) { fired=true; repeating=false; }
     if (fired && repeat) { fired=false; repeating=true; started=now; }
     const int interval=repeating&&repeatDuration>0?repeatDuration:duration;
@@ -14,10 +24,11 @@ bool Dwell::update(const QString &target, qint64 now, int duration, bool repeat,
 void Dwell::inhibit(const QString &target, qint64 now) {
     // Busy actions must not rearm the key that started them. A different
     // target starts from zero once input becomes available again.
+    saved.clear();
     if (target.isEmpty() || target != current || !fired || now < last) reset();
     else last=now;
 }
-void Dwell::reset() { current.clear(); started=0; last=-1; fired=false; repeating=false; }
+void Dwell::reset() { saved.clear();current.clear(); started=0; last=-1; fired=false; repeating=false; }
 void Dwell::pause(qint64 now) { if(last>=0&&now>=last){started+=now-last;last=now;} }
 double Dwell::progress(qint64 now, int duration, int repeatDuration) const {
     const int interval=repeating&&repeatDuration>0?repeatDuration:duration;

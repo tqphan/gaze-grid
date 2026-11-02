@@ -32,6 +32,7 @@ class Controller:public QObject{
  Q_PROPERTY(bool ready READ ready NOTIFY changed)
  Q_PROPERTY(bool paused MEMBER paused NOTIFY changed)
  Q_PROPERTY(bool gazeEnabled READ isGazeEnabled WRITE setGazeEnabled NOTIFY gazeEnabledChanged)
+ Q_PROPERTY(int dwellGraceMs READ dwellGraceMs WRITE setDwellGraceMs NOTIFY changed)
  Q_PROPERTY(int invalidGazeToleranceMs READ invalidGazeToleranceMs WRITE setInvalidGazeToleranceMs NOTIFY changed)
  Q_PROPERTY(bool gazeDwellPaused READ isGazeDwellPaused NOTIFY changed)
  Q_PROPERTY(bool clampGazeForKeyboard MEMBER clampGazeForKeyboard NOTIFY changed)
@@ -193,6 +194,8 @@ public:
  bool lookScrolling()const{return pointer.lookScrolling();}
  QPointF scrollCentre()const{return pointer.scrollCentre();}
  bool isGazeEnabled()const{return gazeEnabled;}
+ int dwellGraceMs()const{return dwellGraceValue;}
+ void setDwellGraceMs(int value);
  int invalidGazeToleranceMs()const{return gazeToleranceMs;}
  void setInvalidGazeToleranceMs(int value);
  bool isGazeDwellPaused()const{return gazeLossStarted>0;}
@@ -419,6 +422,7 @@ private:
  bool nativeMode=false,nativeActive=false,sensitiveInput=false;
  qint64 gazeLossStarted=0;
  int gazeToleranceMs=500;
+ int dwellGraceValue=0;
  bool clampGazeForKeyboard=false,clampGazeForPointSelection=true;
  bool lastGazeClamped=true;
  int sizeMoveSelection=-1;

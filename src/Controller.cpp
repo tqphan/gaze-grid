@@ -178,6 +178,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  filterGain=profile.values["gazeFilterGain"].toDouble(0.2);
  saccadeDistance=profile.values["gazeSaccadeDistance"].toDouble(0.1);
  smoothingLevel=profile.values["gazeSmoothingLevel"].toInt(1);smoothTargetChanges=profile.values["smoothWhenChangingGazeTarget"].toBool();
+ dwellGraceValue=profile.values["dwellGraceMs"].toInt(0);
  gazeToleranceMs=profile.values["invalidGazeToleranceMs"].toInt(500);
  clampGazeForKeyboard=profile.values["clampGazeForKeyboard"].toBool(false);
  clampGazeForPointSelection=profile.values["clampGazeForPointSelection"].toBool(true);
@@ -407,6 +408,7 @@ bool Controller::savePreferences(){
  values["activeSpeechProfile"]=speechProfileIndex;
  values["processPriority"]=processPriorityValue;
  values["invalidGazeToleranceMs"]=gazeToleranceMs;
+ values["dwellGraceMs"]=dwellGraceValue;
  values["predictionTextScale"]=predictionTextScale;
  values["scratchpadTextScale"]=scratchpadTextScale;
  values["removeCompletionSpaceBeforePunctuation"]=removeCompletionSpaceEnabled;
@@ -429,6 +431,7 @@ void Controller::resetPreferences(){
  setMagnifierEnabled(false);
  setGazeEnabled(values["gazeEnabled"].toBool());
  setInvalidGazeToleranceMs(500);
+ setDwellGraceMs(0);
  setRemoveCompletionSpaceBeforePunctuation(true);
  predictionTextScale=values["predictionTextScale"].toInt();
  scratchpadTextScale=values["scratchpadTextScale"].toInt();
@@ -569,6 +572,10 @@ void Controller::pauseGazeDwell(){
  for(auto &item:overlapDwells)item.pause(now);
  lastHoldHover=now;
 }
+void Controller::setDwellGraceMs(int value){
+ value=qBound(0,value,1000);if(value==dwellGraceValue)return;
+ dwellGraceValue=value;dwell.reset();clearOverlap();emit changed();
+}
 void Controller::setInvalidGazeToleranceMs(int value){
  value=qBound(0,value,1000);if(value==gazeToleranceMs)return;
  gazeToleranceMs=value;
@@ -706,7 +713,7 @@ double Controller::hover(QString key){
    }
   }
  }
- if(dwell.update(key,clock.elapsed(),duration,repeatKey,repeatIntervalMs)){
+ if(dwell.update(key,clock.elapsed(),duration,repeatKey,repeatIntervalMs,gazeEnabled&&trackerConnected?dwellGraceValue:0)){
   if(collectingOverlap){
    bool pending=false;for(const auto &entry:overlapPending)if(entry.target==key)pending=true;
    if(!pending)overlapPending.append({key,holdCommands,buttonHold});
@@ -752,7 +759,12 @@ QVariantMap Controller::hoverKeys(const QStringList &targets){
  endButtonHold();
  if(!heldDwellTarget.isEmpty()){runner.endDwellHold();heldDwellTarget.clear();}
  const auto previous=overlapDwells.keys();
- for(const auto &target:previous)if(!selected.contains(target)){releaseOverlapTarget(target);overlapDwells.remove(target);}
+ for(const auto &target:previous)if(!selected.contains(target)){
+  releaseOverlapTarget(target);
+  auto &timer=overlapDwells[target];
+  timer.update("",clock.elapsed(),dwellDuration(target),false,-1,gazeEnabled&&trackerConnected?dwellGraceValue:0);
+  if(!timer.hasSavedProgress())overlapDwells.remove(target);
+ }
  for(auto it=overlapPending.begin();it!=overlapPending.end();)if(!selected.contains(it->target))it=overlapPending.erase(it);else ++it;
  std::sort(selected.begin(),selected.end(),[&](const QString &a,const QString &b){
   const int ai=a.mid(4).toInt(),bi=b.mid(4).toInt();
@@ -1349,6 +1361,7 @@ bool Controller::isSignInEnabled()const{
 QJsonObject Controller::signInPreferences() const{
  QJsonObject values{{"groupDwellTimes",QJsonObject::fromVariantMap(groupDwellValues)},{"startLayout",layoutName},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"gazeEnabled",gazeEnabled},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale}};
  values["invalidGazeToleranceMs"]=gazeToleranceMs;
+ values["dwellGraceMs"]=dwellGraceValue;
  values["predictionTextScale"]=predictionTextScale;
  values["scratchpadTextScale"]=scratchpadTextScale;
  values["clampGazeForKeyboard"]=clampGazeForKeyboard;
