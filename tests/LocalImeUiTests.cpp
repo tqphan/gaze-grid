@@ -106,6 +106,31 @@ class LocalImeUiTests:public QObject {
   void stop(){window->setProperty("gazeValid",false);controller.hover("");}
  };
 private slots:
+ void committedPredictionsUseCaretAndRejectOldTargets(){
+  View view;QVERIFY(view.window);QVERIFY(view.editor);
+  view.controller.setSystemKeyboard(false);
+  QVERIFY(view.controller.setScratchpadText("thank yuo today"));view.editor->setProperty("cursorPosition",7);
+  QTRY_VERIFY(view.controller.displaySuggestions().contains("you"));
+  const auto stale=view.controller.suggestionPrefix()+QString::number(view.controller.displaySuggestions().indexOf("you"));
+  view.editor->setProperty("cursorPosition",0);
+  view.controller.clickCommand(stale);
+  QCOMPARE(view.editor->property("text").toString(),QString("thank yuo today"));
+  view.editor->setProperty("cursorPosition",7);
+  QTRY_VERIFY(view.controller.displaySuggestions().contains("you"));
+  view.controller.clickCommand(view.controller.suggestionPrefix()+QString::number(view.controller.displaySuggestions().indexOf("you")));
+  QCOMPARE(view.editor->property("text").toString(),QString("thank you today"));
+  view.controller.setSystemKeyboard(true);
+  view.method.model.setStringList({"candidate"});emit view.method.candidatesChanged();
+  QVERIFY(view.controller.suggestionPrefix().startsWith("ime:"));
+  view.method.model.setStringList({});emit view.method.candidatesChanged();
+  QVERIFY(view.controller.setScratchpadText("thank y"));view.editor->setProperty("cursorPosition",7);
+  QTRY_VERIFY(view.controller.displaySuggestions().contains("you"));
+  QVERIFY(view.controller.suggestionPrefix().startsWith("suggest:"));
+  const int before=view.method.keyCount;
+  view.controller.clickCommand(view.controller.suggestionPrefix()+QString::number(view.controller.displaySuggestions().indexOf("you")));
+  QCOMPARE(view.editor->property("text").toString(),QString("thank you "));
+  QCOMPARE(view.method.keyCount,before);
+ }
  void fullUiLanguageDwellPagingAndCommit(){
   View view;QVERIFY(view.window);QVERIFY(view.editor);QVERIFY(view.controller.localImeActive());
   auto language=view.window->findChild<QObject*>("localImeLanguageSelector");QVERIFY(language);
@@ -139,7 +164,7 @@ private slots:
   const int key=view.find("Text","n");QVERIFY(key>=0);view.lookAtKey(key);QTRY_COMPARE(view.method.keyCount,1);view.stop();
   QVERIFY(view.editor->property("inputMethodComposing").toBool());view.controller.togglePause();
   QTRY_VERIFY(!view.editor->property("inputMethodComposing").toBool());
-  QVERIFY(!view.controller.localImeActive());QCOMPARE(view.controller.suggestionPrefix(),QString("suggest:"));
+  QVERIFY(!view.controller.localImeActive());QVERIFY(view.controller.suggestionPrefix().startsWith("suggest:"));
   view.controller.togglePause();view.controller.openLayout("keyboard-alphabet-14x4-bottom",false);
   QVERIFY(!view.controller.scratchpadEditable());QVERIFY(!view.controller.localImeActive());QVERIFY(!view.controller.ready());
  }

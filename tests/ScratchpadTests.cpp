@@ -45,6 +45,24 @@ signals:
 class ScratchpadTests:public QObject {
  Q_OBJECT
 private slots:
+ void completionUsesCaretAndReplacesOnlyWordSuffix(){
+  QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));
+  std::unique_ptr<QObject> editor(component.create());QVERIFY2(editor,qPrintable(component.errorString()));
+  editor->setProperty("readOnly",false);editor->setProperty("committedText","thank yuo today");editor->setProperty("cursorPosition",7);
+  LocalScratchpadInput input;input.setEditor(editor.get());QString text;int cursor=0;
+  QVERIFY(input.predictionContext(text,cursor));QCOMPARE(cursor,7);
+  QVERIFY(input.complete("you","eng",true,text,cursor));
+  QCOMPARE(editor->property("text").toString(),QString("thank you today"));
+  QVERIFY(!input.complete("you","eng",true,text,cursor));
+  editor->setProperty("committedText","thank y!");editor->setProperty("cursorPosition",7);
+  QVERIFY(input.predictionContext(text,cursor));QVERIFY(input.complete("you","eng",true,text,cursor));
+  QCOMPARE(editor->property("text").toString(),QString("thank you!"));
+  QVERIFY(QMetaObject::invokeMethod(editor.get(),"select",Q_ARG(int,0),Q_ARG(int,5)));
+  QVERIFY(!input.predictionContext(text,cursor));
+  editor->setProperty("cursorPosition",editor->property("text").toString().size());
+  QInputMethodEvent preedit("pending",{});QCoreApplication::sendEvent(editor.get(),&preedit);
+  QVERIFY(!input.predictionContext(text,cursor));
+ }
  void qtVirtualKeyboardAdapterRoutesRealKeys(){
   if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional Qt Virtual Keyboard runtime test");
   QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));

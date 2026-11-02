@@ -150,3 +150,15 @@ events). Phrases compete for the same slots: token completion accuracy changes
 from the previous recorded 85.17% to 83.78%, and next-token accuracy from 35.27%
 to 34.72%. The model and held-out checksums are unchanged. This is an explicit
 slot-allocation tradeoff, not an across-the-board prediction accuracy gain.
+
+## Caret and composition
+
+In the app-owned scratchpad, prediction reads committed text before the caret.
+Accepting a completion replaces the remaining suffix of a space-delimited word,
+preserves following text, and avoids inserting a duplicate space before existing
+spacing or punctuation. Predictions are suppressed while text is selected or
+composition is active. Cursor, selection, and composition changes invalidate old
+dwell targets. IME candidates own the row while available or composing; committed
+predictions return afterwards, and accepting them commits text directly without
+feeding it back through the composition engine. Desktop injection still has only
+best-effort context; it does not observe arbitrary applications' committed edits.

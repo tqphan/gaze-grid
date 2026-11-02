@@ -1,5 +1,7 @@
 #include "LocalScratchpadInput.h"
 #include "KeyNames.h"
+#include "PredictionLanguage.h"
+#include <QTextBoundaryFinder>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QInputMethod>
@@ -53,6 +55,32 @@ bool LocalScratchpadInput::selectCandidate(int index,const QString &expected){
 bool LocalScratchpadInput::atEnd()const{
  return editor&&editor->property("cursorPosition").toInt()==editor->property("text").toString().size()
   &&editor->property("selectionStart")==editor->property("selectionEnd");
+}
+bool LocalScratchpadInput::predictionContext(QString &text,int &cursor)const{
+ if(!editor||composing()||!editor->property("cursorPosition").isValid())return false;
+ text=editor->property("text").toString();cursor=editor->property("cursorPosition").toInt();
+ if(cursor<0||cursor>text.size()||!text.isValidUtf16()
+    ||editor->property("selectionStart")!=editor->property("selectionEnd"))return false;
+ QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,text);boundary.setPosition(cursor);
+ return boundary.isAtBoundary();
+}
+bool LocalScratchpadInput::complete(const QString &candidate,const QString &language,bool space,const QString &expected,int cursor){
+ if(!ready())return false;
+ QString text;int position=0;
+ if(!predictionContext(text,position)||text!=expected||position!=cursor){failure="Prediction context changed";return false;}
+ const auto before=text.left(cursor);
+ const auto prefix=PredictionLanguage::rawPrefix(before,language);
+ int replace=0;
+ if(!prefix.isEmpty()&&PredictionLanguage::appendSpace(language))for(auto ch:text.mid(cursor).toStdU32String()){
+  if(!PredictionLanguage::wordCharacter(ch))break;
+  replace+=ch>0xffff?2:1;
+ }
+ const auto after=text.mid(cursor+replace);
+ const bool addSpace=space&&(after.isEmpty()||(!after.front().isSpace()&&!after.front().isPunct()));
+ const auto value=PredictionLanguage::completion(before,candidate,language,addSpace);
+ if(value.isEmpty()&&candidate!=PredictionLanguage::normalize(prefix)){failure="Prediction no longer matches";return false;}
+ QInputMethodEvent event;event.setCommitString(value,0,replace);QCoreApplication::sendEvent(editor,&event);
+ return true;
 }
 bool LocalScratchpadInput::clear(){
  if(!ready())return false;

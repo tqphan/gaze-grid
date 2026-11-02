@@ -2,6 +2,7 @@
 #include <QPointer>
 #include <QStringList>
 #include <QObject>
+#include <QVariant>
 
 // Delivers events only to the explicitly registered, app-owned text control.
 // No desktop input, native keyboard messages, or layout activation.
@@ -17,6 +18,9 @@ public:
  bool selectCandidate(int index,const QString &expected);
  bool attached()const{return !editor.isNull();}
  bool atEnd()const;
+ bool composing()const{return editor&&editor->property("inputMethodComposing").toBool();}
+ bool predictionContext(QString &text,int &cursor)const;
+ bool complete(const QString &candidate,const QString &language,bool space,const QString &expected,int cursor);
  bool clear();
  void cancelComposition();
  bool text(const QString &text,const QStringList &held,bool useEngine);

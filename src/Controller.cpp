@@ -856,9 +856,23 @@ void Controller::activate(QString key){
   refreshLocalIme();return;
  }
  if(key.startsWith("suggest:")){
-  bool valid=false;int i=key.mid(8).toInt(&valid);if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()||(!runner.textOnly&&!ready()))return;
+  auto target=key.mid(8);
+  if(target.contains(':')){
+   bool ok=false;const auto revision=target.section(':',0,0).toULongLong(&ok);
+   if(!ok||revision!=predictionRevision)return;
+   target=target.section(':',1);
+  }
+  bool valid=false;int i=target.toInt(&valid);if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()||(!runner.textOnly&&!ready()))return;
   if(!runner.heldKeys().isEmpty()){actionStatus="Release held keys before accepting a suggestion";emit changed();return;}
+  if(showingImeCandidates())return;
   const auto word=suggestions[i];
+  if(scratchpadEditable()&&localInput.attached()){
+   QString document;int cursor=0;
+   if(!localInput.predictionContext(document,cursor))return;
+   if(runner.busy())return;
+   if(!localInput.complete(word,predictionLanguageValue,completionSpaceEnabled,document,cursor))actionStatus=localInput.error();
+   updateSuggestions();return;
+  }
   const bool space=completionSpaceEnabled&&PredictionLanguage::appendSpace(predictionLanguageValue);
   const auto text=PredictionLanguage::completion(typingContext(),word,predictionLanguageValue,space);
   if(text.isEmpty())return;
@@ -990,7 +1004,7 @@ bool Controller::performAction(QString action){
  if(action=="NextSuggestions"||action=="PreviousSuggestions"){
   if(sensitiveInput){suggestions.clear();emit changed();return true;}
   int pageSize=4;for(const auto &v:layout["keys"].toList()){auto k=v.toMap();if(k["kind"]=="SuggestionRow")pageSize=qMax(1,k.value("suggestionCount",k["width"].toInt()/2).toInt());}
-  if(localImeActive()){
+  if(showingImeCandidates()){
    const int localPageSize=suggestionPageSize();
    const int next=imeCandidateOffset+(action=="NextSuggestions"?localPageSize:-localPageSize);
    if(next>=0&&next<imeCandidateSnapshot.size()){imeCandidateOffset=next;++imeRevision;emit changed();}
@@ -999,7 +1013,7 @@ bool Controller::performAction(QString action){
   const auto all=predictionSuggestions(1000);
   int next=suggestionOffset+(action=="NextSuggestions"?pageSize:-pageSize);
   if(next>=0&&next<all.size())suggestionOffset=next;
-  suggestions=all.mid(suggestionOffset,pageSize);emit changed();return true;
+  suggestions=all.mid(suggestionOffset,pageSize);++predictionRevision;emit changed();return true;
  }
  if(action=="ClearScratchpad"){
   if(scratchpadEditable()&&localInput.attached()&&!localInput.clear())return false;
@@ -1119,8 +1133,12 @@ bool Controller::setScratchpadText(const QString &text){
 }
 void Controller::attachScratchpad(QObject *editor){
  if(!editor||!editor->property("committedText").isValid())return;
+ for(const auto &connection:editorConnections)disconnect(connection);editorConnections.clear();
  localInput.setEditor(editor);
- refreshLocalIme();
+ for(const auto *signal:{SIGNAL(cursorPositionChanged()),SIGNAL(selectionStartChanged()),SIGNAL(selectionEndChanged()),SIGNAL(inputMethodComposingChanged())})
+  if(editor->metaObject()->indexOfSignal(signal+1)>=0)editorConnections<<connect(editor,signal,this,SLOT(refreshScratchpadContext()));
+ editorConnections<<connect(editor,&QObject::destroyed,this,[this]{QTimer::singleShot(0,this,&Controller::refreshScratchpadContext);});
+ refreshScratchpadContext();refreshLocalIme();
 }
 int Controller::suggestionPageSize()const{
  for(const auto &entry:layout["keys"].toList()){
@@ -1128,10 +1146,26 @@ int Controller::suggestionPageSize()const{
  }
  return 4;
 }
-QStringList Controller::displaySuggestions()const{return localImeActive()?imeCandidateSnapshot.mid(imeCandidateOffset,suggestionPageSize()):suggestions;}
-QString Controller::suggestionPrefix()const{return localImeActive()?QString("ime:%1:").arg(imeRevision):QString("suggest:");}
+bool Controller::showingImeCandidates()const{return localImeActive()&&(!imeCandidateSnapshot.isEmpty()||localInput.composing());}
+void Controller::refreshScratchpadContext(){
+ completionSpaceContext.clear();pendingCompletionText.clear();++predictionRevision;
+ if(scratchpadRefreshPending)return;
+ scratchpadRefreshPending=true;
+ QTimer::singleShot(0,this,[this]{scratchpadRefreshPending=false;updateSuggestions();});
+}
+QString Controller::predictionText()const{
+ if(scratchpadEditable()&&hasScratchpad()&&localInput.attached()){
+  QString text;int cursor=0;if(localInput.predictionContext(text,cursor))return text.left(cursor);
+ }
+ return typingContext();
+}
+QStringList Controller::displaySuggestions()const{return showingImeCandidates()?imeCandidateSnapshot.mid(imeCandidateOffset,suggestionPageSize()):suggestions;}
+QString Controller::suggestionPrefix()const{
+ if(showingImeCandidates())return QString("ime:%1:").arg(imeRevision);
+ return scratchpadEditable()&&localInput.attached()?QString("suggest:%1:").arg(predictionRevision):QString("suggest:");
+}
 bool Controller::imeTarget(const QString &target,int &index)const{
- if(!localImeActive()||!target.startsWith(suggestionPrefix()))return false;
+ if(!showingImeCandidates()||!target.startsWith(suggestionPrefix()))return false;
  bool valid=false;const int slot=target.mid(suggestionPrefix().size()).toInt(&valid);
  if(!valid||slot<0||slot>=suggestionPageSize())return false;
  index=imeCandidateOffset+slot;
@@ -1141,7 +1175,7 @@ void Controller::refreshLocalIme(){
  imeCandidateSnapshot=localImeActive()?localInput.candidates():QStringList();
  // Candidate commands carry the new revision, so their dwell restarts naturally.
  // Resetting all dwell here would re-arm a consumed letter or paging key.
- imeCandidateOffset=0;++imeRevision;emit changed();
+ imeCandidateOffset=0;++imeRevision;updateSuggestions();
 }
 void Controller::attachScratchpadInputEngine(QObject *engine){
  if(localInput.inputEngine()==engine)return;
@@ -1181,7 +1215,9 @@ bool Controller::takeCompletionSpace(const QString &text){
  return ch.isPunct()||(ch.unicode()<128&&ch.isSymbol());
 }
 QStringList Controller::predictionSuggestions(int limit)const{
- const auto &context=typingContext();
+ QString document;int cursor=0;
+ if(scratchpadEditable()&&localInput.attached()&&!localInput.predictionContext(document,cursor))return {};
+ const auto context=predictionText();
  if(sensitiveInput||predictionModeValue=="off"||(!context.isEmpty()&&!nextWordEnabled&&WordPrediction::prefix(context,predictionLanguageValue).isEmpty()))return {};
  return WordPrediction::suggest(context,dictionary,learning?frequencies:QMap<QString,int>{},limit,predictionModeValue=="context",sentenceStartersEnabled,typedWordMode,predictionLanguageValue);
 }
@@ -1228,7 +1264,7 @@ void Controller::setLearning(bool enabled){
  learning=enabled;dwell.reset();updateSuggestions();
 }
 void Controller::updateSuggestions(){
- suggestionOffset=0;
+ ++predictionRevision;suggestionOffset=0;
  suggestions=predictionSuggestions();emit changed();
 }
 void Controller::resetLearning(){if(signInMode)return;frequencies.clear();QFile::remove(learnedFile(predictionLanguageValue));updateSuggestions();}

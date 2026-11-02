@@ -306,7 +306,9 @@ signals:
  void gazePoint(double x,double y,bool valid);
 private slots:
  void refreshLocalIme();
+ void refreshScratchpadContext();
 private:
+ bool showingImeCandidates()const;
  int suggestionPageSize()const;
  bool imeTarget(const QString &target,int &index)const;
  QString wantedImeLocale;
@@ -314,6 +316,9 @@ private:
  int imeCandidateOffset=0;
  quint64 imeRevision=0;
  QList<QMetaObject::Connection> imeConnections;
+ QList<QMetaObject::Connection> editorConnections;
+ quint64 predictionRevision=0;
+ bool scratchpadRefreshPending=false;
  SystemKeyboard systemLayout;
  LocalScratchpadInput localInput;
  bool localIme=false;
@@ -450,6 +455,7 @@ private:
  bool hasScratchpad()const;
  QString &typingContext();
  const QString &typingContext()const;
+ QString predictionText()const;
  QString predictionContext;
  QString scratchpad;QStringList suggestions,dictionary;QMap<QString,int> frequencies;
  QJsonObject mappingProfile;

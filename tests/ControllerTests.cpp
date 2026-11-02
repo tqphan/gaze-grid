@@ -94,7 +94,7 @@ private slots:
   const auto current=c.suggestionPrefix()+"1";engine.replace({"replacement"});c.clickCommand(current);QCOMPARE(engine.selected,-1);
   c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.displaySuggestions().isEmpty());
   engine.replace({"paused"});const auto beforePause=c.suggestionPrefix()+"0";c.togglePause();c.clickCommand(beforePause);QCOMPARE(engine.selected,0);
-  c.togglePause();c.setSystemKeyboard(false);QVERIFY(!c.localImeActive());QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  c.togglePause();c.setSystemKeyboard(false);QVERIFY(!c.localImeActive());QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void localImeLanguagePersistsAndValidates(){
