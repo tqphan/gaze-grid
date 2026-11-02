@@ -130,10 +130,10 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
  const auto four=useContext?language.contexts.constFind(history[history.size()-3]+' '+two):language.contexts.cend();
  const bool sentenceStart=history.size()==3;
  struct Result {QString word;double score;};
- QList<Result> ranked;
+ QList<Result> ranked,phraseSeeds;
 
  auto add=[&](const QString &word,double prior){
-  if(!word.startsWith(lower)||(!lower.isEmpty()&&word==lower))return;
+  if(!word.startsWith(lower))return;
   double probability=prior;
   if(bi!=language.contexts.cend())probability=(bi->value(word)+200*probability)/(bi->total+200);
   if(tri!=language.contexts.cend())probability=(tri->value(word)+20*probability)/(tri->total+20);
@@ -141,7 +141,9 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
   // Bounded personalization: even a million observations cannot overpower
   // strong context by more than a factor of two.
   const double boost=1+std::min(1.0,std::log1p(std::max(0,frequencies.value(word)))/std::log(101.0));
-  ranked.append({word,probability*boost});
+  const Result result{word,probability*boost};
+  if(word!=lower||lower.isEmpty())ranked.append(result);
+  if(languageCode=="vie"&&useContext)phraseSeeds.append(result);
  };
  if(lower.isEmpty()){
   // All words absent from these contexts share the same backoff multiplier.
@@ -161,6 +163,26 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
  for(auto it=frequencies.cbegin();it!=frequencies.cend();++it){
   const auto word=PredictionLanguage::lower(PredictionLanguage::normalize(it.key()),languageCode);
   if(it.value()>0&&PredictionLanguage::validWord(word)&&!index.byWord.contains(word))add(word,1e-7);
+ }
+ // Extend only the best syllables with a strongly observed continuation.
+ // Singles remain available; the joint score keeps each phrase below its seed.
+ // Bound expansion independently of dictionary size and requested page size.
+ if(!phraseSeeds.isEmpty()){
+  const auto order=[](const Result &a,const Result &b){return a.score!=b.score?a.score>b.score:a.word<b.word;};
+  const int seeds=std::min(32,int(phraseSeeds.size()));
+  std::partial_sort(phraseSeeds.begin(),phraseSeeds.begin()+seeds,phraseSeeds.end(),order);
+  for(int i=0;i<seeds;++i){
+   const auto &seed=phraseSeeds[i];
+   const auto continuation=language.contexts.constFind(seed.word);
+   if(continuation==language.contexts.cend()||continuation->total<=0)continue;
+   const Distribution::Count *best=nullptr;
+   for(const auto &entry:continuation->counts){
+    if(entry.value<3||!index.byWord.contains(entry.word))continue;
+    if(!best||entry.value>best->value||(entry.value==best->value&&entry.word<best->word))best=&entry;
+   }
+   if(best&&best->value/continuation->total>=0.25)
+    ranked.append({seed.word+' '+best->word,seed.score*best->value/continuation->total*0.9});
+  }
  }
  // Reserve the literal slot before ranking to keep pagination consistent.
  const bool includeTyped=!current.isEmpty()&&(typedWordMode=="always"||(typedWordMode=="fallback"&&ranked.isEmpty()));

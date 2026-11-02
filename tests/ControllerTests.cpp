@@ -697,6 +697,17 @@ private slots:
   QVERIFY(c.property("suggestions").toStringList().isEmpty());
  }
 
+
+ void vietnamesePhraseAcceptance(){
+  Controller c;c.openLayout("keyboard-conversation-bottom",false);
+  c.setPredictionLanguage("vie");c.setAddSpaceAfterCompletion(true);
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","xin"}}}));QTRY_VERIFY(!c.executingCommands());
+  const auto phrase=QString::fromUtf8("xin l\xe1\xbb\x97i");
+  const auto suggestions=c.property("suggestions").toStringList();
+  const int index=suggestions.indexOf(phrase);QVERIFY(index>=0);
+  c.clickCommand(QString("suggest:%1").arg(index));QTRY_VERIFY(!c.executingCommands());
+  QCOMPARE(c.property("scratchpad").toString(),phrase+" ");
+ }
  void multilingualCompletionPreservesTypedPrefix(){
   for(const QString language:QStringList{"fra","tur","cmn"}){
    Controller c;c.openLayout("keyboard-conversation-bottom",false);

@@ -128,3 +128,25 @@ values. Supplementary-plane letters (including CJK Extension B) remain intact;
 character-model tokens attach combining marks to the preceding letter, matching
 the trainer. This prevents valid model entries from being discarded merely
 because they require a UTF-16 surrogate pair.
+
+## Vietnamese phrase suggestions
+
+Context-aware Vietnamese prediction also offers two-token continuations from
+observed bigrams, including after a complete syllable has been typed. It expands
+at most 32 leading syllables, selecting one continuation per syllable when it
+accounts for at least 25% of the recorded continuations. Both tokens must be in
+the active dictionary. Phrase scores use the syllable score times continuation
+share, discounted by 0.9; ordinary single-token suggestions remain available.
+Frequency mode retains single-token behavior. This reuses the bundled offline
+model and adds no settings or downloads. These are corpus-based suggestions,
+not linguistic word segmentation. The Vietnamese evaluation now also reports
+exact two-token matches in the top three suggestions. Token accuracy checks the
+first token of each suggestion; phrase accuracy requires both tokens to match.
+These offline metrics do not establish gaze savings or native-speaker usability.
+
+On the recorded 200-sentence Vietnamese holdout, two-token completion top-three
+accuracy is 9.79% (1,266 eligible events); next-phrase accuracy is 1.04% (1,439
+events). Phrases compete for the same slots: token completion accuracy changes
+from the previous recorded 85.17% to 83.78%, and next-token accuracy from 35.27%
+to 34.72%. The model and held-out checksums are unchanged. This is an explicit
+slot-allocation tradeoff, not an across-the-board prediction accuracy gain.

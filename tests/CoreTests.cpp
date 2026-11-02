@@ -63,6 +63,21 @@ private slots:
   QCOMPARE(WordPrediction::suggest(supplementary,dictionary,{},8,false,true,"never","cmn"),dictionary);
   QCOMPARE(PredictionLanguage::completion(supplementary,supplementary,"cmn",true),supplementary);
  }
+
+ void vietnamesePhraseCompletion(){
+  const auto words=WordPrediction::dictionary("vie");
+  const auto phrase=QString::fromUtf8("xin l\xe1\xbb\x97i");
+  const auto results=WordPrediction::suggest("xin",words,{},8,true,false,"never","vie");
+  QVERIFY(results.contains(phrase));
+  QVERIFY(!results.contains("xin"));
+  QCOMPARE(PredictionLanguage::completion("xin",phrase,"vie",true),phrase.mid(3)+" ");
+  const auto frequency=WordPrediction::suggest("xin",words,{},8,false,false,"never","vie");
+  for(const auto &word:frequency)QVERIFY(!word.contains(' '));
+  const auto english=WordPrediction::suggest("xin",words,{},8,true,false,"never","eng");
+  for(const auto &word:english)QVERIFY(!word.contains(' '));
+  QCOMPARE(WordPrediction::suggest("xin",words,{},1,true,false,"always","vie"),QStringList{"xin"});
+  QVERIFY(WordPrediction::suggest("xin",words,{},0,true,false,"never","vie").isEmpty());
+ }
  void turkishPredictionCasing(){
   const QString word=QString(QChar(0x131))+"slak";
   const QStringList words{word,"istanbul"};

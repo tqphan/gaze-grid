@@ -22,29 +22,39 @@ int main(int argc,char **argv){
    for(const auto &text:app.arguments().mid(4))QTextStream(stdout)<<text<<" -> "<<predict(text).join(", ")<<'\n';return 0;
   }
   QFile input(app.arguments().value(3));if(!input.open(QIODevice::ReadOnly))return 2;
-  int sentences=0,next=0,nextHits=0,completion=0,completionHits=0,covered=0,total=0;QList<double> latency;
+  int sentences=0,next=0,nextHits=0,completion=0,completionHits=0,covered=0,total=0;
+  int nextPhrase=0,nextPhraseHits=0,completionPhrase=0,completionPhraseHits=0;QList<double> latency;
   while(!input.atEnd()&&sentences<200){
    const auto row=QJsonDocument::fromJson(input.readLine()).object();const auto words=row["words"].toArray();++sentences;
    QString context;
-   for(const auto &item:words){
-    const auto word=item.toString();++total;covered+=vocabulary.contains(word);
+   for(int position=0;position<words.size();++position){
+    const auto word=words[position].toString();
+    const auto phrase=position+1<words.size()?word+' '+words[position+1].toString():QString();++total;covered+=vocabulary.contains(word);
     if(!context.isEmpty()){
      ++next;clock.restart();auto result=predict(context);latency<<clock.nsecsElapsed()/1e6;
-     for(auto &entry:result)entry=PredictionLanguage::lower(entry,language);nextHits+=result.contains(word);
+     for(auto &entry:result)entry=PredictionLanguage::lower(entry,language);nextHits+=std::any_of(result.cbegin(),result.cend(),[&](const QString &candidate){return candidate.section(' ',0,0)==word;});
+     if(language=="vie"&&!phrase.isEmpty()){++nextPhrase;nextPhraseHits+=result.contains(phrase);}
     }
     if(!characters&&word.size()>2){
-     ++completion;auto result=predict(context+word.left(2));for(auto &entry:result)entry=PredictionLanguage::lower(entry,language);completionHits+=result.contains(word);
+     ++completion;auto result=predict(context+word.left(2));for(auto &entry:result)entry=PredictionLanguage::lower(entry,language);completionHits+=std::any_of(result.cbegin(),result.cend(),[&](const QString &candidate){return candidate.section(' ',0,0)==word;});
+     if(language=="vie"&&!phrase.isEmpty()){++completionPhrase;completionPhraseHits+=result.contains(phrase);}
     }
     context+=word+(characters?QString():QString(" "));
    }
   }
   if(next==0||latency.isEmpty())return 2;
   std::sort(latency.begin(),latency.end());
-  const QJsonObject report{{"language",language},{"tokenization",characters?"character":"word"},{"sentences",sentences},
+  QJsonObject report{{"language",language},{"tokenization",characters?"character":"word"},{"sentences",sentences},
    {"tokens",total},{"vocabulary_coverage_percent",100.0*covered/qMax(1,total)},
    {"next_token_events",next},{"next_token_top3_percent",100.0*nextHits/next},
    {"completion_events",completion},{"completion_top3_percent",completion?QJsonValue(100.0*completionHits/completion):QJsonValue()},
    {"warm_p95_ms",latency[int(latency.size()*.95)]},{"cold_initialization_ms",startup},{"learning",false}};
+  if(language=="vie"){
+   report["next_phrase_events"]=nextPhrase;
+   report["next_phrase_top3_percent"]=100.0*nextPhraseHits/qMax(1,nextPhrase);
+   report["completion_phrase_events"]=completionPhrase;
+   report["completion_phrase_top3_percent"]=100.0*completionPhraseHits/qMax(1,completionPhrase);
+  }
   QTextStream(stdout)<<QJsonDocument(report).toJson();return 0;
  }
  QFile dict(":/resources/EnglishUS.dic");if(!dict.open(QIODevice::ReadOnly))return 2;
