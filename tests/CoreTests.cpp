@@ -48,6 +48,21 @@ private slots:
   QCOMPARE(WordPrediction::completedWord("ISLAK!","tur"),QString(QChar(0x131))+"slak");
   QCOMPARE(WordPrediction::completedWord("ISLAK!","eng"),QString("islak"));
  }
+
+ void predictionUnicodeScalars(){
+  const char32_t scalar=0x20000;
+  const auto supplementary=QString::fromUcs4(&scalar,1);
+  QVERIFY(PredictionLanguage::validWord(supplementary));
+  QCOMPARE(WordPrediction::prefix(supplementary,"eng"),supplementary);
+  QCOMPARE(WordPrediction::completedWord(supplementary+"!"),supplementary);
+  QVERIFY(WordPrediction::prefix("123"+supplementary).isEmpty());
+  QCOMPARE(PredictionLanguage::tokens(supplementary+QString(QChar(0x301))+" "+supplementary,"cmn"),QStringList({supplementary+QString(QChar(0x301)),supplementary}));
+  QCOMPARE(PredictionLanguage::tokens("L'amour, cafe\xcc\x81!","fra"),QStringList({"l'amour",QString::fromUtf8("caf\xc3\xa9")}));
+  const QStringList dictionary{supplementary};
+  QCOMPARE(WordPrediction::suggest("",dictionary,{},8,false,true,"never","cmn"),dictionary);
+  QCOMPARE(WordPrediction::suggest(supplementary,dictionary,{},8,false,true,"never","cmn"),dictionary);
+  QCOMPARE(PredictionLanguage::completion(supplementary,supplementary,"cmn",true),supplementary);
+ }
  void turkishPredictionCasing(){
   const QString word=QString(QChar(0x131))+"slak";
   const QStringList words{word,"istanbul"};

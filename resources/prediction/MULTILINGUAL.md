@@ -122,3 +122,9 @@ This is a rules foundation; it does not add segmented word models, phrase
 models, new keyboard layouts, or desktop IME context observation. Vietnamese
 still uses syllable-sized whitespace tokens, and German noun capitalization
 cannot be recovered from the current lowercased training vocabulary.
+
+Runtime dictionary validation and context tokenization operate on Unicode scalar
+values. Supplementary-plane letters (including CJK Extension B) remain intact;
+character-model tokens attach combining marks to the preceding letter, matching
+the trainer. This prevents valid model entries from being discarded merely
+because they require a UTF-16 surrogate pair.
