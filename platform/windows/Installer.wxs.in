@@ -114,58 +114,57 @@
     </ComponentGroup>
   </Fragment>
   <Fragment>
-    <SetProperty Id="DefaultUIFont" Value="gaze_grid_Font_Normal" Before="LaunchConditions" Sequence="ui">1</SetProperty>
     <UI Id="gaze_gridUI">
       <UIRef Id="WixUI_Minimal" />
       <Publish Dialog="ExitDialog" Control="Finish" Property="WixShellExecTarget" Value="[INSTALL_ROOT]gaze-grid.exe" Order="1">WIXUI_EXITDIALOGOPTIONALCHECKBOX = "1" AND NOT Installed AND NOT REMOVE AND UILevel = 5</Publish>
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="Launchgaze_grid" Order="2">WIXUI_EXITDIALOGOPTIONALCHECKBOX = "1" AND NOT Installed AND NOT REMOVE AND UILevel = 5</Publish>
-      <!-- MSI installer units do not grow with DefaultUIFont. Keep explicit
-           room for 12-point body text, 14-point titles and option labels. -->
+      <!-- Keep the stock WiX font for its fixed-size dialogs. Custom controls use
+           explicit fonts and room for 12-point body text and 14-point titles. -->
       <TextStyle Id="gaze_grid_Font_Normal" FaceName="Tahoma" Size="12" />
       <TextStyle Id="gaze_grid_Font_Title" FaceName="Tahoma" Size="14" Bold="yes" />
       <Dialog Id="gaze_gridTrustDlg" Width="520" Height="360" Title="gaze-grid accessibility permissions">
         <Control Id="Title" Type="Text" X="20" Y="12" Width="480" Height="26" Text="{\gaze_grid_Font_Title}Choose Windows accessibility access" />
-        <Control Id="Explanation" Type="Text" X="20" Y="44" Width="480" Height="44" Text="A trusted signature and installation in Program Files grant UIAccess, allowing input to elevated windows. Optional sign-in startup is registered separately with Windows accessibility." />
-        <Control Id="TrustExplanation" Type="Text" X="20" Y="92" Width="480" Height="48" Text="Accepting installs the existing self-signed GazeGrid certificate in this computer's Trusted Root Certification Authorities store. This trusts software signed with this identity for all users. Accept only if you trust the publisher and have verified the certificate." />
-        <Control Id="Fingerprint" Type="Text" X="20" Y="145" Width="480" Height="30" Text="Certificate thumbprint: @GAZE_GRID_CERTIFICATE_THUMBPRINT@" />
+        <Control Id="Explanation" Type="Text" X="20" Y="44" Width="480" Height="44" Text="{\gaze_grid_Font_Normal}A trusted signature and installation in Program Files grant UIAccess, allowing input to elevated windows. Optional sign-in startup is registered separately with Windows accessibility." />
+        <Control Id="TrustExplanation" Type="Text" X="20" Y="92" Width="480" Height="48" Text="{\gaze_grid_Font_Normal}Accepting installs the existing self-signed GazeGrid certificate in this computer's Trusted Root Certification Authorities store. This trusts software signed with this identity for all users. Accept only if you trust the publisher and have verified the certificate." />
+        <Control Id="Fingerprint" Type="Text" X="20" Y="145" Width="480" Height="30" Text="{\gaze_grid_Font_Normal}Certificate thumbprint: @GAZE_GRID_CERTIFICATE_THUMBPRINT@" />
         <Control Id="Choice" Type="RadioButtonGroup" Property="GAZE_GRID_TRUST_CERTIFICATE" X="20" Y="182" Width="480" Height="54">
           <RadioButtonGroup Property="GAZE_GRID_TRUST_CERTIFICATE">
-            <RadioButton Value="0" X="0" Y="0" Width="475" Height="24" Text="Decline - install the unsigned, limited-access app" />
-            <RadioButton Value="1" X="0" Y="28" Width="475" Height="24" Text="Accept - trust the certificate and install the signed UIAccess app" />
+            <RadioButton Value="0" X="0" Y="0" Width="475" Height="24" Text="{\gaze_grid_Font_Normal}Decline - install the unsigned, limited-access app" />
+            <RadioButton Value="1" X="0" Y="28" Width="475" Height="24" Text="{\gaze_grid_Font_Normal}Accept - trust the certificate and install the signed UIAccess app" />
           </RadioButtonGroup>
         </Control>
-        <Control Id="Limitations" Type="Text" X="20" Y="242" Width="480" Height="34" Text="If you decline, gaze-grid cannot send input to higher-privilege windows and cannot stay on top of all windows. Normal desktop input remains available." />
-        <Control Id="Persistence" Type="Text" X="20" Y="282" Width="480" Height="34" Text="Certificate trust remains after uninstall. An administrator can remove it with certlm.msc under Trusted Root Certification Authorities / Certificates." />
-        <Control Id="Next" Type="PushButton" X="310" Y="324" Width="90" Height="24" Default="yes" Text="Next">
+        <Control Id="Limitations" Type="Text" X="20" Y="242" Width="480" Height="34" Text="{\gaze_grid_Font_Normal}If you decline, gaze-grid cannot send input to higher-privilege windows and cannot stay on top of all windows. Normal desktop input remains available." />
+        <Control Id="Persistence" Type="Text" X="20" Y="282" Width="480" Height="34" Text="{\gaze_grid_Font_Normal}Certificate trust remains after uninstall. An administrator can remove it with certlm.msc under Trusted Root Certification Authorities / Certificates." />
+        <Control Id="Next" Type="PushButton" X="310" Y="324" Width="90" Height="24" Default="yes" Text="{\gaze_grid_Font_Normal}Next">
           <Publish Property="GAZE_GRID_SIGN_IN" Value="{}" Order="1">GAZE_GRID_TRUST_CERTIFICATE &lt;&gt; "1"</Publish>
           <Publish Event="EndDialog" Value="Return" Order="2">1</Publish>
         </Control>
-        <Control Id="Cancel" Type="PushButton" X="410" Y="324" Width="90" Height="24" Cancel="yes" Text="Cancel">
+        <Control Id="Cancel" Type="PushButton" X="410" Y="324" Width="90" Height="24" Cancel="yes" Text="{\gaze_grid_Font_Normal}Cancel">
           <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
         </Control>
       </Dialog>
       <Dialog Id="gaze_gridSignInDlg" Width="520" Height="280" Title="gaze-grid Windows startup">
         <Control Id="Title" Type="Text" X="20" Y="15" Width="480" Height="26" Text="{\gaze_grid_Font_Title}Windows startup" />
-        <Control Id="Explanation" Type="Text" X="20" Y="48" Width="480" Height="48" Text="gaze-grid can start on the Windows sign-in screen before you enter your password. It uses the existing keyboard interface with prediction disabled." />
-        <Control Id="Enable" Type="CheckBox" X="20" Y="106" Width="480" Height="24" Property="GAZE_GRID_SIGN_IN" CheckBoxValue="1" Text="Start gaze-grid before Windows sign-in">
+        <Control Id="Explanation" Type="Text" X="20" Y="48" Width="480" Height="48" Text="{\gaze_grid_Font_Normal}gaze-grid can start on the Windows sign-in screen before you enter your password. It uses the existing keyboard interface with prediction disabled." />
+        <Control Id="Enable" Type="CheckBox" X="20" Y="106" Width="480" Height="24" Property="GAZE_GRID_SIGN_IN" CheckBoxValue="1" Text="{\gaze_grid_Font_Normal}Start gaze-grid before Windows sign-in">
           <Condition Action="disable">GAZE_GRID_TRUST_CERTIFICATE &lt;&gt; "1"</Condition>
           <Condition Action="enable">GAZE_GRID_TRUST_CERTIFICATE = "1"</Condition>
         </Control>
-        <Control Id="Details" Type="Text" X="20" Y="140" Width="480" Height="48" Text="Requires certificate trust. To use your current keyboard and gaze preferences, open Settings > Keyboard > Windows sign-in after installation. Eye tracking also depends on Tobii availability before sign-in." />
-        <Control Id="Startup" Type="CheckBox" X="20" Y="196" Width="480" Height="24" Property="GAZE_GRID_STARTUP" CheckBoxValue="1" Text="Start with Windows" />
-        <Control Id="Next" Type="PushButton" X="310" Y="244" Width="90" Height="24" Default="yes" Text="Next"><Publish Event="EndDialog" Value="Return">1</Publish></Control>
-        <Control Id="Cancel" Type="PushButton" X="410" Y="244" Width="90" Height="24" Cancel="yes" Text="Cancel"><Publish Event="SpawnDialog" Value="CancelDlg">1</Publish></Control>
+        <Control Id="Details" Type="Text" X="20" Y="140" Width="480" Height="48" Text="{\gaze_grid_Font_Normal}Requires certificate trust. To use your current keyboard and gaze preferences, open Settings > Keyboard > Windows sign-in after installation. Eye tracking also depends on Tobii availability before sign-in." />
+        <Control Id="Startup" Type="CheckBox" X="20" Y="196" Width="480" Height="24" Property="GAZE_GRID_STARTUP" CheckBoxValue="1" Text="{\gaze_grid_Font_Normal}Start with Windows" />
+        <Control Id="Next" Type="PushButton" X="310" Y="244" Width="90" Height="24" Default="yes" Text="{\gaze_grid_Font_Normal}Next"><Publish Event="EndDialog" Value="Return">1</Publish></Control>
+        <Control Id="Cancel" Type="PushButton" X="410" Y="244" Width="90" Height="24" Cancel="yes" Text="{\gaze_grid_Font_Normal}Cancel"><Publish Event="SpawnDialog" Value="CancelDlg">1</Publish></Control>
       </Dialog>
       <Dialog Id="gaze_gridTobiiDlg" Width="520" Height="280" Title="gaze-grid eye tracking setup">
         <Control Id="Title" Type="Text" X="20" Y="15" Width="480" Height="26" Text="{\gaze_grid_Font_Title}Tobii eye tracking prerequisites" />
-        <Control Id="BuildSupport" Type="Text" X="20" Y="45" Width="480" Height="42" Text="@GAZE_GRID_TOBII_INSTALL_MESSAGE@" />
-        <Control Id="Software" Type="Text" X="20" Y="96" Width="480" Height="50" Text="Install the Tobii Experience driver package, then the Tobii Experience app. That installation supplies the Tobii Stream Engine DLL. gaze-grid uses the installed DLL and does not bundle it." />
-        <Control Id="Download" Type="Text" X="20" Y="152" Width="480" Height="24" Text="Official setup: https://gaming.tobii.com/getstarted/" />
-        <Control Id="Fallback" Type="Text" X="20" Y="185" Width="480" Height="40" Text="Complete Tobii setup and calibration, then restart gaze-grid. Mouse dwell remains available without Tobii software or a connected eye tracker." />
-        <Control Id="Next" Type="PushButton" X="310" Y="244" Width="90" Height="24" Default="yes" Text="Next">
+        <Control Id="BuildSupport" Type="Text" X="20" Y="45" Width="480" Height="42" Text="{\gaze_grid_Font_Normal}@GAZE_GRID_TOBII_INSTALL_MESSAGE@" />
+        <Control Id="Software" Type="Text" X="20" Y="96" Width="480" Height="50" Text="{\gaze_grid_Font_Normal}Install the Tobii Experience driver package, then the Tobii Experience app. That installation supplies the Tobii Stream Engine DLL. gaze-grid uses the installed DLL and does not bundle it." />
+        <Control Id="Download" Type="Text" X="20" Y="152" Width="480" Height="24" Text="{\gaze_grid_Font_Normal}Official setup: https://gaming.tobii.com/getstarted/" />
+        <Control Id="Fallback" Type="Text" X="20" Y="185" Width="480" Height="40" Text="{\gaze_grid_Font_Normal}Complete Tobii setup and calibration, then restart gaze-grid. Mouse dwell remains available without Tobii software or a connected eye tracker." />
+        <Control Id="Next" Type="PushButton" X="310" Y="244" Width="90" Height="24" Default="yes" Text="{\gaze_grid_Font_Normal}Next">
           <Publish Event="EndDialog" Value="Return">1</Publish>
         </Control>
-        <Control Id="Cancel" Type="PushButton" X="410" Y="244" Width="90" Height="24" Cancel="yes" Text="Cancel">
+        <Control Id="Cancel" Type="PushButton" X="410" Y="244" Width="90" Height="24" Cancel="yes" Text="{\gaze_grid_Font_Normal}Cancel">
           <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
         </Control>
       </Dialog>

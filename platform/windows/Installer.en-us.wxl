@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <WixLocalization xmlns="http://schemas.microsoft.com/wix/2006/localization" Culture="en-us">
-  <!-- The stock WiX checkbox keeps its original width with our 12-point font. -->
+  <!-- Keep the license acceptance label brief for the stock WiX checkbox. -->
   <String Id="WelcomeEulaDlgLicenseAcceptedCheckBox">I &amp;accept the License Agreement</String>
 </WixLocalization>
