@@ -24,8 +24,8 @@ Window {
  property point canvasPoint:Qt.point(0,0)
  // Keep coordinates current before entering edit mode as well.
  HoverHandler {id:canvasHover}
- property var dwellStyleIds: ["bar","top-bar","fill","fill-down","fill-left","fill-right","outline","ring","pie","collapse","expand"]
- property var dwellStyleNames: ["Bottom Bar","Top Bar","Fill Up","Fill Down","Fill Right","Fill Left","Outline Trace","Ring Progress","Pie Progress","Shrink Inward","Grow Outward"]
+ property var dwellStyleIds: ["bar","top-bar","dual-bar","opposing-bars","fill","fill-down","fill-left","fill-right","outline","ring","pie","collapse","expand"]
+ property var dwellStyleNames: ["Bottom Bar","Top Bar","Dual Bars","Opposing Bars","Fill Up","Fill Down","Fill Right","Fill Left","Outline Trace","Ring Progress","Pie Progress","Shrink Inward","Grow Outward"]
  property real progress: 0
  readonly property var transitionIds:["instant","fade","lift","slide","zoom","rows"]
  readonly property var transitionNames:["Instant Switch","Soft Fade","Gentle Lift","Directional Slide","Subtle Zoom","Row Reveal"]
