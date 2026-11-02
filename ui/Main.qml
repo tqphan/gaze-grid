@@ -600,7 +600,7 @@ Window {
   }
   component SettingsComboBox:Desktop.ComboBox {
    id:comboControl;implicitHeight:40;leftPadding:12;rightPadding:34
-   contentItem:TextInput {text:comboControl.displayText;color:Kirigami.Theme.textColor;font.pixelSize:14;verticalAlignment:Text.AlignVCenter;readOnly:true;activeFocusOnPress:false;selectByMouse:false;clip:true;opacity:comboControl.enabled?1:0.4}
+   contentItem:Text {text:comboControl.displayText;color:Kirigami.Theme.textColor;font.pixelSize:14;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight;clip:true;opacity:comboControl.enabled?1:0.4}
    indicator:Text {x:parent.width-width-14;anchors.verticalCenter:parent.verticalCenter;text:"\u2304";color:Kirigami.Theme.textColor;font.pixelSize:18}
    background:Rectangle {radius:6;color:Qt.rgba(0.5,0.5,0.5,comboControl.hovered?0.13:0.07);border.width:1;border.color:comboControl.activeFocus?"#599cff":Qt.rgba(0.5,0.5,0.5,0.32)}
   }
