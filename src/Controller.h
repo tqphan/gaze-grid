@@ -311,7 +311,7 @@ private:
  bool showingImeCandidates()const;
  int suggestionPageSize()const;
  bool imeTarget(const QString &target,int &index)const;
- QString wantedImeLocale;
+ QString wantedImeLocale,lastPredictionImeLocale;
  QStringList imeCandidateSnapshot;
  int imeCandidateOffset=0;
  quint64 imeRevision=0;

@@ -384,7 +384,13 @@ void Controller::setKeyCycleModes(const QStringList &modes){
 void Controller::refreshKeyboardLabels(){
  const SystemKeyboard::Modifiers modifiers{runner.shifted(),systemCaps,runner.isHeld("RMENU")};
  const bool active=systemKeyboard()&&!runner.textOnly&&systemLayout.available();
- auto labels=SystemKeyboard::labels(layout["keys"].toList(),modifiers,[this,active](int scan,SystemKeyboard::Modifiers state){return active?systemLayout.label(scan,state):QString();});
+ auto labels=SystemKeyboard::labels(layout["keys"].toList(),modifiers,[this,active](int scan,SystemKeyboard::Modifiers state){
+  if(localImeActive()&&localInput.locale().startsWith("ko_")){
+   const auto name=KeyNames::fromLinuxCode(scan);
+   if(name.size()==1&&name.front().isLetter())return localInput.inputLabel(name.toLower(),state.shift);
+  }
+  return active?systemLayout.label(scan,state):QString();
+ });
  if(labels!=keyboardLabelValues){keyboardLabelValues=labels;emit keyboardLabelsChanged();}
 }
 void Controller::setSystemKeyboard(bool enabled){
@@ -1172,6 +1178,11 @@ bool Controller::imeTarget(const QString &target,int &index)const{
  return index<imeCandidateSnapshot.size()&&!imeCandidateSnapshot[index].trimmed().isEmpty();
 }
 void Controller::refreshLocalIme(){
+ if(localImeActive()&&localInput.locale()!=lastPredictionImeLocale){
+  lastPredictionImeLocale=localInput.locale();
+  const auto language=PredictionLanguage::fromLocale(lastPredictionImeLocale);
+  if(!language.isEmpty())setPredictionLanguage(language);
+ }
  imeCandidateSnapshot=localImeActive()?localInput.candidates():QStringList();
  // Candidate commands carry the new revision, so their dwell restarts naturally.
  // Resetting all dwell here would re-arm a consumed letter or paging key.

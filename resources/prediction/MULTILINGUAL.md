@@ -178,3 +178,12 @@ their scores cannot be compared directly with the old character-model reports.
 The evaluation uses actual inserted suffixes and preserves unspaced context.
 Chinese currently has 15,022 vocabulary entries; Thai has 1,892. The small Thai
 training corpus remains a material coverage limitation.
+
+## Local composition languages
+
+Changing the local IME locale selects the corresponding prediction model when
+one is bundled. A later manual prediction-language choice remains until the IME
+locale changes again. Korean local input maps gaze QWERTY keys to two-set Hangul
+jamo, including shifted consonants and vowels; those keys show jamo labels.
+Personal keyboards keep literal input. The installed Qt engines are covered by
+real Pinyin, Japanese conversion/edit/cancel, and Korean Hangul composition tests.

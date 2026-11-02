@@ -142,6 +142,29 @@ private slots:
   QVERIFY(input.text("ok",{},true));QVERIFY(input.key("SPACE",{},true));
   QTRY_COMPARE(editor->property("text").toString(),QString("ok "));
  }
+ void realKoreanComposition(){
+  if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional Qt Virtual Keyboard runtime test");
+  QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));
+  std::unique_ptr<QObject> editor(component.create());QVERIFY2(editor,qPrintable(component.errorString()));
+  QQmlComponent adapterComponent(&engine,QUrl::fromLocalFile(LOCAL_IME_QML));
+  std::unique_ptr<QObject> adapter(adapterComponent.create());QVERIFY2(adapter,qPrintable(adapterComponent.errorString()));
+  QQuickWindow window;window.resize(600,200);window.show();
+  auto item=qobject_cast<QQuickItem*>(editor.get());QVERIFY(item);item->setParentItem(window.contentItem());item->setSize({600,200});
+  auto panel=qobject_cast<QQuickItem*>(adapter.get());QVERIFY(panel);panel->setParentItem(window.contentItem());
+  editor->setProperty("readOnly",false);item->forceActiveFocus();window.requestActivate();
+  QTRY_COMPARE(QGuiApplication::focusObject(),editor.get());
+  LocalScratchpadInput input;input.setEditor(editor.get());input.setEngine(adapter.get());
+  QTRY_VERIFY(!input.availableLocales().isEmpty());qInfo()<<"Engine locales:"<<input.availableLocales();
+  if(!input.availableLocales().contains("ko_KR"))QSKIP("Korean engine not included in this Qt build");
+  QVERIFY(input.setLocale("ko_KR"));QTRY_COMPARE(input.locale(),QString("ko_KR"));
+  QTRY_VERIFY(adapter->property("ready").toBool());
+  QCOMPARE(input.inputLabel("g"),QString(QChar(0x314e)));
+  QCOMPARE(input.inputLabel("r",true),QString(QChar(0x3132)));
+  QVERIFY(input.text("gksrmf",{},true));QVERIFY(input.key("SPACE",{},true));
+  const auto expected=QString::fromUtf8("\xed\x95\x9c\xea\xb8\x80 ");
+  QTRY_COMPARE(editor->property("text").toString(),expected);
+  QVERIFY(!editor->property("inputMethodComposing").toBool());
+ }
  void gazeTextUsesCursorSelectionAndQtBackspace(){
   QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));
   std::unique_ptr<QObject> editor(component.create());QVERIFY2(editor,qPrintable(component.errorString()));

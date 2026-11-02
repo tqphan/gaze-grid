@@ -13,6 +13,7 @@ public:
  QObject *inputEngine()const{return engine;}
  QStringList availableLocales()const;
  QString locale()const;
+ QString inputLabel(const QString &text,bool shifted=false)const;
  QStringList candidates()const;
  bool setLocale(const QString &locale);
  bool selectCandidate(int index,const QString &expected);

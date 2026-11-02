@@ -29,6 +29,18 @@ int modifiers(const QStringList &held){
 }
 QStringList LocalScratchpadInput::availableLocales()const{return engine?engine->property("availableLocales").toStringList():QStringList();}
 QString LocalScratchpadInput::locale()const{return engine?engine->property("locale").toString():QString();}
+QString LocalScratchpadInput::inputLabel(const QString &text,bool shifted)const{
+ if(!locale().startsWith("ko_")||text.size()!=1)return text;
+ const QString latin="qwertyuiopasdfghjklzxcvbnm";
+ const QString jamo=QString::fromUtf8("\u3142\u3148\u3137\u3131\u3145\u315b\u3155\u3151\u3150\u3154\u3141\u3134\u3147\u3139\u314e\u3157\u3153\u314f\u3163\u314b\u314c\u314a\u314d\u3160\u315c\u3161");
+ const auto ch=text.front().toLower();const int index=latin.indexOf(ch);if(index<0)return text;
+ if(shifted||text.front().isUpper()){
+  const QString doubles="qwertop";
+  const QString tense=QString::fromUtf8("\u3143\u3149\u3138\u3132\u3146\u3152\u3156");
+  const int doubled=doubles.indexOf(ch);if(doubled>=0)return QString(tense[doubled]);
+ }
+ return QString(jamo[index]);
+}
 QStringList LocalScratchpadInput::candidates()const{
  QStringList result;auto model=candidateModel(engine);if(!model)return result;
  for(int i=0;i<qMin(model->rowCount(),2048);++i)result<<model->data(model->index(i,0),Qt::DisplayRole).toString();
@@ -110,7 +122,8 @@ bool LocalScratchpadInput::dispatch(int key,const QString &text,int mods,bool us
   if(!engine||engine->thread()!=QThread::currentThread()){failure="Local input method unavailable; launch with --local-ime and Qt Virtual Keyboard installed";return false;}
   if(engine->property("requiresFocus").toBool()&&QGuiApplication::focusObject()!=editor){failure="Focus the scratchpad before using the local input method";return false;}
   QVariant accepted;
-  const bool invoked=QMetaObject::invokeMethod(engine,"dispatch",Qt::DirectConnection,Q_RETURN_ARG(QVariant,accepted),Q_ARG(QVariant,QVariant(key)),Q_ARG(QVariant,QVariant(text)),Q_ARG(QVariant,QVariant(mods)));
+  const auto effective=mods&(Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier)?text:inputLabel(text,mods&Qt::ShiftModifier);
+  const bool invoked=QMetaObject::invokeMethod(engine,"dispatch",Qt::DirectConnection,Q_RETURN_ARG(QVariant,accepted),Q_ARG(QVariant,QVariant(key)),Q_ARG(QVariant,QVariant(effective)),Q_ARG(QVariant,QVariant(mods)));
   if(!invoked||!accepted.toBool()){failure="Local input method did not accept the key";return false;}
   return true;
  }
