@@ -9,11 +9,12 @@ The languages are English, Spanish, French, German, Portuguese, Italian, Dutch,
 Russian, Ukrainian, Polish, Turkish, Vietnamese, Indonesian, Arabic, Chinese
 (Mandarin), Japanese, Korean, and Thai.
 
-Chinese, Japanese, and Thai use character sequences, including attached combining
-marks. Their suggestions predict the next character cluster, without appending a
-space. These are initial character models, not segmented word completion or IME
-conversion engines. Korean uses whitespace-delimited words. Vietnamese tokens
-are whitespace-delimited and often correspond to syllables rather than full words.
+Chinese and Thai use lexicon-segmented word models. Typing without spaces offers
+both completions of the current lexical prefix and continuations after committed
+words. Japanese retains a character model alongside its local IME conversion
+candidates. None of these three languages appends completion spaces. Korean uses
+whitespace-delimited words. Vietnamese tokens often correspond to syllables;
+context-aware mode additionally offers observed two-token phrases.
 Installing these models does not add gaze keyboard layouts for their scripts.
 Local IME composition keeps its own candidate row.
 
@@ -118,10 +119,8 @@ preserves the text already typed, including combining accents and curly
 apostrophes, and inserts only a matching suffix. Chinese, Japanese, and Thai
 continue to omit completion spaces.
 
-This is a rules foundation; it does not add segmented word models, phrase
-models, new keyboard layouts, or desktop IME context observation. Vietnamese
-still uses syllable-sized whitespace tokens, and German noun capitalization
-cannot be recovered from the current lowercased training vocabulary.
+The rules layer is shared by the word and character models. German noun
+capitalization remains limited by the current lowercased training vocabulary.
 
 Runtime dictionary validation and context tokenization operate on Unicode scalar
 values. Supplementary-plane letters (including CJK Extension B) remain intact;
@@ -162,3 +161,20 @@ dwell targets. IME candidates own the row while available or composing; committe
 predictions return afterwards, and accepting them commits text directly without
 feeding it back through the composition engine. Desktop injection still has only
 best-effort context; it does not observe arbitrary applications' committed edits.
+
+## Chinese and Thai word models
+
+`segmentation/README.md` documents the pinned lexicons, licenses, integer-cost
+algorithm, and rebuild commands. Segmentation is identical in the trainer and
+runtime; unknown letters retain attached marks. Prefix lookup considers lexical
+suffixes, so a partial word can span an earlier provisional boundary. Without an
+explicit separator, the row interleaves word completions and continuations. A
+continuation label includes the current prefix; acceptance inserts its suffix.
+At a caret inside unspaced text, acceptance inserts rather than guessing how much
+of the following text belongs to the word.
+
+The rebuilt holdouts use segmented words and different deterministic splits;
+their scores cannot be compared directly with the old character-model reports.
+The evaluation uses actual inserted suffixes and preserves unspaced context.
+Chinese currently has 15,022 vocabulary entries; Thai has 1,892. The small Thai
+training corpus remains a material coverage limitation.

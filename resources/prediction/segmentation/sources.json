@@ -1,0 +1,16 @@
+{
+  "cmn": {
+    "source": "https://raw.githubusercontent.com/fxsjy/jieba/67fa2e36e72f69d9134b8a1037b83fbb070b9775/jieba/dict.txt",
+    "sha256": "7197c3211ddd98962b036cdf40324d1ea2bfaa12bd028e68faa70111a88e12a8",
+    "license": "MIT",
+    "lexicon_sha256": "5de0c4d09591132303c6a668d6de8181fa4fb08442303ddf8b2ba7f6b0cfa3a3",
+    "words": 348974
+  },
+  "tha": {
+    "source": "https://raw.githubusercontent.com/PyThaiNLP/pythainlp/c598a2ad96a64cbcd4c6e04aa71415a40e408871/pythainlp/corpus/words_th.txt",
+    "sha256": "12bf4d04e8d59a8b235eb9e7ac59b18e5f4d56320f25e75e9c9f8f565543b481",
+    "license": "CC0-1.0",
+    "lexicon_sha256": "194371c5e6962dbc1eca621da69ee05405af0e62559b4ef2835dcdb8e1619071",
+    "words": 60958
+  }
+}

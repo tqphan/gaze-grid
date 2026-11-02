@@ -107,7 +107,8 @@ QStringList WordPrediction::dictionary(const QString &language){
  const auto &prior=model(language).prior;QStringList result=prior.keys();result.sort();return result;
 }
 void WordPrediction::prepare(const QStringList &dictionary,const QString &language){vocabulary(dictionary,language);}
-QStringList WordPrediction::suggest(const QString &text,const QStringList &dictionary,const QMap<QString,int> &frequencies,int limit,bool useContext,bool suggestWhenEmpty,const QString &typedWordMode,const QString &languageCode){
+namespace WordPrediction {
+static QStringList suggestTokens(const QString &text,const QStringList &dictionary,const QMap<QString,int> &frequencies,int limit,bool useContext,bool suggestWhenEmpty,const QString &typedWordMode,const QString &languageCode){
  if(limit<=0||(text.isEmpty()&&!suggestWhenEmpty))return {};
  const auto normalized=PredictionLanguage::normalize(text);
  const bool characters=characterLanguage(languageCode);
@@ -204,4 +205,24 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
   result<<word;
  }
  return result;
+}
+
+QStringList suggest(const QString &text,const QStringList &dictionary,const QMap<QString,int> &frequencies,int limit,bool useContext,bool suggestWhenEmpty,const QString &typedWordMode,const QString &language){
+ if(limit<=0)return {};
+ if(!WordSegmentation::supported(language))return suggestTokens(text,dictionary,frequencies,limit,useContext,suggestWhenEmpty,typedWordMode,language);
+ const auto current=prefix(text,language);
+ if(current.isEmpty())return suggestTokens(text,dictionary,frequencies,limit,useContext,suggestWhenEmpty,typedWordMode,language);
+ const auto completions=suggestTokens(text,dictionary,frequencies,limit,useContext,suggestWhenEmpty,"never",language);
+ const auto next=suggestTokens(text+" ",dictionary,frequencies,limit,useContext,true,"never",language);
+ QStringList ranked;
+ for(int i=0;i<qMax(completions.size(),next.size());++i){
+  if(i<completions.size()&&!ranked.contains(completions[i]))ranked<<completions[i];
+  if(i<next.size()){
+   const auto candidate=current+next[i];if(!ranked.contains(candidate))ranked<<candidate;
+  }
+  if(ranked.size()>=limit)break;
+ }
+ if(typedWordMode=="always"||(typedWordMode=="fallback"&&ranked.isEmpty()))ranked.prepend(current);
+ return ranked.mid(0,limit);
+}
 }

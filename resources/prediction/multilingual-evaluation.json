@@ -215,20 +215,21 @@
       "heldout_sha256": "8630cb51b2f2399a9d7381fc9c4f1fb8554f59fa49fa945846dc9ec675f11611"
     },
     {
-      "cold_initialization_ms": 150.0319,
-      "completion_events": 0,
-      "completion_top3_percent": null,
+      "cold_initialization_ms": 102.9775,
+      "completion_events": 68,
+      "completion_top3_percent": 69.11764705882354,
       "language": "cmn",
       "learning": false,
-      "next_token_events": 1854,
-      "next_token_top3_percent": 41.963322545846815,
+      "next_token_events": 1179,
+      "next_token_top3_percent": 22.561492790500424,
       "sentences": 200,
-      "tokenization": "character",
-      "tokens": 2054,
-      "vocabulary_coverage_percent": 99.95131450827654,
-      "warm_p95_ms": 0.2258,
-      "model_sha256": "5d42d7fb9037458f01bcee5d56d889d6c66446cb1cbfbaf4491365ec5e3d98df",
-      "heldout_sha256": "f9a407944099229252ef4448ddf67f44cfa3251bd75ac1b6297250b72e49a9a0"
+      "tokenization": "segmented-word",
+      "tokens": 1379,
+      "vocabulary_coverage_percent": 97.02683103698332,
+      "warm_p95_ms": 0.3888,
+      "model_sha256": "0023e5cf027a9b4c1b8a04061657e83236a548b6c42713a854918ac3266ad2ce",
+      "heldout_sha256": "900f36086738912a7af18a6c92ce5ef6aa831942999a8edfe1eeada171ed0acf",
+      "lexicon_sha256": "5de0c4d09591132303c6a668d6de8181fa4fb08442303ddf8b2ba7f6b0cfa3a3"
     },
     {
       "cold_initialization_ms": 326.9394,
@@ -263,20 +264,21 @@
       "heldout_sha256": "7f6dbf035da706d72b7d4021fb12a6704c1b12f2740fa07fc87d18e2f3480e5a"
     },
     {
-      "cold_initialization_ms": 21.6768,
-      "completion_events": 0,
-      "completion_top3_percent": null,
+      "cold_initialization_ms": 7.7158,
+      "completion_events": 932,
+      "completion_top3_percent": 67.91845493562232,
       "language": "tha",
       "learning": false,
-      "next_token_events": 3042,
-      "next_token_top3_percent": 69.75673898750821,
+      "next_token_events": 851,
+      "next_token_top3_percent": 19.38895417156287,
       "sentences": 200,
-      "tokenization": "character",
-      "tokens": 3242,
-      "vocabulary_coverage_percent": 99.81492905613818,
-      "warm_p95_ms": 0.0624,
-      "model_sha256": "687d9553c6fe64518a5d20e52c2392723bea45a93ceb8d9ddd8a9d40f77f52fb",
-      "heldout_sha256": "8705694e90ddf779f4cc41856ba9c8d5b8e0bf4ccb59d62d97060d6bfbe757c1"
+      "tokenization": "segmented-word",
+      "tokens": 1051,
+      "vocabulary_coverage_percent": 93.52997145575642,
+      "warm_p95_ms": 0.1285,
+      "model_sha256": "e035d35ad1bf450269e1db8eb8d3bdfba225af43ef4e545d7392be8024ea6ea9",
+      "heldout_sha256": "2b7ef6243f0e98110adbb65db3b5bad90bbfee7b64b375d7ff005dd1bf983fe7",
+      "lexicon_sha256": "194371c5e6962dbc1eca621da69ee05405af0e62559b4ef2835dcdb8e1619071"
     }
   ]
 }

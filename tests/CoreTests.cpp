@@ -56,14 +56,41 @@ private slots:
   QCOMPARE(WordPrediction::prefix(supplementary,"eng"),supplementary);
   QCOMPARE(WordPrediction::completedWord(supplementary+"!"),supplementary);
   QVERIFY(WordPrediction::prefix("123"+supplementary).isEmpty());
-  QCOMPARE(PredictionLanguage::tokens(supplementary+QString(QChar(0x301))+" "+supplementary,"cmn"),QStringList({supplementary+QString(QChar(0x301)),supplementary}));
+  QCOMPARE(PredictionLanguage::tokens(supplementary+QString(QChar(0x301))+" "+supplementary,"jpn"),QStringList({supplementary+QString(QChar(0x301)),supplementary}));
   QCOMPARE(PredictionLanguage::tokens("L'amour, cafe\xcc\x81!","fra"),QStringList({"l'amour",QString::fromUtf8("caf\xc3\xa9")}));
   const QStringList dictionary{supplementary};
-  QCOMPARE(WordPrediction::suggest("",dictionary,{},8,false,true,"never","cmn"),dictionary);
-  QCOMPARE(WordPrediction::suggest(supplementary,dictionary,{},8,false,true,"never","cmn"),dictionary);
-  QCOMPARE(PredictionLanguage::completion(supplementary,supplementary,"cmn",true),supplementary);
+  QCOMPARE(WordPrediction::suggest("",dictionary,{},8,false,true,"never","jpn"),dictionary);
+  QCOMPARE(WordPrediction::suggest(supplementary,dictionary,{},8,false,true,"never","jpn"),dictionary);
+  QCOMPARE(PredictionLanguage::completion(supplementary,supplementary,"jpn",true),supplementary);
  }
 
+
+ void segmentationMatchesTrainer(){
+  QFile file(":/resources/prediction/segmentation/cases.json");QVERIFY(file.open(QIODevice::ReadOnly));
+  for(const auto &item:QJsonDocument::fromJson(file.readAll()).array()){
+   const auto entry=item.toObject();QStringList expected;
+   for(const auto &token:entry["tokens"].toArray())expected<<token.toString();
+   QCOMPARE(WordSegmentation::segment(entry["text"].toString(),entry["language"].toString()),expected);
+  }
+ }
+ void segmentedWordPrediction(){
+  const auto chinese=QString::fromUtf8("\xe4\xb8\xad\xe5\x9b\xbd");
+  const auto thai=QString::fromUtf8("\xe0\xb8\xa0\xe0\xb8\xb2\xe0\xb8\xa9\xe0\xb8\xb2\xe0\xb9\x84\xe0\xb8\x97\xe0\xb8\xa2");
+  QCOMPARE(WordSegmentation::segment(chinese,"cmn"),QStringList{chinese});
+  QVERIFY(!WordSegmentation::segment(thai,"tha").isEmpty());
+  for(const auto language:QStringList{"cmn","tha"}){
+   const auto words=WordPrediction::dictionary(language);
+   const auto context=language=="cmn"?chinese:thai;
+   const auto results=WordPrediction::suggest(context,words,{},8,true,false,"never",language);
+   QVERIFY2(!results.isEmpty(),qPrintable(language));
+   const auto prefix=WordPrediction::prefix(context,language);
+   for(const auto &candidate:results){
+    QVERIFY(candidate.startsWith(prefix));
+    const auto inserted=PredictionLanguage::completion(context,candidate,language,true);
+    QVERIFY(!inserted.isEmpty());QVERIFY(!inserted.contains(' '));
+   }
+  }
+ }
  void vietnamesePhraseCompletion(){
   const auto words=WordPrediction::dictionary("vie");
   const auto phrase=QString::fromUtf8("xin l\xe1\xbb\x97i");

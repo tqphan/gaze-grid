@@ -2,9 +2,10 @@
 """Download Tatoeba exports and train bounded, reproducible multilingual n-grams."""
 import argparse, bz2, collections, datetime, hashlib, json, re, struct, unicodedata, urllib.request, zlib
 from pathlib import Path
+import word_segmentation
 LANGUAGES = {"spa":"Spanish", "fra":"French", "deu":"German", "por":"Portuguese", "ita":"Italian", "nld":"Dutch", "rus":"Russian", "ukr":"Ukrainian", "pol":"Polish", "tur":"Turkish", "vie":"Vietnamese", "ind":"Indonesian", "ara":"Arabic", "cmn":"Chinese", "jpn":"Japanese", "kor":"Korean", "tha":"Thai"}
 ROOT = Path(__file__).resolve().parents[1]
-CHARACTER_LANGUAGES={"cmn", "jpn", "tha"}
+CHARACTER_LANGUAGES={"jpn"}
 def tokens(text, code="eng"):
     words=[]; word=""
     normalized=unicodedata.normalize("NFC", text.replace("\u2019", "'"))
@@ -15,6 +16,8 @@ def tokens(text, code="eng"):
             if word.strip("'"): words.append(word.strip("'"))
             word=""
     if word.strip("'"): words.append(word.strip("'"))
+    if code in word_segmentation.LANGUAGES:
+        return [token for word in words for token in word_segmentation.segment(word,code)]
     if code in CHARACTER_LANGUAGES:
         clusters=[]
         for word in words:
@@ -68,7 +71,10 @@ def train(code, cache, output, maximum):
     raw=("\n".join(rows)+"\n").encode(); data=struct.pack(">I",len(raw))+zlib.compress(raw,9)
     (output/f"{code}-v1.bin").write_bytes(data)
     (cache/f"{code}-heldout.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in held),encoding="utf-8")
-    metadata={"language":code,"tokenization":"character" if code in CHARACTER_LANGUAGES else "word","name":LANGUAGES[code],"source":url,"license":"CC BY 2.0 FR","attribution":"Tatoeba contributors (https://tatoeba.org)","retrieved_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),"source_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"model_sha256":hashlib.sha256(data).hexdigest(),"training_sentences":training,"heldout_sentences":len(held),"maximum_training_sentences":maximum,"compressed_bytes":len(data),"counts":sizes,"split":"SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed","selection":"Export order, first maximum eligible training sentences","normalization":"NFC, "+("Turkish lowercase" if code=="tur" else "lowercase")+", letters and combining marks, internal apostrophes; sentence punctuation resets context"}
+    metadata={"language":code,"tokenization":"segmented-word" if code in word_segmentation.LANGUAGES else "character" if code in CHARACTER_LANGUAGES else "word","name":LANGUAGES[code],"source":url,"license":"CC BY 2.0 FR","attribution":"Tatoeba contributors (https://tatoeba.org)","retrieved_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),"source_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"model_sha256":hashlib.sha256(data).hexdigest(),"training_sentences":training,"heldout_sentences":len(held),"maximum_training_sentences":maximum,"compressed_bytes":len(data),"counts":sizes,"split":"SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed","selection":"Export order, first maximum eligible training sentences","normalization":"NFC, "+("Turkish lowercase" if code=="tur" else "lowercase")+", letters and combining marks, internal apostrophes; sentence punctuation resets context"}
+    if code in word_segmentation.LANGUAGES:
+        metadata["lexicon_sha256"]=hashlib.sha256((ROOT/f"resources/prediction/{code}-lexicon-v1.bin").read_bytes()).hexdigest()
+        metadata["segmentation"]="Minimum integer-cost lexicon path; unknown letter plus attached marks costs 30000; ties prefer longer token"
     (output/f"{code}-manifest.json").write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(f"Trained {code}: {training} sentences, {len(vocabulary)} words, {len(data)} bytes",flush=True)
     return metadata

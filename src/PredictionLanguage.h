@@ -2,11 +2,18 @@
 #include <QLocale>
 #include <QString>
 #include <QStringList>
+#include "WordSegmentation.h"
 
 // Rules shared by prediction, completion acceptance, and personal learning.
 namespace PredictionLanguage {
+inline QString fromLocale(const QString &locale){
+ const QStringList prefixes{"en","es","fr","de","pt","it","nl","ru","uk","pl","tr","vi","id","ar","zh","ja","ko","th"};
+ const QStringList codes{"eng","spa","fra","deu","por","ita","nld","rus","ukr","pol","tur","vie","ind","ara","cmn","jpn","kor","tha"};
+ const int index=prefixes.indexOf(locale.section('_',0,0).section('-',0,0).toLower());
+ return index<0?QString():codes[index];
+}
 inline bool characterBased(const QString &language){
- return language=="cmn"||language=="jpn"||language=="tha";
+ return language=="jpn";
 }
 inline bool wordCharacter(QChar ch){
  return ch.isLetter()||ch.isMark()||ch=='\''||ch==QChar(0x2019);
@@ -40,6 +47,10 @@ inline QString rawPrefix(const QString &text,const QString &language){
  if(start==characters.size()||!QChar::isLetter(characters[start])
     ||(start>0&&QChar::isLetterOrNumber(characters[start-1])))return {};
  const auto result=QString::fromUcs4(characters.data()+start,characters.size()-start);
+ if(WordSegmentation::supported(language)){
+  const auto prefix=WordSegmentation::prefix(normalize(result),language);
+  return result.right(prefix.size());
+ }
  return result;
 }
 // Match the trainer's letter/mark tokens; character models attach marks to
@@ -57,6 +68,9 @@ inline QStringList tokens(const QString &text,const QString &language){
   else flush();
  }
  flush();
+ if(WordSegmentation::supported(language)){
+  QStringList segmented;for(const auto &entry:words)segmented+=WordSegmentation::segment(entry,language);return segmented;
+ }
  if(!characterBased(language))return words;
  QStringList clusters;
  for(const auto &entry:words){
@@ -67,7 +81,7 @@ inline QStringList tokens(const QString &text,const QString &language){
  }
  return clusters;
 }
-inline bool appendSpace(const QString &language){return !characterBased(language);}
+inline bool appendSpace(const QString &language){return language!="cmn"&&language!="jpn"&&language!="tha";}
 // Preserve the original prefix (including decomposed accents and apostrophes).
 // Only the suffix is inserted, so acceptance never deletes user text.
 inline QString completion(const QString &text,const QString &candidate,const QString &language,bool space){

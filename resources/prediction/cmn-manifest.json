@@ -1,24 +1,26 @@
 {
   "language": "cmn",
-  "tokenization": "character",
+  "tokenization": "segmented-word",
   "name": "Chinese",
   "source": "https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2",
   "license": "CC BY 2.0 FR",
   "attribution": "Tatoeba contributors (https://tatoeba.org)",
-  "retrieved_utc": "2026-11-01T22:44:15.525438+00:00",
+  "retrieved_utc": "2026-11-02T23:40:16.197383+00:00",
   "source_sha256": "d603c1b9c67fb7a5a68c56fe6df5c935025ca1f36a1f9a912c33ed6dbed91743",
-  "model_sha256": "5d42d7fb9037458f01bcee5d56d889d6c66446cb1cbfbaf4491365ec5e3d98df",
-  "training_sentences": 84459,
+  "model_sha256": "0023e5cf027a9b4c1b8a04061657e83236a548b6c42713a854918ac3266ad2ce",
+  "training_sentences": 83899,
   "heldout_sentences": 1000,
   "maximum_training_sentences": 200000,
-  "compressed_bytes": 562002,
+  "compressed_bytes": 438770,
   "counts": {
-    "unigrams": 4487,
-    "b": 42837,
-    "t": 46202,
-    "q": 29498
+    "unigrams": 15022,
+    "b": 32903,
+    "t": 24762,
+    "q": 15498
   },
   "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
   "selection": "Export order, first maximum eligible training sentences",
-  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context",
+  "lexicon_sha256": "5de0c4d09591132303c6a668d6de8181fa4fb08442303ddf8b2ba7f6b0cfa3a3",
+  "segmentation": "Minimum integer-cost lexicon path; unknown letter plus attached marks costs 30000; ties prefer longer token"
 }

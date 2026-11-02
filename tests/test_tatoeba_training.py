@@ -1,10 +1,13 @@
 import bz2
 import hashlib
+import json
 import importlib.util
 from pathlib import Path
 import struct
 import tempfile
 import unittest
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
 import zlib
 
 spec=importlib.util.spec_from_file_location("trainer",Path(__file__).resolve().parents[1]/"tools/train_tatoeba.py")
@@ -13,7 +16,12 @@ trainer=importlib.util.module_from_spec(spec);spec.loader.exec_module(trainer)
 class TrainingTests(unittest.TestCase):
     def test_unicode_and_character_marks(self):
         self.assertEqual(trainer.tokens("Caf\u00e9 l\u2019ami"),["caf\u00e9","l'ami"])
-        self.assertEqual(trainer.tokens("\u0e01\u0e34\u0e19","tha"),["\u0e01\u0e34","\u0e19"])
+        self.assertEqual(trainer.tokens("\u0e01\u0e34\u0e19","tha"),["\u0e01\u0e34\u0e19"])
+
+    def test_segmentation_fixtures(self):
+        cases=json.loads((Path(__file__).resolve().parents[1]/"resources/prediction/segmentation/cases.json").read_text(encoding="utf-8"))
+        for case in cases:
+            self.assertEqual(trainer.word_segmentation.segment(case["text"],case["language"]),case["tokens"])
 
     def test_turkish_casing(self):
         self.assertEqual(trainer.tokens("ISLAK \u0130STANBUL", "tur"),["\u0131slak", "istanbul"])
