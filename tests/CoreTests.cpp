@@ -162,6 +162,26 @@ private slots:
   QCOMPARE(inserted,completion["text"].toString());
   QCOMPARE(text.takeFirst().front().toString(),inserted);
  }
+ void predictionsUseUnicodeOnlyForNonAscii(){
+  for(bool system:{false,true}){
+   ActionRunner runner;runner.physicalText=system;runner.physicalTextReady=[]{return true;};
+   QStringList keys,insertions;
+   runner.sendKey=[&](QString name,bool down){keys<<name+(down?"+":"-");return true;};
+   runner.sendText=[&](QString text){insertions<<text;return true;};
+   QSignalSpy finished(&runner,&ActionRunner::finished);
+   auto ascii=cmd("Text","Hi ");ascii["literalCompletion"]=true;
+   QVERIFY(runner.start({ascii}));QTRY_COMPARE(finished.size(),1);
+   QVERIFY(insertions.isEmpty());QCOMPARE(keys,QStringList({"LSHIFT+","H+","H-","LSHIFT-","I+","I-","SPACE+","SPACE-"}));
+   keys.clear();ascii["alwaysUnicode"]=true;
+   QVERIFY(runner.start({ascii}));QTRY_COMPARE(finished.size(),2);
+   QCOMPARE(insertions.takeFirst(),QString("Hi "));QVERIFY(keys.isEmpty());
+   for(const auto value:{QString::fromUtf8("caf\xc3\xa9 "),QString::fromUtf8("\xe4\xbd\xa0 ")}){
+    auto unicode=cmd("Text",value);unicode["literalCompletion"]=true;
+    const int expected=finished.size()+1;QVERIFY(runner.start({unicode}));QTRY_COMPARE(finished.size(),expected);
+    QCOMPARE(insertions.takeFirst(),value);QVERIFY(keys.isEmpty());
+   }
+  }
+ }
  void systemKeyboardProfileCompatibility(){
   auto profile=ProfileStore::defaults();QCOMPARE(profile["systemKeyboard"].toBool(),false);QVERIFY(ProfileStore::valid(profile));
   profile.remove("systemKeyboard");QVERIFY(ProfileStore::valid(profile));

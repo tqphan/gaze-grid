@@ -142,6 +142,15 @@ private slots:
   QVERIFY(c.executeCommands(caps));QTRY_VERIFY(!c.executingCommands());QVERIFY(!c.keyToggled(caps));
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
+ void predictionUnicodeModePersists(){
+  Controller c;c.resetPreferences();QCOMPARE(c.predictionUnicodeMode(),QString("nonAscii"));
+  c.setPredictionUnicodeMode("always");QVERIFY(c.savePreferences());
+  {Controller restored;QCOMPARE(restored.predictionUnicodeMode(),QString("always"));}
+  c.setPredictionUnicodeMode("invalid");QCOMPARE(c.predictionUnicodeMode(),QString("always"));
+  c.resetPreferences();QCOMPARE(c.predictionUnicodeMode(),QString("nonAscii"));QVERIFY(c.savePreferences());
+  auto values=ProfileStore::defaults();values.remove("predictionUnicodeMode");QVERIFY(ProfileStore::valid(values));
+  for(const QJsonValue invalid:{QJsonValue("invalid"),QJsonValue(1),QJsonValue(false)}){values["predictionUnicodeMode"]=invalid;QVERIFY(!ProfileStore::valid(values));}
+ }
  void predictionLanguagePersists(){
   Controller c;c.resetPreferences();QCOMPARE(c.predictionLanguage(),QString("eng"));
   c.setPredictionLanguage("spa");QCOMPARE(c.predictionLanguage(),QString("spa"));QVERIFY(c.savePreferences());
@@ -696,10 +705,10 @@ private slots:
    auto type=[&](QString text){QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",text}}}));QTRY_VERIFY(!c.executingCommands());};
    type("thank y");QCOMPARE(c.property("suggestions").toStringList().first(),QString("you"));
    c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());QCOMPARE(c.property("scratchpad").toString(),QString("thank you "));
-   type(".");const QString expected=enabled?"thank you.":"thank you .";
+   type(".");const QString expected=enabled?"thank you. ":"thank you .";
    QCOMPARE(c.property("scratchpad").toString(),expected);
    if(desktop){QCOMPARE(output,expected);QCOMPARE(backspaces,enabled?1:0);}
-   type("!");QCOMPARE(c.property("scratchpad").toString(),expected+"!");
+   type("!");QCOMPARE(c.property("scratchpad").toString(),enabled?QString("thank you.! "):expected+"!");
    type(" hello ");type(",");QVERIFY(c.property("scratchpad").toString().endsWith(" hello ,"));
   }
  }
@@ -713,7 +722,7 @@ private slots:
   QCOMPARE(c.property("suggestions").toStringList().first(),QString("you"));
   c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());QCOMPARE(output,QString("thank you "));
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","."}}}));QTRY_VERIFY(!c.executingCommands());
-  QCOMPARE(output,QString("thank you."));QCOMPARE(backspaces,1);
+  QCOMPARE(output,QString("thank you. "));QCOMPARE(backspaces,1);
   QVERIFY(c.property("scratchpad").toString().isEmpty());
  }
  void completionSpaceIsPreservedAfterLettersSpacesAndCursorMovement(){
@@ -732,7 +741,16 @@ private slots:
   c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","LeftShift"}}}));QTRY_VERIFY(!c.executingCommands());
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","1"}}}));QTRY_VERIFY(!c.executingCommands());
-  QCOMPARE(c.property("scratchpad").toString(),QString("thank you!"));
+  QCOMPARE(c.property("scratchpad").toString(),QString("thank you! "));
+ }
+ void punctuationDoesNotAddSpaceWhenCompletionSpacingIsOff(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+  auto type=[&](QString text){QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",text}}}));QTRY_VERIFY(!c.executingCommands());};
+  type("thank y");c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
+  QCOMPARE(c.property("scratchpad").toString(),QString("thank you "));
+  c.setAddSpaceAfterCompletion(false);type(".");
+  QCOMPARE(c.property("scratchpad").toString(),QString("thank you."));
+  c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void punctuationSpacePreferencePersistsAndResets(){
   {Controller c;c.setRemoveCompletionSpaceBeforePunctuation(false);QVERIFY(c.savePreferences());}

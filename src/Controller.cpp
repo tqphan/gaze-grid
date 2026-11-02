@@ -114,6 +114,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  gazeEnabled=profile.values["gazeEnabled"].toBool(true);
  typedWordMode=profile.values["typedWordSuggestionMode"].toString("fallback");
  predictionModeValue=profile.values["predictionMode"].toString("context");
+ predictionUnicodeModeValue=profile.values["predictionUnicodeMode"].toString("nonAscii");
  nextWordEnabled=profile.values["predictNextWord"].toBool(true);
  completionSpaceEnabled=profile.values["addSpaceAfterCompletion"].toBool(true);
  removeCompletionSpaceEnabled=profile.values["removeCompletionSpaceBeforePunctuation"].toBool(true);
@@ -242,6 +243,10 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  connect(&runner,&ActionRunner::finished,this,&Controller::dispatchOverlap,Qt::QueuedConnection);
  connect(&runner,&ActionRunner::textCommitted,this,&Controller::updateText);
  runner.removeSpaceBeforeText=[this](QString text){return (!scratchpadEditable()||!localInput.attached()||localInput.atEnd())&&takeCompletionSpace(text);};
+ runner.appendSpaceAfterPunctuation=[this](QString text){
+  if(!completionSpaceEnabled)return false;
+  pendingCompletionText=text+' ';return true;
+ };
  connect(&runner,&ActionRunner::keyPressed,this,[this](QString name){
   if(name=="CAPITAL")systemCaps=!systemCaps;
   if(name!="LSHIFT"&&name!="RSHIFT"&&name!="CAPITAL")completionSpaceContext.clear();
@@ -396,6 +401,7 @@ bool Controller::savePreferences(){
  values["systemKeyboard"]=systemKeyboard();
  values["localImeLocale"]=wantedImeLocale;
  values["predictionLanguage"]=predictionLanguageValue;
+ values["predictionUnicodeMode"]=predictionUnicodeModeValue;
  values["groupDwellTimes"]=QJsonObject::fromVariantMap(groupDwellValues);
  values["speechProfiles"]=QJsonArray::fromVariantList(speechProfiles);
  values["activeSpeechProfile"]=speechProfileIndex;
@@ -431,6 +437,7 @@ void Controller::resetPreferences(){
  dwellIndicatorStyle="bar";
  groupDwellValues.clear();
  setPredictionLanguage("eng");
+ predictionUnicodeModeValue="nonAscii";
  dwellMs=values["dwellMs"].toInt();literal=false;learning=false;predictionModeValue="context";typedWordMode="fallback";nextWordEnabled=true;completionSpaceEnabled=true;sentenceStartersEnabled=true;backStack.clear();
  repeatIntervalMs=750;
  setKeyCycleModes({"Tap","Repeat","Hold","Toggle"});
@@ -821,7 +828,7 @@ void Controller::activate(QString key){
   QString prefix=WordPrediction::prefix(typingContext(),predictionLanguageValue);auto word=suggestions[i];
   const bool space=completionSpaceEnabled&&!WordPrediction::characterLanguage(predictionLanguageValue);
   const auto text=word.mid(prefix.size())+(space?QString(" "):QString());
-  auto completion=command("Text",text);completion["literalCompletion"]=systemKeyboard();
+  auto completion=command("Text",text);completion["literalCompletion"]=!nativeMode;completion["alwaysUnicode"]=predictionUnicodeModeValue=="always";
   if(runner.start({completion}))pendingCompletionText=space?text:QString();
   return;
  }
@@ -1073,7 +1080,10 @@ const QString &Controller::typingContext()const{return hasScratchpad()?scratchpa
 bool Controller::setScratchpadText(const QString &text){
  if(!scratchpadEditable()||!desktopActive||paused||sensitiveInput||!text.isValidUtf16()||text.contains(QChar(0)))return false;
  if(scratchpad==text)return true;
- scratchpad=text;pendingCompletionText.clear();completionSpaceContext.clear();updateSuggestions();return true;
+ const bool completion=!pendingCompletionText.isEmpty()&&text==scratchpad+pendingCompletionText;
+ scratchpad=text;pendingCompletionText.clear();completionSpaceContext.clear();
+ if(completion&&text.endsWith(' '))completionSpaceContext=text;
+ updateSuggestions();return true;
 }
 void Controller::attachScratchpad(QObject *editor){
  if(!editor||!editor->property("committedText").isValid())return;
@@ -1154,6 +1164,10 @@ void Controller::setPredictionLanguage(const QString &language){
  dictionary=WordPrediction::dictionary(language);WordPrediction::prepare(dictionary,language);
  predictionContext.clear();completionSpaceContext.clear();pendingCompletionText.clear();
  updateSuggestions();
+}
+void Controller::setPredictionUnicodeMode(const QString &mode){
+ if(signInMode||predictionUnicodeModeValue==mode||!QStringList{"nonAscii","always"}.contains(mode))return;
+ predictionUnicodeModeValue=mode;emit changed();
 }
 void Controller::setPredictionMode(QString mode){
  if(signInMode)return;

@@ -1,5 +1,6 @@
 #include "ActionRunner.h"
 #include "KeyNames.h"
+#include <algorithm>
 namespace {
 const QSet<QString> modifierKeys{"LSHIFT","RSHIFT","LCONTROL","RCONTROL","LMENU","RMENU","LWIN","RWIN"};
 }
@@ -118,15 +119,18 @@ void ActionRunner::step(){
         if(!shortcut&&(!physicalText||textOnly)&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
             if((!textOnly||editingLocal())&&!tap("BACK")){fail("Could not remove the completion space");return;}
             if(!editingLocal())emit textCommitted("\b");
+            if(appendSpaceAfterPunctuation&&appendSpaceAfterPunctuation(effective)){value+=' ';effective+=' ';}
         }
         QString composed;
-        if(command.value("literalCompletion").toBool()&&!textOnly){
+        const bool completion=command.value("literalCompletion").toBool();
+        const bool unicodeCompletion=completion&&(command.value("alwaysUnicode").toBool()||std::any_of(value.cbegin(),value.cend(),[](QChar ch){return ch.unicode()>127;}));
+        if(unicodeCompletion&&!textOnly){
             ok=held.isEmpty()&&sendText&&(!canCommitText||canCommitText())&&sendText(value);
             if(ok)composed=value;
         }
         else if(editingLocal())ok=sendLocalText(effective,heldKeys());
         else if(textOnly){for(auto ch:value)composed+=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));}
-        else if(!physicalText&&sendText&&(!canCommitText||canCommitText())&&held.isEmpty()){
+        else if(!completion&&!physicalText&&sendText&&(!canCommitText||canCommitText())&&held.isEmpty()){
             QString pending;
             auto flush=[&]{if(pending.isEmpty())return true;bool result=sendText(pending);if(result)composed+=pending;pending.clear();return result;};
             for(auto ch:value){

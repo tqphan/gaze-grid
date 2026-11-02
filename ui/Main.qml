@@ -1035,6 +1035,15 @@ Window {
         onActivated:controller.predictionMode=["context","frequency","off"][currentIndex]
         Accessible.name:"Prediction style"
        }
+       Desktop.Label {text:"Unicode insertion"}
+       SettingsComboBox {
+        objectName:"predictionUnicodeModeSelector";Layout.fillWidth:true
+        model:["Non-ASCII only","Always"]
+        enabled:controller.predictionMode!=="off"
+        currentIndex:["nonAscii","always"].indexOf(controller.predictionUnicodeMode)
+        onActivated:controller.predictionUnicodeMode=["nonAscii","always"][currentIndex]
+        Accessible.name:"Unicode insertion"
+       }
        Desktop.Label {text:"Show the word I'm typing"}
        SettingsComboBox {
         objectName:"typedWordSuggestionModeSelector";Layout.fillWidth:true
