@@ -116,7 +116,17 @@ void ActionRunner::step(){
         bool shortcut=shortcutHeld();
         QString effective=value;
         if(textOnly||!held.isEmpty())for(auto &ch:effective)ch=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));
-        if(!shortcut&&(!physicalText||textOnly)&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
+        if(!shortcut&&removeSpaceBeforeText&&physicalText&&!textOnly&&!command.value("literalCompletion").toBool()){
+            effective.clear();
+            for(auto ch:value){
+                auto [name,needsShift]=KeyNames::usCharacter(ch);
+                const bool ownShift=needsShift&&!shifted();
+                if(ownShift&&!key("LSHIFT",true)){fail("Could not press Shift");return;}
+                if(physicalKeyText)effective+=physicalKeyText(name);
+                if(ownShift&&!key("LSHIFT",false)){fail("Could not release Shift");return;}
+            }
+        }
+        if(!shortcut&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
             if((!textOnly||editingLocal())&&!tap("BACK")){fail("Could not remove the completion space");return;}
             if(!editingLocal())emit textCommitted("\b");
             if(appendSpaceAfterPunctuation&&appendSpaceAfterPunctuation(effective)){value+=' ';effective+=' ';}

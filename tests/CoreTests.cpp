@@ -162,6 +162,29 @@ private slots:
   QCOMPARE(inserted,completion["text"].toString());
   QCOMPARE(text.takeFirst().front().toString(),inserted);
  }
+ void systemPunctuationRemovesCompletionSpace(){
+  for(bool enabled:{false,true})for(bool shift:{false,true}){
+   ActionRunner runner;runner.physicalText=true;
+   runner.physicalTextReady=[]{return true;};
+   QString output="word ";bool pending=true;
+   runner.physicalKeyText=[&](QString name){
+    if(name=="Q")return runner.shifted()?QString("!"):QString(".");
+    return name=="SPACE"?QString(" "):QString();
+   };
+   runner.sendKey=[&](QString name,bool down){
+    if(down){if(name=="BACK")output.chop(1);else if(name=="Q"||name=="SPACE")output+=runner.physicalKeyText(name);}
+    return true;
+   };
+   runner.removeSpaceBeforeText=[&](QString text){const bool remove=pending&&enabled&&text.size()==1&&text.front().isPunct();pending=false;return remove;};
+   runner.appendSpaceAfterPunctuation=[](QString){return true;};
+   QSignalSpy finished(&runner,&ActionRunner::finished);
+   if(shift){QVERIFY(runner.start({cmd("Action","LShift")}));QTRY_COMPARE(finished.size(),1);}
+   auto punctuation=cmd("Text","a");punctuation["systemText"]="q";
+   QVERIFY(runner.start({punctuation}));QTRY_COMPARE(finished.size(),shift?2:1);
+   const QString mark=shift?"!":".";
+   QCOMPARE(output,enabled?QString("word")+mark+" ":QString("word ")+mark);
+  }
+ }
  void predictionsUseUnicodeOnlyForNonAscii(){
   for(bool system:{false,true}){
    ActionRunner runner;runner.physicalText=system;runner.physicalTextReady=[]{return true;};
