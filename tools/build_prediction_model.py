@@ -77,7 +77,7 @@ def main():
         for key, count in sorted(selected):
             rows.append(tag + '\t' + '\t'.join(key) + '\t' + str(count))
     raw = ('\n'.join(rows) + '\n').encode()
-    destination = ROOT / 'resources/prediction/english-v1.bin'
+    destination = ROOT / 'resources/prediction/eng-v1.bin'
     destination.write_bytes(struct.pack('>I', len(raw)) + zlib.compress(raw, 9))
     Path(args.evaluation).write_text(''.join(json.dumps(row) + '\n' for row in heldout))
     metadata = {
@@ -89,7 +89,7 @@ def main():
         'model_sha256': digest(destination), 'compressed_bytes': destination.stat().st_size,
         'split': 'SHA256 of normalized sentence with common names/pronouns grouped; first 8 hex digits modulo 20; 0 held out',
     }
-    (destination.parent / 'manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
+    (destination.parent / 'eng-manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
     print(json.dumps(metadata, indent=2))
 
 if __name__ == '__main__':

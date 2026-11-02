@@ -1,24 +1,21 @@
 {
-  "language": "eng",
-  "tokenization": "word",
-  "name": "English",
-  "source": "https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2",
-  "license": "CC BY 2.0 FR",
-  "attribution": "Tatoeba contributors (https://tatoeba.org)",
-  "retrieved_utc": "2026-11-01T22:42:46.490528+00:00",
-  "source_sha256": "07f33d399f0a55b917202abbd901f23c39c54a6dd562252985ce8c7e168db6ef",
-  "model_sha256": "4423998413925e7ec22fa9989cc0a622473c5227996dbf97a02f3462b1755e46",
-  "training_sentences": 200000,
-  "heldout_sentences": 1000,
-  "maximum_training_sentences": 200000,
-  "compressed_bytes": 1093571,
-  "counts": {
-    "unigrams": 18353,
-    "b": 69829,
-    "t": 79744,
-    "q": 55563
+  "format": 1,
+  "training_sentences": 701650,
+  "heldout_sentences": 2000,
+  "unigrams": 57043,
+  "bigrams": 154789,
+  "trigrams": 216899,
+  "fourgrams": 176623,
+  "source_sha256": {
+    "sentences": "bb3dcc28a8984a26dc466ee14eb53c4210b0dd9bb111b9d686d1efc83ecf091c",
+    "frequencies": "5351ff405b1126ef555791dd4d9798a48e3e9a501a9fc481a9da957752cfb458"
   },
-  "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
-  "selection": "Export order, first maximum eligible training sentences",
-  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+  "model_sha256": "6763c92dcbc02a79eecdf70e156187af834640ab21a1b66fd1b4855c96e2c2b2",
+  "compressed_bytes": 3084107,
+  "split": "SHA256 of normalized sentence with common names/pronouns grouped; first 8 hex digits modulo 20; 0 held out",
+  "language": "eng",
+  "name": "English",
+  "tokenization": "word",
+  "license": "CC BY-SA 4.0",
+  "attribution": "Tatoeba contributors and Hermit Dave / FrequencyWords; see README.md"
 }

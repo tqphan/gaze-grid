@@ -138,7 +138,8 @@ private slots:
   View view;QVERIFY(view.window);QVERIFY(view.editor);
   const int key=view.find("Text","n");QVERIFY(key>=0);view.lookAtKey(key);QTRY_COMPARE(view.method.keyCount,1);view.stop();
   QVERIFY(view.editor->property("inputMethodComposing").toBool());view.controller.togglePause();
-  QTRY_VERIFY(!view.editor->property("inputMethodComposing").toBool());QVERIFY(view.controller.displaySuggestions().isEmpty());
+  QTRY_VERIFY(!view.editor->property("inputMethodComposing").toBool());
+  QVERIFY(!view.controller.localImeActive());QCOMPARE(view.controller.suggestionPrefix(),QString("suggest:"));
   view.controller.togglePause();view.controller.openLayout("keyboard-alphabet-14x4-bottom",false);
   QVERIFY(!view.controller.scratchpadEditable());QVERIFY(!view.controller.localImeActive());QVERIFY(!view.controller.ready());
  }

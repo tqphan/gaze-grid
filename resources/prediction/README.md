@@ -1,6 +1,6 @@
 # Bundled English prediction model
 
-`english-v1.bin` contains frequency priors and bigram/trigram/four-gram counts. It runs
+`eng-v1.bin` contains frequency priors and bigram/trigram/four-gram counts. It runs
 entirely locally, is included in the executable, and needs neither downloads nor
 personal training. The existing English dictionary bounds the general vocabulary;
 previously learned personal words can also be completed when personalization is enabled.
@@ -32,7 +32,7 @@ new learning without deleting them.
 
 The combined model data is distributed under **CC BY-SA 4.0**, with the above
 attribution retained. The application source code retains its existing license.
-`manifest.json` records exact source and output SHA-256 hashes and model sizes.
+`eng-manifest.json` records exact source and output SHA-256 hashes and model sizes.
 Source exports were retrieved during this implementation; upstream exports change.
 Use files matching the manifest hashes to reproduce this exact artifact.
 

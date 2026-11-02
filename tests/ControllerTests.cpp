@@ -127,6 +127,14 @@ private slots:
   c.setSystemKeyboard(false);QCOMPARE(c.keyboardLabels(),labels);QCOMPARE(c.property("layout").toMap(),layout);
   c.resetPreferences();QVERIFY(!c.systemKeyboard());QVERIFY(c.savePreferences());
  }
+ void systemConversationAllowsPredictions(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  c.openLayout("keyboard-conversation-bottom",false);c.setSystemKeyboard(true);
+  QVERIFY(c.scratchpadEditable());QVERIFY(!c.localImeActive());
+  QVERIFY(c.setScratchpadText("thank "));QVERIFY(c.displaySuggestions().contains("you"));
+  c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
  void predictionLanguagePersists(){
   Controller c;c.resetPreferences();QCOMPARE(c.predictionLanguage(),QString("eng"));
   c.setPredictionLanguage("spa");QCOMPARE(c.predictionLanguage(),QString("spa"));QVERIFY(c.savePreferences());

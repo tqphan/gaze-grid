@@ -58,8 +58,7 @@ struct Model {
  QHash<QString,double> prior;
  QHash<QString,Distribution> contexts;
  Model(const QString &language){
-  const auto name=language=="eng"?QString("english"):language=="eng-tatoeba"?QString("eng"):language;
-  QFile file(":/resources/prediction/"+name+"-v1.bin");
+  QFile file(":/resources/prediction/"+language+"-v1.bin");
   if(!file.open(QIODevice::ReadOnly))qFatal("Bundled prediction model is missing");
   QBuffer input;input.setData(qUncompress(file.readAll()));input.open(QIODevice::ReadOnly);
   // Parse one line at a time instead of retaining hundreds of thousands of

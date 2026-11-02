@@ -2,7 +2,7 @@
 """Download Tatoeba exports and train bounded, reproducible multilingual n-grams."""
 import argparse, bz2, collections, datetime, hashlib, json, re, struct, unicodedata, urllib.request, zlib
 from pathlib import Path
-LANGUAGES = {"eng":"English", "spa":"Spanish", "fra":"French", "deu":"German", "por":"Portuguese", "ita":"Italian", "nld":"Dutch", "rus":"Russian", "ukr":"Ukrainian", "pol":"Polish", "tur":"Turkish", "vie":"Vietnamese", "ind":"Indonesian", "ara":"Arabic", "cmn":"Chinese", "jpn":"Japanese", "kor":"Korean", "tha":"Thai"}
+LANGUAGES = {"spa":"Spanish", "fra":"French", "deu":"German", "por":"Portuguese", "ita":"Italian", "nld":"Dutch", "rus":"Russian", "ukr":"Ukrainian", "pol":"Polish", "tur":"Turkish", "vie":"Vietnamese", "ind":"Indonesian", "ara":"Arabic", "cmn":"Chinese", "jpn":"Japanese", "kor":"Korean", "tha":"Thai"}
 ROOT = Path(__file__).resolve().parents[1]
 CHARACTER_LANGUAGES={"cmn", "jpn", "tha"}
 def tokens(text, code="eng"):

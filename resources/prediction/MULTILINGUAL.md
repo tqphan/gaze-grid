@@ -20,7 +20,7 @@ Local IME composition keeps its own candidate row.
 ## Data and attribution
 
 Copyright Tatoeba contributors, https://tatoeba.org/ . The new `*-v1.bin` model
-files, excluding `english-v1.bin`, derive solely from Tatoeba sentence exports:
+files, excluding `eng-v1.bin`, derive solely from Tatoeba sentence exports:
 https://tatoeba.org/en/downloads . They are distributed under Creative Commons
 Attribution 2.0 France: https://creativecommons.org/licenses/by/2.0/fr/ .
 
@@ -29,14 +29,13 @@ duplicate removal, deterministic held-out split, vocabulary filtering, aggregate
 unigram/bigram/trigram/fourgram counts, pruning, and compression. Sentence IDs in
 held-out files link to https://tatoeba.org/en/sentences/show/ID . Each language's
 `LANG-manifest.json` records the source URL, hashes, limits, tokenization, and counts.
-The code remains under the repository license. `english-v1.bin` retains its
+The code remains under the repository license. `eng-v1.bin` retains its
 existing sources and CC BY-SA 4.0 terms in [README.md](README.md).
 
-The established English model remains active to preserve existing rankings.
-`eng-v1.bin` is a newly trained Tatoeba-only English candidate; the evaluation
-command exposes it as `eng-tatoeba`. Other language selections use their newly
-trained models directly. The candidate is not silently substituted for the
-larger established English corpus.
+The established English model is stored as `eng-v1.bin`, using the same naming
+convention as the other languages. Its metadata is in `eng-manifest.json`.
+Rebuild English with `tools/build_prediction_model.py` as documented in README.md;
+the multilingual trainer trains the other 17 languages and preserves English.
 
 ## Training
 
@@ -64,17 +63,14 @@ model, not a neural language model.
 ```powershell
 python tools/evaluate_tatoeba.py
 build/windows-mingw/prediction-eval.exe --language spa build/tatoeba/spa-heldout.jsonl
-build/windows-mingw/prediction-eval.exe --language eng-tatoeba build/tatoeba/eng-heldout.jsonl
 ```
 
 The actual C++ predictor is evaluated on the first 200 held-out sentences with no
 personal learning. Reports measure next-token top-three accuracy, word completion
 after two UTF-16 units, vocabulary coverage, initialization time, and warm p95
 latency. Character models report next-character accuracy and omit word-completion
-accuracy. `multilingual-evaluation.json` records the results. English candidate
-results apply to `eng-v1.bin`; the active legacy English model may already have
-seen sentences in this new split, so evaluating that model on this split would
-not be a clean held-out comparison.
+accuracy. `multilingual-evaluation.json` records the results. English retains its separate historical evaluation in `evaluation.json`;
+the English training corpus and held-out split differ from this multilingual run.
 
 These are in-domain tests. Tatoeba contains language-learning examples and similar
 sentence variants; exact deduplication does not remove all near-duplicate leakage.
@@ -83,12 +79,12 @@ External edits and IME conversions still cannot be observed by desktop predictio
 
 ## Recorded results
 
-The 18 training runs used 2,519,586 sentences and produced 12,438,888 bytes of
-new compressed models. The established English model is additional.
+The 17 non-English training runs used 2,319,586 sentences and produced
+11,345,317 bytes of compressed models. English adds 701,650 training sentences
+and a 3,084,107-byte model.
 
 | Language | Next-token top 3 | Completion top 3 |
 | --- | ---: | ---: |
-| English | 38.1% | 80.8% |
 | Spanish | 31.9% | 68.9% |
 | French | 34.3% | 74.1% |
 | German | 27.9% | 76.4% |
@@ -107,6 +103,6 @@ new compressed models. The established English model is additional.
 | Korean | 5.7% | 40.6% |
 | Thai | 69.8% | n/a |
 
-English results above describe the new candidate. Chinese, Japanese, and Thai
+Chinese, Japanese, and Thai
 next-token results describe character clusters; other rows describe word tokens.
 These units differ, so percentages should not be compared directly across rows.

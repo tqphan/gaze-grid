@@ -12,7 +12,7 @@ int main(int argc,char **argv){
  QCoreApplication app(argc,argv);
  if(app.arguments().value(1)=="--language"){
   const auto language=app.arguments().value(2);
-  if(!WordPrediction::languages().contains(language)&&language!="eng-tatoeba")return 2;
+  if(!WordPrediction::languages().contains(language))return 2;
   QElapsedTimer clock;clock.start();const auto vocabulary=WordPrediction::dictionary(language);
   WordPrediction::prepare(vocabulary,language);const double startup=clock.nsecsElapsed()/1e6;
   const bool characters=WordPrediction::characterLanguage(language);

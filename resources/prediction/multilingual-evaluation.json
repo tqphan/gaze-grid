@@ -1,23 +1,7 @@
 {
   "predictor": "production C++ WordPrediction",
-  "evaluation": "First 200 held-out sentences per language; no personal learning",
+  "evaluation": "First 200 held-out sentences per non-English language; no personal learning. English uses the established model and its separate historical evaluation.",
   "reports": [
-    {
-      "cold_initialization_ms": 292.1199,
-      "completion_events": 1195,
-      "completion_top3_percent": 80.83682008368201,
-      "language": "eng-tatoeba",
-      "learning": false,
-      "next_token_events": 1363,
-      "next_token_top3_percent": 38.07776962582538,
-      "sentences": 200,
-      "tokenization": "word",
-      "tokens": 1563,
-      "vocabulary_coverage_percent": 99.16826615483045,
-      "warm_p95_ms": 0.7566,
-      "model_sha256": "4423998413925e7ec22fa9989cc0a622473c5227996dbf97a02f3462b1755e46",
-      "heldout_sha256": "e9bf94688c347c6a47e5cc19d54c79d59a6803988a1b18dcdeaf80bcc99765d8"
-    },
     {
       "cold_initialization_ms": 276.5737,
       "completion_events": 979,

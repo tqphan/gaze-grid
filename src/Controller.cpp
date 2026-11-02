@@ -1137,7 +1137,6 @@ bool Controller::takeCompletionSpace(const QString &text){
  return ch.isPunct()||(ch.unicode()<128&&ch.isSymbol());
 }
 QStringList Controller::predictionSuggestions(int limit)const{
- if(systemKeyboard()&&scratchpadEditable())return {};
  const auto &context=typingContext();
  if(sensitiveInput||predictionModeValue=="off"||(!context.isEmpty()&&!nextWordEnabled&&WordPrediction::prefix(context,predictionLanguageValue).isEmpty()))return {};
  return WordPrediction::suggest(context,dictionary,learning?frequencies:QMap<QString,int>{},limit,predictionModeValue=="context",sentenceStartersEnabled,typedWordMode,predictionLanguageValue);
