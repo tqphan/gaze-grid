@@ -135,6 +135,13 @@ private slots:
   c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
+ void conversationCapsLockShowsToggleState(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+  const QVariantList caps{QVariantMap{{"tag","KeyDown"},{"text","CAPITAL"}},QVariantMap{{"tag","KeyUp"},{"text","CAPITAL"}}};
+  QVERIFY(!c.keyToggled(caps));QVERIFY(c.executeCommands(caps));QTRY_VERIFY(!c.executingCommands());QVERIFY(c.keyToggled(caps));
+  QVERIFY(c.executeCommands(caps));QTRY_VERIFY(!c.executingCommands());QVERIFY(!c.keyToggled(caps));
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
  void predictionLanguagePersists(){
   Controller c;c.resetPreferences();QCOMPARE(c.predictionLanguage(),QString("eng"));
   c.setPredictionLanguage("spa");QCOMPARE(c.predictionLanguage(),QString("spa"));QVERIFY(c.savePreferences());

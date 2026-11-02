@@ -98,10 +98,12 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
 #endif
  auto layoutTimer=new QTimer(this);layoutTimer->setInterval(250);
  connect(layoutTimer,&QTimer::timeout,this,[this]{
-  if(!desktopActive||!systemKeyboard()||!systemLayout.refresh())return;
+  if(!desktopActive||!systemLayout.refresh())return;
+  if(systemKeyboard()){
   dwell.reset();
   if(!systemLayout.available()){runner.cancel();endButtonHold();clearOverlap();actionStatus="System keyboard layout unavailable";}
   else if(actionStatus=="System keyboard layout unavailable")actionStatus="System keyboard enabled";
+  }
   emit changed();
  });
  layoutTimer->start();
@@ -1189,7 +1191,16 @@ void Controller::stopSpeech(){speech.stop();}
 
 bool Controller::keyToggled(const QVariantList &commands)const{
  const auto resolved=ShortcutMappings::resolve(commands,mappingProfile,bypassPlatformMappings(literal));
- return resolved.allowed&&runner.isToggled(resolved.commands);
+ if(!resolved.allowed)return false;
+ const auto isCaps=[](const QVariant &entry,const QString &tag){
+  const auto command=entry.toMap();
+  return command["tag"]==tag&&KeyNames::canonical(command["text"].toString().trimmed())=="CAPITAL";
+ };
+ const auto &keys=resolved.commands;
+ const bool caps=(keys.size()==1&&(isCaps(keys.front(),"Action")||isCaps(keys.front(),"KeyToggle")))
+  ||(keys.size()==2&&isCaps(keys.front(),"KeyDown")&&isCaps(keys.back(),"KeyUp"));
+ if(caps)return runner.textOnly?runner.capsLock:systemLayout.capsLocked(systemCaps);
+ return runner.isToggled(resolved.commands);
 }
 
 bool Controller::isSizeMoveKey(const QString &key) const{

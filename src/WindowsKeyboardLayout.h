@@ -28,6 +28,7 @@ public:
     bool refresh();
     bool available()const{return layout!=0;}
     Translation translate(int scan,Modifiers owned)const;
+    bool capsLocked()const{return observed.caps;}
 private:
     Functions functions;
     quintptr layout=0;

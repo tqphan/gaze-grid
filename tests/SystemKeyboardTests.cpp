@@ -27,9 +27,10 @@ private slots:
         snapshot={2,true,{}};QVERIFY(keyboard.refresh());keyboard.translate(16,{});QCOMPARE(translatedLayout,quintptr(2));
         snapshot={3,false,{}};QVERIFY(!keyboard.refresh());keyboard.translate(16,{});QCOMPARE(translatedLayout,quintptr(2));
         snapshot.modifiers.shift=true;QVERIFY(keyboard.refresh());QVERIFY(!keyboard.refresh());
-        snapshot.modifiers.caps=true;QVERIFY(keyboard.refresh());
+        QVERIFY(!keyboard.capsLocked());
+        snapshot.modifiers.caps=true;QVERIFY(keyboard.refresh());QVERIFY(keyboard.capsLocked());
         snapshot.modifiers.altGr=true;QVERIFY(keyboard.refresh());
-        snapshot={0,true,{}};QVERIFY(keyboard.refresh());QVERIFY(!keyboard.available());
+        snapshot={0,true,{}};QVERIFY(keyboard.refresh());QVERIFY(!keyboard.available());QVERIFY(!keyboard.capsLocked());
         QVERIFY(keyboard.translate(16,{}).text.isEmpty());
     }
     void buildsLayoutSpecificStateWithoutConsumingDeadKeys(){

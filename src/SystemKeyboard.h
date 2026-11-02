@@ -16,6 +16,7 @@ public:
     bool setKeymap(const QByteArray &keymap); // Linux: the injection device's XKB map.
     bool setModifiers(quint32 depressed,quint32 latched,quint32 locked,quint32 group);
     bool available()const;
+    bool capsLocked(bool fallback=false)const;
     QString label(int scan,Modifiers modifiers)const;
     static QVariantList labels(const QVariantList &keys,Modifiers modifiers,const Translate &translate);
 private:

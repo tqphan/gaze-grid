@@ -60,6 +60,15 @@ bool SystemKeyboard::available()const{
     return d->keymap&&(d->stateKnown?d->group<xkb_keymap_num_layouts(d->keymap):xkb_keymap_num_layouts(d->keymap)==1);
 #endif
 }
+bool SystemKeyboard::capsLocked(bool fallback)const{
+#ifdef _WIN32
+    Q_UNUSED(fallback);return d->windows.capsLocked();
+#else
+    if(!d->keymap||!d->stateKnown)return fallback;
+    const auto index=xkb_keymap_mod_get_index(d->keymap,XKB_MOD_NAME_CAPS);
+    return index!=XKB_MOD_INVALID&&(d->locked&(xkb_mod_mask_t(1)<<index));
+#endif
+}
 QString SystemKeyboard::label(int scan,Modifiers m)const{
     if(!available()||scan<1||scan>58)return {};
 #ifdef _WIN32
