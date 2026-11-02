@@ -147,20 +147,20 @@
       "heldout_sha256": "f169cb82fbfcb4c7dd243e35161af624e66565a5383934bc7db5eb94e8615c9f"
     },
     {
-      "cold_initialization_ms": 179.5922,
-      "completion_events": 834,
-      "completion_top3_percent": 45.44364508393286,
+      "cold_initialization_ms": 184.4413,
+      "completion_events": 855,
+      "completion_top3_percent": 46.08187134502924,
       "language": "tur",
       "learning": false,
-      "next_token_events": 712,
-      "next_token_top3_percent": 16.99438202247191,
+      "next_token_events": 734,
+      "next_token_top3_percent": 17.166212534059945,
       "sentences": 200,
       "tokenization": "word",
-      "tokens": 912,
-      "vocabulary_coverage_percent": 91.33771929824562,
-      "warm_p95_ms": 0.5707,
-      "model_sha256": "4402a41dc175b0e3c62a54508b6b74107dcc595d8c5b2f25c31882498a5dff8b",
-      "heldout_sha256": "01abc8cfa5520eddb79f1045d7dc42b9497c9ab3338ca989068454d1d8e0b458"
+      "tokens": 934,
+      "vocabulary_coverage_percent": 91.22055674518201,
+      "warm_p95_ms": 0.4769,
+      "model_sha256": "e74e2a400e062da9bb87545b092ff9f63a84cb363bb4e19a5570a1ab66c5771d",
+      "heldout_sha256": "02dcddab021348d8461b5a22a608031925ccf8d298f2d13b17c2d2ddbfa90837"
     },
     {
       "cold_initialization_ms": 49.8091,

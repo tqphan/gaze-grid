@@ -1,4 +1,5 @@
 #include "WordPrediction.h"
+#include "PredictionLanguage.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonDocument>
@@ -29,10 +30,10 @@ int main(int argc,char **argv){
     const auto word=item.toString();++total;covered+=vocabulary.contains(word);
     if(!context.isEmpty()){
      ++next;clock.restart();auto result=predict(context);latency<<clock.nsecsElapsed()/1e6;
-     for(auto &entry:result)entry=entry.toLower();nextHits+=result.contains(word);
+     for(auto &entry:result)entry=PredictionLanguage::lower(entry,language);nextHits+=result.contains(word);
     }
     if(!characters&&word.size()>2){
-     ++completion;auto result=predict(context+word.left(2));for(auto &entry:result)entry=entry.toLower();completionHits+=result.contains(word);
+     ++completion;auto result=predict(context+word.left(2));for(auto &entry:result)entry=PredictionLanguage::lower(entry,language);completionHits+=result.contains(word);
     }
     context+=word+(characters?QString():QString(" "));
    }

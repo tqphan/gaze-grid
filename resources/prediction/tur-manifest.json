@@ -5,20 +5,20 @@
   "source": "https://downloads.tatoeba.org/exports/per_language/tur/tur_sentences.tsv.bz2",
   "license": "CC BY 2.0 FR",
   "attribution": "Tatoeba contributors (https://tatoeba.org)",
-  "retrieved_utc": "2026-11-01T22:44:08.560169+00:00",
+  "retrieved_utc": "2026-11-02T23:18:08.854429+00:00",
   "source_sha256": "9a455f36b8762611936698354e2f01d4f6af1aa905cfb447c13f4f30358e586b",
-  "model_sha256": "4402a41dc175b0e3c62a54508b6b74107dcc595d8c5b2f25c31882498a5dff8b",
+  "model_sha256": "e74e2a400e062da9bb87545b092ff9f63a84cb363bb4e19a5570a1ab66c5771d",
   "training_sentences": 200000,
   "heldout_sentences": 1000,
   "maximum_training_sentences": 200000,
-  "compressed_bytes": 691597,
+  "compressed_bytes": 690849,
   "counts": {
-    "unigrams": 36982,
-    "b": 47224,
-    "t": 32229,
-    "q": 23325
+    "unigrams": 36801,
+    "b": 47299,
+    "t": 32295,
+    "q": 23352
   },
   "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
   "selection": "Export order, first maximum eligible training sentences",
-  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+  "normalization": "NFC, Turkish lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
 }

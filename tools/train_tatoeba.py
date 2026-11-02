@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CHARACTER_LANGUAGES={"cmn", "jpn", "tha"}
 def tokens(text, code="eng"):
     words=[]; word=""
-    for ch in unicodedata.normalize("NFC", text.replace("\u2019", "'")).lower():
+    normalized=unicodedata.normalize("NFC", text.replace("\u2019", "'"))
+    if code=="tur": normalized=normalized.replace("I", "\u0131").replace("\u0130", "i")
+    for ch in normalized.lower():
         if unicodedata.category(ch)[0] in "LM" or (ch=="'" and word): word+=ch
         else:
             if word.strip("'"): words.append(word.strip("'"))
@@ -66,7 +68,7 @@ def train(code, cache, output, maximum):
     raw=("\n".join(rows)+"\n").encode(); data=struct.pack(">I",len(raw))+zlib.compress(raw,9)
     (output/f"{code}-v1.bin").write_bytes(data)
     (cache/f"{code}-heldout.jsonl").write_text("".join(json.dumps(row,ensure_ascii=False)+"\n" for row in held),encoding="utf-8")
-    metadata={"language":code,"tokenization":"character" if code in CHARACTER_LANGUAGES else "word","name":LANGUAGES[code],"source":url,"license":"CC BY 2.0 FR","attribution":"Tatoeba contributors (https://tatoeba.org)","retrieved_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),"source_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"model_sha256":hashlib.sha256(data).hexdigest(),"training_sentences":training,"heldout_sentences":len(held),"maximum_training_sentences":maximum,"compressed_bytes":len(data),"counts":sizes,"split":"SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed","selection":"Export order, first maximum eligible training sentences","normalization":"NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"}
+    metadata={"language":code,"tokenization":"character" if code in CHARACTER_LANGUAGES else "word","name":LANGUAGES[code],"source":url,"license":"CC BY 2.0 FR","attribution":"Tatoeba contributors (https://tatoeba.org)","retrieved_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),"source_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"model_sha256":hashlib.sha256(data).hexdigest(),"training_sentences":training,"heldout_sentences":len(held),"maximum_training_sentences":maximum,"compressed_bytes":len(data),"counts":sizes,"split":"SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed","selection":"Export order, first maximum eligible training sentences","normalization":"NFC, "+("Turkish lowercase" if code=="tur" else "lowercase")+", letters and combining marks, internal apostrophes; sentence punctuation resets context"}
     (output/f"{code}-manifest.json").write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(f"Trained {code}: {training} sentences, {len(vocabulary)} words, {len(data)} bytes",flush=True)
     return metadata

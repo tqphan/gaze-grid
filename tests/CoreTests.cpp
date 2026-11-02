@@ -19,6 +19,7 @@
 #include <limits>
 #include "MagnifierGeometry.h"
 #include "WordPrediction.h"
+#include "PredictionLanguage.h"
 #include "ShortcutMappings.h"
 #include "PortalPermissionStore.h"
 #include <QJsonArray>
@@ -29,6 +30,34 @@ class CoreTests:public QObject{
  Q_OBJECT
 static QVariantMap cmd(QString tag,QString text){return {{"tag",tag},{"text",text}};}
 private slots:
+ void predictionLanguageRules(){
+  const QString decomposed=QString::fromUtf8("cafe\xcc\x81");
+  QCOMPARE(WordPrediction::prefix(decomposed,"fra"),QString::fromUtf8("caf\xc3\xa9"));
+  QCOMPARE(PredictionLanguage::rawPrefix(decomposed,"fra"),decomposed);
+  QCOMPARE(WordPrediction::completedWord(decomposed,"fra"),QString::fromUtf8("caf\xc3\xa9"));
+  QCOMPARE(PredictionLanguage::completion(decomposed,QString::fromUtf8("caf\xc3\xa9s"),"fra",true),QString("s "));
+  QCOMPARE(PredictionLanguage::completion(QString::fromUtf8("l\xe2\x80\x99"),"l'amour","fra",false),QString("amour"));
+  QVERIFY(PredictionLanguage::completion("ca","hello","fra",true).isEmpty());
+  QCOMPARE(PredictionLanguage::completion("","hello","eng",false),QString("hello"));
+  for(const auto &language:QStringList{"cmn","jpn","tha"}){
+   QVERIFY(!PredictionLanguage::appendSpace(language));
+   QCOMPARE(PredictionLanguage::completion("",QString::fromUtf8("\xe4\xbd\xa0"),language,true),QString::fromUtf8("\xe4\xbd\xa0"));
+  }
+  QCOMPARE(PredictionLanguage::lower("I","tur"),QString(QChar(0x131)));
+  QCOMPARE(PredictionLanguage::upper("i","tur"),QString(QChar(0x130)));
+  QCOMPARE(WordPrediction::completedWord("ISLAK!","tur"),QString(QChar(0x131))+"slak");
+  QCOMPARE(WordPrediction::completedWord("ISLAK!","eng"),QString("islak"));
+ }
+ void turkishPredictionCasing(){
+  const QString word=QString(QChar(0x131))+"slak";
+  const QStringList words{word,"istanbul"};
+  const auto results=WordPrediction::suggest("IS",words,{},8,false,false,"never","tur");
+  QVERIFY(results.contains("ISLAK"));
+  QVERIFY(!results.contains("ISTANBUL"));
+  const auto dotted=WordPrediction::suggest(QString(QChar(0x130))+"s",words,{},8,false,false,"never","tur");
+  QVERIFY(dotted.contains(QString(QChar(0x130))+"stanbul"));
+ }
+
  void keyboardFileCache(){
   QTemporaryDir dir;QVERIFY(dir.isValid());const auto path=dir.filePath("keyboard.xml");
   const QByteArray first="<Keyboard><Name>A</Name></Keyboard>",second="<Keyboard><Name>B</Name></Keyboard>";

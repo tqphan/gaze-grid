@@ -1,4 +1,5 @@
 #include "WordPrediction.h"
+#include "PredictionLanguage.h"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -10,26 +11,21 @@
 #include <QRegularExpression>
 namespace {
 bool letter(QChar ch){return ch.isLetter();}
-bool wordCharacter(QChar ch){return letter(ch)||ch.isMark()||ch=='\''||ch==QChar(0x2019);}
+bool wordCharacter(QChar ch){return PredictionLanguage::wordCharacter(ch);}
 }
-bool WordPrediction::characterLanguage(const QString &language){return language=="cmn"||language=="jpn"||language=="tha";}
+bool WordPrediction::characterLanguage(const QString &language){return PredictionLanguage::characterBased(language);}
 QString WordPrediction::prefix(const QString &text,const QString &language){
- if(characterLanguage(language))return {};
- int start=text.size();while(start>0&&wordCharacter(text[start-1]))--start;
- auto result=text.mid(start);
- // Do not complete a word embedded in a number or unsupported alphabet.
- if(start>0&&text[start-1].isLetterOrNumber())return {};
- if(result.isEmpty()||!letter(result.front()))return {};
- return result.normalized(QString::NormalizationForm_C).replace(QChar(0x2019),QChar(39));
+ return PredictionLanguage::normalize(PredictionLanguage::rawPrefix(text,language));
 }
-QString WordPrediction::completedWord(const QString &text){
- int end=text.size();while(end>0&&!text[end-1].isLetterOrNumber()&&text[end-1]!='\''){
-  if(text[end-1].isSpace())return {};
+QString WordPrediction::completedWord(const QString &text,const QString &language){
+ const auto normalized=PredictionLanguage::normalize(text);
+ int end=normalized.size();while(end>0&&!normalized[end-1].isLetterOrNumber()&&!normalized[end-1].isMark()&&normalized[end-1]!='\''){
+  if(normalized[end-1].isSpace())return {};
   --end;
  }
- auto word=prefix(text.left(end));
+ auto word=prefix(normalized.left(end),language);
  while(word.endsWith('\''))word.chop(1);
- return word.size()<64?word.toLower():QString();
+ return word.size()<64?PredictionLanguage::lower(word,language):QString();
 }
 namespace {
 struct Distribution {
@@ -97,7 +93,7 @@ const Index &vocabulary(const QStringList &dictionary,const QString &language){
  if(previous!=dictionary||previousLanguage!=language||index.sorted.isEmpty()){
   previous=dictionary;previousLanguage=language;index={};
   for(auto word:dictionary){
-   word=word.toLower();
+   word=PredictionLanguage::lower(PredictionLanguage::normalize(word),language);
    if(word.isEmpty()||!letter(word.front())||!std::all_of(word.begin(),word.end(),wordCharacter)||index.byWord.contains(word))continue;
    const double prior=model(language).prior.value(word,1e-10);
    index.byWord.insert(word,prior);index.sorted.append({word,prior});
@@ -116,7 +112,7 @@ QStringList WordPrediction::dictionary(const QString &language){
 void WordPrediction::prepare(const QStringList &dictionary,const QString &language){vocabulary(dictionary,language);}
 QStringList WordPrediction::suggest(const QString &text,const QStringList &dictionary,const QMap<QString,int> &frequencies,int limit,bool useContext,bool suggestWhenEmpty,const QString &typedWordMode,const QString &languageCode){
  if(limit<=0||(text.isEmpty()&&!suggestWhenEmpty))return {};
- const auto normalized=text.normalized(QString::NormalizationForm_C).replace(QChar(0x2019),QChar(39));
+ const auto normalized=PredictionLanguage::normalize(text);
  const bool characters=characterLanguage(languageCode);
  const auto current=prefix(normalized,languageCode);
  // Never offer an insertion inside numbers/unsupported alphabets or directly
@@ -125,8 +121,8 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
  const auto &language=model(languageCode);
  const auto &index=vocabulary(dictionary,languageCode);
  const auto &words=index.sorted;
- const auto lower=current.toLower();
- auto context=normalized.left(normalized.size()-current.size()).toLower();
+ const auto lower=PredictionLanguage::lower(current,languageCode);
+ auto context=PredictionLanguage::lower(normalized.left(normalized.size()-current.size()),languageCode);
  const int boundary=context.lastIndexOf(QRegularExpression("[.!?;:\\n\u3002\uff01\uff1f\u061b\u061f]"));
  context=context.mid(boundary+1);
  static const QRegularExpression token("[\\p{L}\\p{M}]+(?:'[\\p{L}\\p{M}]+)*");
@@ -169,7 +165,7 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
  }
  // Names and other personal vocabulary need not already be in the dictionary.
  for(auto it=frequencies.cbegin();it!=frequencies.cend();++it){
-  const auto word=it.key().toLower();
+  const auto word=PredictionLanguage::lower(PredictionLanguage::normalize(it.key()),languageCode);
   if(it.value()>0&&!word.isEmpty()&&letter(word.front())&&std::all_of(word.begin(),word.end(),wordCharacter)&&!index.byWord.contains(word))add(word,1e-7);
  }
  // Reserve the literal slot before ranking to keep pagination consistent.
@@ -185,9 +181,9 @@ QStringList WordPrediction::suggest(const QString &text,const QStringList &dicti
   auto word=ranked[i].word;
   if(!current.isEmpty()){
    auto suffix=word.mid(current.size());
-   if(current.size()>1&&current==current.toUpper())suffix=suffix.toUpper();
+   if(current.size()>1&&current==PredictionLanguage::upper(current,languageCode))suffix=PredictionLanguage::upper(suffix,languageCode);
    word=current+suffix;
-  }else if(sentenceStart)word[0]=word[0].toUpper();
+  }else if(sentenceStart)word=PredictionLanguage::upper(word.left(1),languageCode)+word.mid(1);
   if(languageCode=="eng"&&(word=="i"||word.startsWith("i'")))word[0]='I';
   result<<word;
  }

@@ -18,6 +18,7 @@
 #include "ActionCatalog.h"
 #include "GazeClock.h"
 #include "WordPrediction.h"
+#include "PredictionLanguage.h"
 #include "ShortcutMappings.h"
 #include "MagnifierGeometry.h"
 #include <QGuiApplication>
@@ -247,7 +248,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  connect(&runner,&ActionRunner::textCommitted,this,&Controller::updateText);
  runner.removeSpaceBeforeText=[this](QString text){return (!scratchpadEditable()||!localInput.attached()||localInput.atEnd())&&takeCompletionSpace(text);};
  runner.appendSpaceAfterPunctuation=[this](QString text){
-  if(!completionSpaceEnabled)return false;
+  if(!completionSpaceEnabled||!PredictionLanguage::appendSpace(predictionLanguageValue))return false;
   pendingCompletionText=text+' ';return true;
  };
  connect(&runner,&ActionRunner::keyPressed,this,[this](QString name){
@@ -857,9 +858,10 @@ void Controller::activate(QString key){
  if(key.startsWith("suggest:")){
   bool valid=false;int i=key.mid(8).toInt(&valid);if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()||(!runner.textOnly&&!ready()))return;
   if(!runner.heldKeys().isEmpty()){actionStatus="Release held keys before accepting a suggestion";emit changed();return;}
-  QString prefix=WordPrediction::prefix(typingContext(),predictionLanguageValue);auto word=suggestions[i];
-  const bool space=completionSpaceEnabled&&!WordPrediction::characterLanguage(predictionLanguageValue);
-  const auto text=word.mid(prefix.size())+(space?QString(" "):QString());
+  const auto word=suggestions[i];
+  const bool space=completionSpaceEnabled&&PredictionLanguage::appendSpace(predictionLanguageValue);
+  const auto text=PredictionLanguage::completion(typingContext(),word,predictionLanguageValue,space);
+  if(text.isEmpty())return;
   auto completion=command("Text",text);completion["literalCompletion"]=!nativeMode;completion["alwaysUnicode"]=predictionUnicodeModeValue=="always";
   if(runner.start({completion}))pendingCompletionText=space?text:QString();
   return;
@@ -1165,7 +1167,7 @@ void Controller::updateText(QString text){
  pendingCompletionText.clear();completionSpaceContext.clear();
  if(sensitiveInput)return;
  auto &context=typingContext();
- for(auto ch:text){if(ch=='\b'){if(!context.isEmpty()){QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,context);boundary.toEnd();context.truncate(qMax(0,boundary.toPreviousBoundary()));}}else{if(ch.isSpace()&&learning){QString word=WordPrediction::characterLanguage(predictionLanguageValue)?QString():WordPrediction::completedWord(context);if(!word.isEmpty()&&word.size()<64)frequencies[word]=qMin(1000000,frequencies.value(word)+1);}context+=ch;}}
+ for(auto ch:text){if(ch=='\b'){if(!context.isEmpty()){QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,context);boundary.toEnd();context.truncate(qMax(0,boundary.toPreviousBoundary()));}}else{if(ch.isSpace()&&learning){QString word=WordPrediction::characterLanguage(predictionLanguageValue)?QString():WordPrediction::completedWord(context,predictionLanguageValue);if(!word.isEmpty()&&word.size()<64)frequencies[word]=qMin(1000000,frequencies.value(word)+1);}context+=ch;}}
  if(context.size()>4096)context=context.right(4096);
  if(completion&&context.endsWith(' '))completionSpaceContext=context;
  updateSuggestions();

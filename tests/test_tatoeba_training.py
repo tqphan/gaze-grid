@@ -15,6 +15,10 @@ class TrainingTests(unittest.TestCase):
         self.assertEqual(trainer.tokens("Caf\u00e9 l\u2019ami"),["caf\u00e9","l'ami"])
         self.assertEqual(trainer.tokens("\u0e01\u0e34\u0e19","tha"),["\u0e01\u0e34","\u0e19"])
 
+    def test_turkish_casing(self):
+        self.assertEqual(trainer.tokens("ISLAK \u0130STANBUL", "tur"),["\u0131slak", "istanbul"])
+        self.assertEqual(trainer.tokens("I\u0307STANBUL", "tur"),["istanbul"])
+
     def test_reproducible_and_heldout_excluded(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);out=root/"models";out.mkdir()

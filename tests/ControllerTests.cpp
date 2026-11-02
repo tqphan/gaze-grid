@@ -1,3 +1,4 @@
+#include "WordPrediction.h"
 #include <QtTest>
 #include <QTemporaryDir>
 #include "Controller.h"
@@ -694,6 +695,24 @@ private slots:
   c.openLayout("keyboard-conversation-bottom",false);
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
   QVERIFY(c.property("suggestions").toStringList().isEmpty());
+ }
+
+ void multilingualCompletionPreservesTypedPrefix(){
+  for(const QString language:QStringList{"fra","tur","cmn"}){
+   Controller c;c.openLayout("keyboard-conversation-bottom",false);
+   c.setPredictionLanguage(language);c.setAddSpaceAfterCompletion(true);
+   const QString prefix=language=="fra"?QString::fromUtf8("cafe\xcc\x81"):language=="tur"?QString("IS"):QString();
+   if(!prefix.isEmpty()){
+    QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",prefix}}}));QTRY_VERIFY(!c.executingCommands());
+   }
+   const auto suggestions=c.property("suggestions").toStringList();
+   QVERIFY2(!suggestions.isEmpty(),qPrintable(language));
+   const auto candidate=suggestions.first();
+   const auto normalizedPrefix=WordPrediction::prefix(prefix,language);
+   const auto expected=prefix+candidate.mid(normalizedPrefix.size())+(language=="cmn"?QString():QString(" "));
+   c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
+   QCOMPARE(c.property("scratchpad").toString(),expected);
+  }
  }
  void completionSpaceCanBeDisabled(){
   for(bool addSpace:{false,true}){

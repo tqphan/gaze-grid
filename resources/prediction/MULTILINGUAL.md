@@ -106,3 +106,19 @@ and a 3,084,107-byte model.
 Chinese, Japanese, and Thai
 next-token results describe character clusters; other rows describe word tokens.
 These units differ, so percentages should not be compared directly across rows.
+
+## Language rules
+
+`src/PredictionLanguage.h` shares prefix boundaries, Unicode normalization,
+case conversion, and completion spacing between prediction and acceptance.
+Turkish uses dotted/dotless I casing for dictionary lookup, suggestions, and
+personal learning. The Turkish trainer uses the same casing rules, and its bundled
+model has been rebuilt from the cached source recorded in the manifest. Other languages retain Unicode default casing. Completion
+preserves the text already typed, including combining accents and curly
+apostrophes, and inserts only a matching suffix. Chinese, Japanese, and Thai
+continue to omit completion spaces.
+
+This is a rules foundation; it does not add segmented word models, phrase
+models, new keyboard layouts, or desktop IME context observation. Vietnamese
+still uses syllable-sized whitespace tokens, and German noun capitalization
+cannot be recovered from the current lowercased training vocabulary.
