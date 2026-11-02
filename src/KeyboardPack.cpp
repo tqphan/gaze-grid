@@ -3,11 +3,17 @@
 #include "ActionRunner.h"
 #include "ActionCatalog.h"
 #include <QFile>
+#include <QFileInfo>
+#include <QDateTime>
+#include <QHash>
 #include <QDir>
 #include <QXmlStreamReader>
 #include <QSet>
 #include <algorithm>
 namespace {
+bool caching=false;
+struct CachedKeyboard { qint64 size; QDateTime modified; QVariantMap root; QByteArray source; };
+QHash<QString,CachedKeyboard> cache;
 QVariantMap node(QXmlStreamReader &xml) {
     QVariantMap result, attrs; QVariantList children; QString text;
     result["tag"]=xml.name().toString();
@@ -37,10 +43,27 @@ void details(const QVariantMap &n,QSet<QString> &symbols,QSet<QString> &attribut
 }
 QStringList sorted(const QSet<QString> &set) {auto l=set.values(); l.sort(); return l;}
 }
-QVariantMap KeyboardPack::load(const QString &path) {
+bool KeyboardPack::cacheEnabled(){return caching;}
+void KeyboardPack::setCacheEnabled(bool enabled){caching=enabled;if(!enabled)cache.clear();}
+void KeyboardPack::invalidate(const QString &path){cache.remove(QFileInfo(path).absoluteFilePath());}
+QVariantMap KeyboardPack::load(const QString &path,QByteArray *source) {
+    if(source)source->clear();
+    const QFileInfo info(path);
+    const auto key=info.absoluteFilePath();
+    const auto size=caching?info.size():0;
+    const auto modified=caching?info.lastModified():QDateTime();
+    if(caching){
+        const auto it=cache.constFind(key);
+        if(info.isFile()&&it!=cache.cend()&&it->size==size&&it->modified==modified){
+            if(source)*source=it->source;
+            return it->root;
+        }
+        cache.remove(key);
+    }
     QFile f(path); if(!f.open(QIODevice::ReadOnly)) return {{"error",f.errorString()}};
     if(f.size()>4*1024*1024) return {{"error","Keyboard exceeds 4 MiB limit"}};
-    QXmlStreamReader xml(f.readAll()); QVariantMap root;
+    const auto bytes=f.readAll();
+    QXmlStreamReader xml(bytes); QVariantMap root;
     while(!xml.atEnd()) {
         xml.readNext();
         if(xml.isDTD() || xml.isEntityReference()) {xml.raiseError("DTD/entities are not supported"); break;}
@@ -49,6 +72,13 @@ QVariantMap KeyboardPack::load(const QString &path) {
     while(!xml.atEnd()) xml.readNext();
     if(xml.hasError()) return {{"error",QString("%1:%2: %3").arg(path).arg(xml.lineNumber()).arg(xml.errorString())}};
     if(root["tag"]!="Keyboard") return {{"error","Expected Keyboard root"}};
+    if(source)*source=bytes;
+    if(caching){
+        // Do not cache a read if the file changed while it was being loaded.
+        const QFileInfo after(path);
+        if(after.isFile()&&after.size()==size&&after.lastModified()==modified&&bytes.size()==size)
+            cache.insert(key,{size,modified,root,bytes});
+    }
     return root;
 }
 QVariantMap KeyboardPack::audit(const QString &directory) {

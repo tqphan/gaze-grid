@@ -254,7 +254,7 @@ void KeyboardEditor::moveKey(int index,QPointF p) {
 }
 bool KeyboardEditor::save(bool choosePath) {
     if(formDirty&&!apply())return false;
-    QString target=path;if(choosePath||target.isEmpty())target=QFileDialog::getSaveFileName(this,"Save keyboard",target.isEmpty()?"keyboard.xml":target,"Keyboard XML (*.xml)");if(target.isEmpty())return false;if(!validate(document))return false;QSaveFile file(target);auto bytes=document.toByteArray(2);if(!file.open(QIODevice::WriteOnly)||file.write(bytes)!=bytes.size()||!file.commit()){QMessageBox::warning(this,"Cannot save",file.errorString());return false;}path=target;saved=document.toString();render();return true;
+    QString target=path;if(choosePath||target.isEmpty())target=QFileDialog::getSaveFileName(this,"Save keyboard",target.isEmpty()?"keyboard.xml":target,"Keyboard XML (*.xml)");if(target.isEmpty())return false;if(!validate(document))return false;QSaveFile file(target);auto bytes=document.toByteArray(2);if(!file.open(QIODevice::WriteOnly)||file.write(bytes)!=bytes.size()||!file.commit()){QMessageBox::warning(this,"Cannot save",file.errorString());return false;}KeyboardPack::invalidate(target);path=target;saved=document.toString();render();return true;
 }
 bool KeyboardEditor::discard() {
     if(!formDirty&&document.toString()==saved)return true;auto answer=QMessageBox::question(this,"Unsaved keyboard","Save changes to this keyboard?",QMessageBox::Save|QMessageBox::Discard|QMessageBox::Cancel);return answer==QMessageBox::Discard||(answer==QMessageBox::Save&&save(false));

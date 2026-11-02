@@ -170,6 +170,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  const auto savedKeyMode=profile.values["keyMode"].toString("Tap");
  if(keyCycleModesValue.contains(savedKeyMode))keyModeValue=savedKeyMode;
  buttonModeValue=profile.values["buttonMode"].toString("Tap");
+ setCacheKeyboards(profile.values["cacheKeyboards"].toBool(false));
  preserveTogglesBetweenLayouts=profile.values["preserveTogglesBetweenLayouts"].toBool();
  cycleModifiersOnHover=profile.values["cycleModifiersOnHover"].toBool();
  hideKeyboardDuringMouseActions=profile.values["hideKeyboardDuringMouseActions"].toBool();
@@ -396,7 +397,7 @@ void Controller::setSystemKeyboard(bool enabled){
 }
 bool Controller::savePreferences(){
  if(signInMode)return false;
- QJsonObject values{{"transitionDurationMs",transitionDurationMs},{"keyboardTransition",keyboardTransition},{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
+ QJsonObject values{{"cacheKeyboards",cacheKeyboards()},{"transitionDurationMs",transitionDurationMs},{"keyboardTransition",keyboardTransition},{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
  values["keyMode"]=keyModeValue;
  values["buttonMode"]=buttonModeValue;
  values["systemKeyboard"]=systemKeyboard();
@@ -417,6 +418,8 @@ bool Controller::savePreferences(){
  QString error;bool ok=ProfileStore(configFile("profile.json")).save(values,error);
  profileStatus=ok?QString():error;emit changed();return ok;
 }
+bool Controller::cacheKeyboards()const{return KeyboardPack::cacheEnabled();}
+void Controller::setCacheKeyboards(bool enabled){if(enabled==cacheKeyboards())return;KeyboardPack::setCacheEnabled(enabled);emit changed();}
 void Controller::resetPreferences(){
  localInput.cancelComposition();
  wantedImeLocale.clear();
@@ -445,6 +448,7 @@ void Controller::resetPreferences(){
  repeatIntervalMs=750;
  setKeyCycleModes({"Tap","Repeat","Hold","Toggle"});
  keyModeValue="Tap";buttonModeValue="Tap";
+ setCacheKeyboards(false);
  preserveTogglesBetweenLayouts=false;
  cycleModifiersOnHover=false;
  hideKeyboardDuringMouseActions=false;
@@ -870,10 +874,8 @@ void Controller::openLayout(QString name,bool backReturnsHere){
  if(name.endsWith(".xml"))name.chop(4);
  if(!layoutNames.contains(name)){actionStatus="Unknown keyboard: "+name;emit changed();return;}
  const auto sourcePath=QDir(keyboardPackDirectory()).filePath(name+".xml");
- QFile sourceFile(sourcePath);
- if(!sourceFile.open(QIODevice::ReadOnly)){actionStatus=sourceFile.errorString();emit changed();return;}
- const auto sourceBytes=sourceFile.readAll();sourceFile.close();
- auto compiled=KeyboardLayout::fromXml(KeyboardPack::load(sourcePath));
+ QByteArray sourceBytes;
+ auto compiled=KeyboardLayout::fromXml(KeyboardPack::load(sourcePath,&sourceBytes));
  if(compiled.contains("error")){actionStatus=compiled["error"].toString();emit changed();return;}
  if(nativeMode){
   const auto reason=panelPlacementReason(compiled);

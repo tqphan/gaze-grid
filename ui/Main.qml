@@ -1186,6 +1186,7 @@ Window {
       title:settings.categoryNames[8];visible:settingsCategory.currentIndex==8;Layout.fillWidth:true
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
+       SettingsCheckBox {objectName:"cacheKeyboardsToggle";text:"Cache keyboards";checked:controller.cacheKeyboards;onToggled:controller.cacheKeyboards=checked}
        RowLayout {
         Desktop.Label {text:"Process priority"}
         SettingsComboBox {

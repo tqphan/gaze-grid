@@ -19,6 +19,7 @@ class Controller:public QObject{
  Q_OBJECT
  Q_PROPERTY(QVariantList speechProfiles READ getSpeechProfiles NOTIFY speechProfilesChanged)
  Q_PROPERTY(int activeSpeechProfile READ activeSpeechProfile WRITE setActiveSpeechProfile NOTIFY speechProfilesChanged)
+ Q_PROPERTY(bool cacheKeyboards READ cacheKeyboards WRITE setCacheKeyboards NOTIFY changed)
  Q_PROPERTY(int processPriority READ processPriority WRITE setProcessPriority NOTIFY changed)
  Q_PROPERTY(bool signInMode READ isSignInMode CONSTANT)
  Q_PROPERTY(bool startWithWindows READ startsWithWindows NOTIFY changed)
@@ -152,6 +153,8 @@ public:
  void setProcessPriority(int priority);
  // An injected tracker must outlive this controller; production uses the owned worker.
  explicit Controller(bool signIn=false,const QJsonObject &signInProfile={},TobiiInput *tracker=nullptr);~Controller()override;
+ bool cacheKeyboards()const;
+ void setCacheKeyboards(bool enabled);
  bool isSignInMode()const{return signInMode;}
  bool startsWithWindows()const;
  Q_INVOKABLE void configureWindowsStartup(bool enabled);

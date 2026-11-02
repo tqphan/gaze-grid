@@ -77,6 +77,12 @@ class ControllerTests:public QObject {
   c.setProperty("layout",QVariantMap{{"layoutMode","canvas"},{"activateoverlappingkeys",true},{"keys",content}});
  }
 private slots:
+ void keyboardCachePreferencePersists(){
+  {Controller c;c.resetPreferences();QVERIFY(!c.cacheKeyboards());c.setCacheKeyboards(true);QVERIFY(c.cacheKeyboards());QVERIFY(c.savePreferences());}
+  {Controller c;QVERIFY(c.cacheKeyboards());c.resetPreferences();QVERIFY(!c.cacheKeyboards());QVERIFY(c.savePreferences());}
+  auto values=ProfileStore::defaults();QVERIFY(!values["cacheKeyboards"].toBool());
+  values["cacheKeyboards"]="invalid";QVERIFY(!ProfileStore::valid(values));
+ }
  void localImeCandidatesPageAndRejectStaleDwell(){
   Controller c;c.resetPreferences();c.setProperty("paused",false);c.setSystemKeyboard(true);c.openLayout("keyboard-conversation-bottom",false);
   LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());

@@ -29,6 +29,34 @@ class CoreTests:public QObject{
  Q_OBJECT
 static QVariantMap cmd(QString tag,QString text){return {{"tag",tag},{"text",text}};}
 private slots:
+ void keyboardFileCache(){
+  QTemporaryDir dir;QVERIFY(dir.isValid());const auto path=dir.filePath("keyboard.xml");
+  const QByteArray first="<Keyboard><Name>A</Name></Keyboard>",second="<Keyboard><Name>B</Name></Keyboard>";
+  auto write=[&](const QByteArray &bytes){QFile file(path);return file.open(QIODevice::WriteOnly)&&file.write(bytes)==bytes.size();};
+  struct ResetCache {~ResetCache(){KeyboardPack::setCacheEnabled(false);}} reset;
+  KeyboardPack::setCacheEnabled(true);QVERIFY(write(first));
+  QByteArray source;const auto original=KeyboardPack::load(path,&source);QVERIFY(!original.contains("error"));QCOMPARE(source,first);
+  QCOMPARE(KeyboardPack::load(path,&source),original);QCOMPARE(source,first);
+  // Same size, distinct modification time must reload.
+  QVERIFY(write(second));QFile file(path);QVERIFY(file.open(QIODevice::ReadWrite));
+  QVERIFY(file.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-60),QFileDevice::FileModificationTime));file.close();
+  QVERIFY(KeyboardPack::load(path,&source)!=original);QCOMPARE(source,second);
+  QVERIFY(write(first+" "));QCOMPARE(KeyboardPack::load(path,&source),original);QCOMPARE(source,first+" ");
+  // Keep metadata unchanged deliberately: reuse proves the hit avoids a content read.
+  const auto stamp=QFileInfo(path).lastModified();
+  QVERIFY(write(second+" "));QVERIFY(file.open(QIODevice::ReadWrite));
+  QVERIFY(file.setFileTime(stamp,QFileDevice::FileModificationTime));file.close();
+  QCOMPARE(KeyboardPack::load(path,&source),original);QCOMPARE(source,first+" ");
+  KeyboardPack::invalidate(path);QVERIFY(KeyboardPack::load(path,&source)!=original);QCOMPARE(source,second+" ");
+  QVERIFY(write(first+" "));QVERIFY(file.open(QIODevice::ReadWrite));
+  QVERIFY(file.setFileTime(stamp,QFileDevice::FileModificationTime));file.close();
+  KeyboardPack::setCacheEnabled(false);KeyboardPack::setCacheEnabled(true);
+  QCOMPARE(KeyboardPack::load(path,&source),original);QCOMPARE(source,first+" ");
+  QVERIFY(QFile::remove(path));QVERIFY(KeyboardPack::load(path,&source).contains("error"));QVERIFY(source.isEmpty());
+  QVERIFY(write(second));KeyboardPack::setCacheEnabled(false);QCOMPARE(KeyboardPack::load(path,&source).contains("error"),false);QCOMPARE(source,second);
+  QVERIFY(write(first));QCOMPARE(KeyboardPack::load(path,&source),original);QCOMPARE(source,first);
+  KeyboardPack::setCacheEnabled(true);QCOMPARE(KeyboardPack::load(path,&source),original);QCOMPARE(source,first);
+ }
 #ifndef GAZE_GRID_WINDOWS
  void nativeXkbLabels(){
   SystemKeyboard keyboard;QVERIFY(!keyboard.available());

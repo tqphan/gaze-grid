@@ -134,5 +134,6 @@ bool KeyboardLayout::saveCanvasGeometry(const QString &path,QByteArray &source,c
     const auto bytes=doc.toByteArray(-1);
     QSaveFile output(path);
     if(!output.open(QIODevice::WriteOnly)||output.write(bytes)!=bytes.size()||!output.commit()){error=output.errorString();return false;}
+    KeyboardPack::invalidate(path);
     source=bytes;error.clear();return true;
 }
