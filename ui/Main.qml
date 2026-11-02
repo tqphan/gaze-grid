@@ -55,6 +55,10 @@ Window {
  }
  onVisibleChanged:if(!visible)layoutReveal.stop()
  property var overlapProgress: ({})
+ property var pausedProgress: ({})
+ function pausedAmount(command) {
+  return root.usingGaze&&controller.showPausedDwellProgress&&!root.transitioning&&!controller.keyboardTemporarilyHidden&&!controller.sizeMoveMode&&!controller.targeting?(root.pausedProgress[command]||0):0
+ }
  readonly property bool overlapEnabled:controller.layout.layoutMode==="canvas"&&controller.layout.activateoverlappingkeys===true&&!controller.sizeMoveMode
  readonly property var overlapTargets: {
   const revision=hitTestRevision
@@ -175,7 +179,7 @@ Window {
  Connections {
   target:controller
   function onSettingsRequested(){if(controller.signInMode)return;settings.showNormal();settings.raise();settings.requestActivate()}
-  function onLayoutChanged(){root.hovered="";root.progress=0;root.revealLayout()}
+  function onLayoutChanged(){root.hovered="";root.progress=0;root.pausedProgress=({});root.revealLayout()}
   function onGazePoint(x,y,valid){keyboardGazeIndicator.updateMotion(x,y,valid);root.gazeValid=valid;root.gaze=Qt.point(x,y)}
   function onChanged(){if(controller.keyboardTemporarilyHidden){root.hovered="";root.progress=0}if(!controller.targeting){root.targetProgress=0;root.targetPointValid=false}}
  }
@@ -231,6 +235,7 @@ Window {
     root.overlapProgress=({})
     root.progress=controller.hover(target)
    }
+   root.pausedProgress=controller.pausedDwellProgress()
   }
  }
  Rectangle {objectName:"keyboardBackdrop";anchors.fill:parent;visible:!root.transparentBackground;color:root.keyboardBackground}
@@ -442,11 +447,11 @@ Window {
       Rectangle {anchors.fill:parent;color:root.dwellColor;opacity:predictionSlot.active?0.18:0}
       Text {anchors.fill:parent;anchors.margins:4;text:predictionSlot.predictionText;textFormat:Text.PlainText;opacity:key.foregroundOpacity;color:key.foreground;font.pixelSize:Math.min(24,key.height*.28)*controller.predictionTextScale/100;fontSizeMode:Text.Fit;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
       MouseArea {objectName:"predictionMouseArea:"+index;anchors.fill:parent;hoverEnabled:true;enabled:predictionSlot.hasPrediction;onEntered:root.hovered=predictionSlot.command;onPositionChanged:root.hovered=predictionSlot.command;onExited:if(root.hovered===predictionSlot.command)root.hovered="";onClicked:controller.clickCommand(predictionSlot.command)}
-      DwellIndicator {objectName:"predictionProgress:"+index;anchors.left:parent.left;anchors.bottom:parent.bottom;width:progress>0?parent.width:0;height:parent.height;progress:predictionSlot.active?root.progress:0;style:controller.dwellIndicatorStyle;color:root.dwellColor}
+      DwellIndicator {objectName:"predictionProgress:"+index;anchors.left:parent.left;anchors.bottom:parent.bottom;width:progress>0?parent.width:0;height:parent.height;progress:predictionSlot.active?root.progress:root.pausedAmount(predictionSlot.command);style:controller.dwellIndicatorStyle;color:root.dwellColor}
      }
     }
    }
-   DwellIndicator {anchors.fill:parent;progress:key.active?(root.overlapTargets.length>0?(root.overlapProgress[key.command]||0):root.progress):0;style:controller.dwellIndicatorStyle;color:root.dwellColor}
+   DwellIndicator {anchors.fill:parent;progress:key.active?(root.overlapTargets.length>0?(root.overlapProgress[key.command]||0):root.progress):root.pausedAmount(key.command);style:controller.dwellIndicatorStyle;color:root.dwellColor}
    Rectangle {
     anchors.fill:parent;visible:controller.sizeMoveMode;color:"transparent"
     border.width:controller.sizeMoveSelection===key.index?5:2;border.color:root.dwellColor
@@ -882,6 +887,7 @@ Window {
        SettingsCheckBox {text:"Clamp off-screen gaze for point selection";checked:controller.clampGazeForPointSelection;onToggled:controller.clampGazeForPointSelection=checked}
        Desktop.Label {text:"Clamping places off-screen gaze at the nearest screen edge. When off, coordinates stay unchanged. Off-screen gaze remains valid.";wrapMode:Text.Wrap;Layout.fillWidth:true;opacity:0.6}
        SettingSlider {label:"Dwell grace";displayValue:controller.dwellGraceMs+" ms";from:0;to:1000;stepSize:25;value:controller.dwellGraceMs;onMoved:controller.dwellGraceMs=value}
+       SettingsCheckBox {text:"Show paused dwell progress";checked:controller.showPausedDwellProgress;onToggled:controller.showPausedDwellProgress=checked}
        SettingSlider {label:"Invalid gaze tolerance";displayValue:controller.invalidGazeToleranceMs+" ms";from:0;to:1000;stepSize:25;value:controller.invalidGazeToleranceMs;onMoved:controller.invalidGazeToleranceMs=value}
        Desktop.Label {text:"Pause dwell during brief tracking loss. Resume when gaze returns, or reset after this time. 0 ms resets immediately.";wrapMode:Text.Wrap;Layout.fillWidth:true;opacity:0.6}
        Tool {id:tobii;text:"Connect eye tracker";command:"Tobii"}

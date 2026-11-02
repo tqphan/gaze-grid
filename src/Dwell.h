@@ -11,6 +11,7 @@ public:
     void inhibit(const QString &target, qint64 now);
     void consume(const QString &target, qint64 now);
     double progress(qint64 now, int duration, int repeatDuration=-1) const;
+    QHash<QString,qint64> savedElapsed(qint64 now,int graceMs) const;
 private:
     struct Saved { qint64 elapsed, left; };
     QHash<QString, Saved> saved;

@@ -1277,6 +1277,9 @@ private slots:
   }
   values.remove("dwellGraceMs");QVERIFY(ProfileStore::valid(values));
   values["dwellGraceMs"]=150;QVERIFY(ProfileStore::valid(values));
+  QVERIFY(values["showPausedDwellProgress"].toBool());
+  values["showPausedDwellProgress"]="true";QVERIFY(!ProfileStore::valid(values));
+  values.remove("showPausedDwellProgress");QVERIFY(ProfileStore::valid(values));
  }
  void dwellGracePausesAndResumes(){
   Dwell d;
@@ -1284,6 +1287,10 @@ private slots:
   QVERIFY(!d.update("a",100,500,false,-1,150));
   QVERIFY(!d.update("",125,500,false,-1,150));
   QCOMPARE(d.progress(200,500),0.0);
+  QCOMPARE(d.savedElapsed(200,150).value("a"),qint64(100));
+  QCOMPARE(d.savedElapsed(250,150).value("a"),qint64(100));
+  QVERIFY(d.savedElapsed(276,150).isEmpty());
+  QVERIFY(d.savedElapsed(200,0).isEmpty());
   QVERIFY(!d.update("a",225,500,false,-1,150));
   QCOMPARE(d.progress(225,500),0.2);
   QVERIFY(!d.update("a",400,500,false,-1,150));

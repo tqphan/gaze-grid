@@ -1075,8 +1075,26 @@ private slots:
  }
  void dwellGracePreferences(){
   {Controller c;c.resetPreferences();QCOMPARE(c.dwellGraceMs(),0);
+   QVERIFY(c.property("showPausedDwellProgress").toBool());c.setProperty("showPausedDwellProgress",false);
    c.setDwellGraceMs(150);QVERIFY(c.savePreferences());}
-  {Controller c;QCOMPARE(c.dwellGraceMs(),150);c.resetPreferences();QCOMPARE(c.dwellGraceMs(),0);}
+  {Controller c;QCOMPARE(c.dwellGraceMs(),150);QVERIFY(!c.property("showPausedDwellProgress").toBool());c.resetPreferences();QCOMPARE(c.dwellGraceMs(),0);QVERIFY(c.property("showPausedDwellProgress").toBool());}
+ }
+ void pausedDwellProgressFreezesAndExpires(){
+  RetryTracker tracker;Controller c(false,{},&tracker);
+  c.setGazeEnabled(true);QTRY_VERIFY(c.isTrackerConnected());
+  overlapLayout(c,{overlapKey("Text","a",500),overlapKey("Text","b",500)});
+  auto layout=c.property("layout").toMap();layout["activateoverlappingkeys"]=false;c.setProperty("layout",layout);
+  c.setDwellGraceMs(150);
+  c.hover("key:0");QTest::qWait(50);const double before=c.hover("key:0");QVERIFY(before>0);
+  c.hover("key:1");QCOMPARE(c.pausedDwellProgress().value("key:0").toDouble(),before);
+  QTest::qWait(30);QCOMPARE(c.pausedDwellProgress().value("key:0").toDouble(),before);
+  c.setProperty("showPausedDwellProgress",false);QVERIFY(c.pausedDwellProgress().isEmpty());
+  c.setProperty("showPausedDwellProgress",true);QCOMPARE(c.pausedDwellProgress().value("key:0").toDouble(),before);
+  QTest::qWait(130);QVERIFY(c.pausedDwellProgress().isEmpty());
+  layout["activateoverlappingkeys"]=true;c.setProperty("layout",layout);
+  c.hoverKeys({"key:0"});QTest::qWait(50);const auto progress=c.hoverKeys({"key:0"});
+  c.hoverKeys({});QCOMPARE(c.pausedDwellProgress().value("key:0"),progress.value("key:0"));
+  QVERIFY(c.hoverKeys({"key:0"}).value("key:0").toDouble()>0);QVERIFY(c.pausedDwellProgress().isEmpty());
  }
  void invalidGazeTolerancePausesBothDwellsAndExpires(){
   auto values=ProfileStore::defaults();values["gazeEnabled"]=true;values["invalidGazeToleranceMs"]=300;

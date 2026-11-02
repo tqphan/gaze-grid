@@ -36,3 +36,11 @@ double Dwell::progress(qint64 now, int duration, int repeatDuration) const {
 }
 
 void Dwell::consume(const QString &target, qint64 now) {current=target;started=now;last=now;fired=true;repeating=false;}
+QHash<QString,qint64> Dwell::savedElapsed(qint64 now,int graceMs) const {
+    QHash<QString,qint64> result;
+    if(graceMs<=0)return result;
+    for(auto it=saved.cbegin();it!=saved.cend();++it)
+        if(now>=it->left&&now-it->left<=graceMs)
+            result[it.key()]=it->elapsed;
+    return result;
+}

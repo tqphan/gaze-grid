@@ -34,6 +34,7 @@ class Controller:public QObject{
  Q_PROPERTY(bool paused MEMBER paused NOTIFY changed)
  Q_PROPERTY(bool gazeEnabled READ isGazeEnabled WRITE setGazeEnabled NOTIFY gazeEnabledChanged)
  Q_PROPERTY(int dwellGraceMs READ dwellGraceMs WRITE setDwellGraceMs NOTIFY changed)
+ Q_PROPERTY(bool showPausedDwellProgress MEMBER showPausedDwellProgress NOTIFY changed)
  Q_PROPERTY(int invalidGazeToleranceMs READ invalidGazeToleranceMs WRITE setInvalidGazeToleranceMs NOTIFY changed)
  Q_PROPERTY(bool gazeDwellPaused READ isGazeDwellPaused NOTIFY changed)
  Q_PROPERTY(bool clampGazeForKeyboard MEMBER clampGazeForKeyboard NOTIFY changed)
@@ -238,6 +239,7 @@ public:
  Q_INVOKABLE void clickCommand(QString key);
  Q_INVOKABLE double hover(QString key);
  Q_INVOKABLE QVariantMap hoverKeys(const QStringList &targets);
+ Q_INVOKABLE QVariantMap pausedDwellProgress()const;
  QStringList keyCycleModes()const{return keyCycleModesValue;}
  void setKeyCycleModes(const QStringList &modes);
  QString keyMode()const{return keyModeValue;}
@@ -426,6 +428,7 @@ private:
  qint64 gazeLossStarted=0;
  int gazeToleranceMs=500;
  int dwellGraceValue=0;
+ bool showPausedDwellProgress=true;
  bool clampGazeForKeyboard=false,clampGazeForPointSelection=true;
  bool lastGazeClamped=true;
  int sizeMoveSelection=-1;

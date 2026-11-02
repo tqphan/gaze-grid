@@ -180,6 +180,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  saccadeDistance=profile.values["gazeSaccadeDistance"].toDouble(0.1);
  smoothingLevel=profile.values["gazeSmoothingLevel"].toInt(1);smoothTargetChanges=profile.values["smoothWhenChangingGazeTarget"].toBool();
  dwellGraceValue=profile.values["dwellGraceMs"].toInt(0);
+ showPausedDwellProgress=profile.values["showPausedDwellProgress"].toBool(true);
  gazeToleranceMs=profile.values["invalidGazeToleranceMs"].toInt(500);
  clampGazeForKeyboard=profile.values["clampGazeForKeyboard"].toBool(false);
  clampGazeForPointSelection=profile.values["clampGazeForPointSelection"].toBool(true);
@@ -410,6 +411,7 @@ bool Controller::savePreferences(){
  values["processPriority"]=processPriorityValue;
  values["invalidGazeToleranceMs"]=gazeToleranceMs;
  values["dwellGraceMs"]=dwellGraceValue;
+ values["showPausedDwellProgress"]=showPausedDwellProgress;
  values["predictionTextScale"]=predictionTextScale;
  values["scratchpadTextScale"]=scratchpadTextScale;
  values["removeCompletionSpaceBeforePunctuation"]=removeCompletionSpaceEnabled;
@@ -435,6 +437,7 @@ void Controller::resetPreferences(){
  setGazeEnabled(values["gazeEnabled"].toBool());
  setInvalidGazeToleranceMs(500);
  setDwellGraceMs(0);
+ showPausedDwellProgress=true;
  setRemoveCompletionSpaceBeforePunctuation(true);
  predictionTextScale=values["predictionTextScale"].toInt();
  scratchpadTextScale=values["scratchpadTextScale"].toInt();
@@ -733,6 +736,19 @@ void Controller::releaseOverlapTarget(const QString &target){
  runner.endDwellHold(target);
  const auto release=overlapButtons.take(target);
  if(!release.isEmpty()&&!overlapButtons.values().contains(release))gameController.perform(release);
+}
+QVariantMap Controller::pausedDwellProgress()const{
+ QVariantMap result;
+ if(!showPausedDwellProgress||!desktopActive||paused||sizeMoveMode||targeting||!gazeEnabled||!trackerConnected)return result;
+ const auto now=clock.elapsed();
+ auto collect=[&](const Dwell &timer){
+  const auto saved=timer.savedElapsed(now,dwellGraceValue);
+  for(auto it=saved.cbegin();it!=saved.cend();++it)
+   result[it.key()]=qBound(0.0,double(it.value())/qMax(1,dwellDuration(it.key())),1.0);
+ };
+ collect(dwell);
+ for(auto it=overlapDwells.cbegin();it!=overlapDwells.cend();++it)collect(it.value());
+ return result;
 }
 void Controller::clearOverlap(){
  overlapPending.clear();
@@ -1364,6 +1380,7 @@ QJsonObject Controller::signInPreferences() const{
  QJsonObject values{{"groupDwellTimes",QJsonObject::fromVariantMap(groupDwellValues)},{"startLayout",layoutName},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"gazeEnabled",gazeEnabled},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale}};
  values["invalidGazeToleranceMs"]=gazeToleranceMs;
  values["dwellGraceMs"]=dwellGraceValue;
+ values["showPausedDwellProgress"]=showPausedDwellProgress;
  values["predictionTextScale"]=predictionTextScale;
  values["scratchpadTextScale"]=scratchpadTextScale;
  values["clampGazeForKeyboard"]=clampGazeForKeyboard;
