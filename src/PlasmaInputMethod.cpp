@@ -1,5 +1,6 @@
 #include "PlasmaInputMethod.h"
 #include "KeyNames.h"
+#include "PredictionLanguage.h"
 #include "input-method-client.h"
 #include <QDateTime>
 #include <QDBusConnection>
@@ -51,6 +52,7 @@ struct PlasmaInputMethod::Impl {
  PlasmaInputMethod *owner;
  Extension method{&zwp_input_method_v1_interface};PanelIntegration panel;
  zwp_input_method_context_v1 *context=nullptr;uint32_t serial=0;bool committed=false,privateField=true;
+ DesktopTextContext pendingText,lastText;quint64 generation=0;
  QTimer activationRecovery;
  QPointer<QWindow> panelWindow;
  QPointer<LayerShellQt::Window> topLayer;
@@ -75,24 +77,33 @@ struct PlasmaInputMethod::Impl {
   method.bound=[this]{static const zwp_input_method_v1_listener listener{activate,deactivate};zwp_input_method_v1_add_listener(reinterpret_cast<zwp_input_method_v1*>(method.proxy),&listener,this);};
  }
  ~Impl(){clear();if(state)xkb_state_unref(state);if(keymap)xkb_keymap_unref(keymap);if(xkb)xkb_context_unref(xkb);}
- void clear(){activationRecovery.stop();if(context)zwp_input_method_context_v1_destroy(context);context=nullptr;committed=false;privateField=true;serial=0;}
+ void clear(){activationRecovery.stop();if(context)zwp_input_method_context_v1_destroy(context);context=nullptr;committed=false;privateField=true;serial=0;pendingText={};lastText={};}
  static void activate(void *data,zwp_input_method_v1*,zwp_input_method_context_v1 *context){
-  auto self=static_cast<Impl*>(data);self->clear();emit self->owner->contextInvalidated();self->context=context;
+  auto self=static_cast<Impl*>(data);self->clear();++self->generation;emit self->owner->contextInvalidated();self->context=context;
   static const zwp_input_method_context_v1_listener listener{surrounding,reset,content,invoke,commit,language};
   zwp_input_method_context_v1_add_listener(context,&listener,self);self->activationRecovery.start();emit self->owner->stateChanged();
  }
  static void deactivate(void *data,zwp_input_method_v1*,zwp_input_method_context_v1 *context){
   auto self=static_cast<Impl*>(data);if(context!=self->context)return;self->clear();emit self->owner->contextInvalidated();emit self->owner->stateChanged();
  }
- // Surrounding text is intentionally not retained until context-aware composition is implemented.
- static void surrounding(void*,zwp_input_method_context_v1*,const char*,uint32_t,uint32_t){}
- static void reset(void *data,zwp_input_method_context_v1*){auto self=static_cast<Impl*>(data);self->committed=false;emit self->owner->contextInvalidated();emit self->owner->stateChanged();}
+ static void surrounding(void *data,zwp_input_method_context_v1 *context,const char *text,uint32_t cursor,uint32_t anchor){
+  auto self=static_cast<Impl*>(data);if(context!=self->context)return;
+  self->pendingText=DesktopTextContext::fromUtf8(QByteArray(text),int(cursor),int(anchor));
+ }
+ static void reset(void *data,zwp_input_method_context_v1*){auto self=static_cast<Impl*>(data);self->committed=false;self->pendingText={};self->lastText={};emit self->owner->contextInvalidated();emit self->owner->stateChanged();}
  static void content(void *data,zwp_input_method_context_v1*,uint32_t hints,uint32_t purpose){
   auto self=static_cast<Impl*>(data);const bool sensitive=(hints&0xc0)||purpose==8;
+  if(sensitive)self->pendingText={};
   if(self->privateField!=sensitive){self->privateField=sensitive;emit self->owner->contextInvalidated();emit self->owner->stateChanged();}
  }
  static void invoke(void*,zwp_input_method_context_v1*,uint32_t,uint32_t){}
- static void commit(void *data,zwp_input_method_context_v1*,uint32_t serial){auto self=static_cast<Impl*>(data);self->serial=serial;const bool wasReady=self->committed;self->committed=true;if(!wasReady)emit self->owner->stateChanged();}
+ static void commit(void *data,zwp_input_method_context_v1*,uint32_t serial){
+  auto self=static_cast<Impl*>(data);self->serial=serial;const bool wasReady=self->committed;self->committed=true;if(!wasReady)emit self->owner->stateChanged();
+  self->lastText=self->privateField?DesktopTextContext{}:self->pendingText;
+  self->lastText.supported=true;self->lastText.privateField=self->privateField;
+  self->lastText.identity=QString("plasma:%1").arg(self->generation);
+  emit self->owner->surroundingTextChanged(self->lastText);
+ }
  static void language(void*,zwp_input_method_context_v1*,const char*){}
 };
 PlasmaInputMethod::PlasmaInputMethod(QObject *parent):QObject(parent),d(std::make_unique<Impl>(this)){
@@ -125,6 +136,18 @@ bool PlasmaInputMethod::attachPanel(QWindow *window,bool top){
 }
 bool PlasmaInputMethod::ready()const{return d->context&&d->committed&&d->method.isActive();}
 bool PlasmaInputMethod::sensitive()const{return d->privateField;}
+DesktopTextContext PlasmaInputMethod::textContext()const{return d->lastText;}
+bool PlasmaInputMethod::replaceText(const DesktopTextContext &expected,const QString &candidate,const QString &language,bool space){
+ if(!ready()||sensitive()||!expected.available||d->lastText!=expected)return false;
+ const auto edit=PredictionLanguage::edit(expected.before,expected.after,candidate,language,space);
+ if(!edit.valid||edit.removeAfter>=4096)return false;
+ const auto before=expected.before.right(edit.removeBefore).toUtf8();
+ const auto after=expected.after.left(edit.removeAfter).toUtf8();
+ if(!before.isEmpty()||!after.isEmpty())zwp_input_method_context_v1_delete_surrounding_text(d->context,-int(before.size()),uint32_t(before.size()+after.size()));
+ const bool result=commitText(edit.text);
+ if(result)d->lastText.available=false;
+ return result;
+}
 bool PlasmaInputMethod::commitText(const QString &text){
  if(!ready()||text.contains(QChar(0)))return false;
  zwp_input_method_context_v1_commit_string(d->context,d->serial,text.toUtf8().constData());return true;

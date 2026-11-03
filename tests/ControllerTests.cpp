@@ -698,6 +698,25 @@ private slots:
  }
 
 
+ void desktopContextFollowsCaretAndReplacesSuffix(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  QString document="thank yuo today";int cursor=7;int outputCount=0;
+  c.configureInputMethod([&](QString text){document.insert(cursor,text);cursor+=text.size();++outputCount;return true;},[&](QString key,bool down){
+   if(down&&key=="DELETE")document.remove(cursor,1);
+   if(down&&key=="BACK"&&cursor>0)document.remove(--cursor,1);
+   return true;
+  });c.inputContextChanged(true,false);
+  auto snapshot=[&]{DesktopTextContext result;result.supported=true;result.available=true;result.identity="field";result.before=document.left(cursor);result.after=document.mid(cursor);return result;};
+  c.setDesktopContextProvider(snapshot);c.updateDesktopTextContext(snapshot());
+  QVERIFY(c.displaySuggestions().contains("you"));
+  const auto target=c.suggestionPrefix()+QString::number(c.displaySuggestions().indexOf("you"));
+  c.clickCommand(target);QTRY_VERIFY(!c.executingCommands());QCOMPARE(document,QString("thank you today"));
+  c.updateDesktopTextContext(snapshot());const auto stale=c.suggestionPrefix()+"0";cursor=0;
+  const int before=outputCount;c.clickCommand(stale);QCOMPARE(outputCount,before);
+  auto privateContext=snapshot();privateContext.available=false;privateContext.privateField=true;privateContext.before.clear();privateContext.after.clear();
+  c.updateDesktopTextContext(privateContext);QVERIFY(c.displaySuggestions().isEmpty());
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
  void vietnamesePhraseAcceptance(){
   Controller c;c.openLayout("keyboard-conversation-bottom",false);
   c.setPredictionLanguage("vie");c.setAddSpaceAfterCompletion(true);
@@ -801,6 +820,17 @@ private slots:
   c.setAddSpaceAfterCompletion(false);type(".");
   QCOMPARE(c.property("scratchpad").toString(),QString("thank you."));
   c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void multilingualPunctuationPreservesNaturalSpacing(){
+  for(const auto punctuation:QStringList{":","'","-","("}){
+   Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+   c.setPredictionLanguage("fra");c.setTypedWordSuggestionMode("always");
+   auto type=[&](QString text){QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",text}}}));QTRY_VERIFY(!c.executingCommands());};
+   type("bonjour");c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
+   QCOMPARE(c.property("scratchpad").toString(),QString("bonjour "));type(punctuation);
+   const auto expected=punctuation==":"?QString("bonjour : "):punctuation=="("?QString("bonjour ("):"bonjour"+punctuation;
+   QCOMPARE(c.property("scratchpad").toString(),expected);
+  }
  }
  void punctuationSpacePreferencePersistsAndResets(){
   {Controller c;c.setRemoveCompletionSpaceBeforePunctuation(false);QVERIFY(c.savePreferences());}

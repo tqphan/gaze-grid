@@ -106,6 +106,25 @@ class LocalImeUiTests:public QObject {
   void stop(){window->setProperty("gazeValid",false);controller.hover("");}
  };
 private slots:
+ void realKoreanGazeCompositionAndPredictionHandoff(){
+  if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
+  View view(true);QVERIFY(view.window);QVERIFY(view.editor);
+  QTRY_VERIFY(!view.controller.localImeLocales().isEmpty());
+  if(!view.controller.localImeLocales().contains("ko_KR"))QSKIP("Korean engine unavailable");
+  view.controller.setLocalImeLocale("ko_KR");QTRY_COMPARE(view.controller.localImeLocale(),QString("ko_KR"));
+  QTRY_COMPARE(view.controller.predictionLanguage(),QString("kor"));
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","KeyDown"},{"text","CAPITAL"}},QVariantMap{{"tag","KeyUp"},{"text","CAPITAL"}}}));QTRY_VERIFY(!view.controller.executingCommands());
+  const int consonant=view.find("Text","g");QVERIFY(consonant>=0);
+  QTRY_COMPARE(view.controller.keyboardLabels()[consonant].toString(),QString(QChar(0x314e)));
+  for(auto letter:QString("gksrmf")){
+   const auto before=view.editor->property("text").toString()+view.editor->property("preeditText").toString();
+   const int key=view.find("Text",QString(letter));QVERIFY(key>=0);view.lookAtKey(key);
+   QTRY_VERIFY(view.editor->property("text").toString()+view.editor->property("preeditText").toString()!=before);view.stop();
+  }
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text"," "}}}));QTRY_VERIFY(!view.controller.executingCommands());
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString::fromUtf8("\xed\x95\x9c\xea\xb8\x80 "));
+  QTRY_VERIFY(view.controller.suggestionPrefix().startsWith("suggest:"));QVERIFY(!view.controller.displaySuggestions().isEmpty());
+ }
  void committedPredictionsUseCaretAndRejectOldTargets(){
   View view;QVERIFY(view.window);QVERIFY(view.editor);
   view.controller.setSystemKeyboard(false);

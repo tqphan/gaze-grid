@@ -159,8 +159,8 @@ spacing or punctuation. Predictions are suppressed while text is selected or
 composition is active. Cursor, selection, and composition changes invalidate old
 dwell targets. IME candidates own the row while available or composing; committed
 predictions return afterwards, and accepting them commits text directly without
-feeding it back through the composition engine. Desktop injection still has only
-best-effort context; it does not observe arbitrary applications' committed edits.
+feeding it back through the composition engine. Supported desktop fields use the context paths below; unsupported targets retain
+best-effort context.
 
 ## Chinese and Thai word models
 
@@ -200,3 +200,33 @@ single observations, to cover more compounds and inflected forms. Their rebuilt
 vocabularies contain 64,244 and 75,301 entries. This increases coverage while also
 admitting rare corpus errors; it does not invent unseen grammatical forms.
 Model and holdout checksums and updated scores are in multilingual-evaluation.json.
+
+## External text fields
+
+Windows samples the focused field on a worker thread, every 150 ms between
+samples. Unicode Edit/RichEdit controls use bounded native messages. Other
+editable controls can expose UI Automation TextPattern ranges; calls use bounded
+connection and transaction timeouts. Password fields, active selections, and
+reported compositions do not supply predictions. The snapshot is rechecked at
+acceptance. Native fields use a selected-range replacement; UI Automation selects
+a verified range and inserts Unicode text into the still-focused target.
+
+Plasma native input consumes committed surrounding-text transactions. UTF-8 byte
+offsets are validated and converted to Unicode text, with at most 4,096 UTF-16
+units retained on either side of the caret. Replacement uses the input-method
+protocol's delete-surrounding-text and commit-string transaction. Private-field
+hints discard surrounding text. This does not add a general Wayland screen reader.
+
+Field identity changes clear stale context. Edits observed in another application
+do not train personal counts by themselves. Unsupported custom controls retain
+best-effort context from GazeGrid's own keys; an identified field with unavailable
+caret/range data suppresses prediction. Accessibility provider coverage and
+concurrent user edits cannot be guaranteed for arbitrary applications.
+
+## Completion punctuation
+
+Automatic completion spaces remain before opening brackets and opening quotation
+marks. Apostrophes and hyphens join without an extra following space. French
+colons retain a preceding space. Manually typed spaces remain untouched by this
+cleanup. French regional conventions for other punctuation and nonbreaking-space
+typesetting are not imposed by the language-only model selector.

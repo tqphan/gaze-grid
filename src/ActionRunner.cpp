@@ -129,7 +129,10 @@ void ActionRunner::step(){
         if(!shortcut&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
             if((!textOnly||editingLocal())&&!tap("BACK")){fail("Could not remove the completion space");return;}
             if(!editingLocal())emit textCommitted("\b");
-            if(appendSpaceAfterPunctuation&&appendSpaceAfterPunctuation(effective)){value+=' ';effective+=' ';}
+            const auto punctuation=effective;
+            const auto prefix=punctuationPrefix?punctuationPrefix(punctuation):QString();
+            value=prefix+value;effective=prefix+effective;
+            if(appendSpaceAfterPunctuation&&appendSpaceAfterPunctuation(punctuation)){value+=' ';effective+=' ';}
         }
         QString removed;
         const int removePrefix=command.value("removePrefix").toInt();

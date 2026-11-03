@@ -1,4 +1,5 @@
 #pragma once
+#include "DesktopTextContext.h"
 #include <QObject>
 #include <QElapsedTimer>
 #include <QVariantList>
@@ -175,6 +176,9 @@ public:
  bool ready()const{return desktopActive&&(nativeActive||portal.ready());}
  void configureInputMethod(std::function<bool(QString)> text,std::function<bool(QString,bool)> key);
  void inputContextChanged(bool active,bool sensitive);
+ void updateDesktopTextContext(const DesktopTextContext &context);
+ void setDesktopContextProvider(std::function<DesktopTextContext()> provider){desktopContextProvider=std::move(provider);}
+ void setDesktopCompletionProvider(std::function<bool(const DesktopTextContext &,const QString &,const QString &,bool)> provider){desktopCompletionProvider=std::move(provider);}
  void invalidateInputContext();
  int keyboardScale()const{return scalePercent;}
  void setKeyboardScale(int scale);
@@ -457,6 +461,10 @@ private:
  const QString &typingContext()const;
  QString predictionText()const;
  QString predictionContext;
+ DesktopTextContext externalContext,pendingExternalContext;
+ bool externalContextObserved=false,externalContextPending=false;
+ std::function<DesktopTextContext()> desktopContextProvider;
+ std::function<bool(const DesktopTextContext &,const QString &,const QString &,bool)> desktopCompletionProvider;
  QString scratchpad;QStringList suggestions,dictionary;QMap<QString,int> frequencies;
  QJsonObject mappingProfile;
 };
