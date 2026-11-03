@@ -740,7 +740,7 @@ Window {
        SettingsCheckBox {id:includeHidden;text:"Include layouts hidden by the XML pack"}
        RowLayout {
         visible:controller.localImeEnabled&&controller.systemKeyboard
-        Desktop.Label {text:"Language"}
+        Desktop.Label {text:"Input language"}
         SettingsComboBox {
          objectName:"localImeLanguageSelector";Layout.fillWidth:true
          model:controller.localImeLocales
@@ -1018,7 +1018,7 @@ Window {
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
        SettingSlider {objectName:"predictionTextSizeSlider";label:"Prediction text size";displayValue:controller.predictionTextScale+"%";from:50;to:300;stepSize:5;value:controller.predictionTextScale;onMoved:controller.predictionTextScale=value}
-       Desktop.Label {text:"Language"}
+       Desktop.Label {text:"Prediction language"}
        SettingsComboBox {
         id:predictionLanguageBox;objectName:"predictionLanguageSelector";Layout.fillWidth:true
         model:controller.predictionLanguages

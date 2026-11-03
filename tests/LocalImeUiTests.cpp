@@ -105,6 +105,25 @@ class LocalImeUiTests:public QObject {
   void stop(){window->setProperty("gazeValid",false);controller.hover("");}
  };
 private slots:
+ void conversationPreparesInputBeforeFirstKey(){
+  if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
+  View view(true);QVERIFY(view.window);
+  for(int attempt=0;attempt<3;++attempt){
+   view.controller.openLayout("keyboard-alphabet-14x4-bottom",false);
+   QCoreApplication::processEvents();
+   view.controller.openLayout("keyboard-conversation-bottom",false);
+   QCoreApplication::processEvents();
+   QQuickItem *editor=nullptr;
+   const auto keys=view.keys();for(int i=0;i<keys.size();++i)if(keys[i].toMap()["kind"]=="Scratchpad"){
+    editor=View::visual(view.window->contentItem(),QString("scratchpadEditor:%1").arg(i));break;
+   }
+   QVERIFY(editor);
+   QTRY_COMPARE(QGuiApplication::focusObject(),editor);
+   const QString expected=view.controller.property("scratchpad").toString()+"q";
+   QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text","q"}}}));
+   QTRY_COMPARE(view.controller.property("scratchpad").toString(),expected);
+  }
+ }
  void keyboardLanguagesWithoutScratchpad(){
   if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
   View view(true);QVERIFY(view.window);
