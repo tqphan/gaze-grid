@@ -749,16 +749,6 @@ Window {
          onActivated:controller.localImeLocale=currentText
         }
        }
-       RowLayout {
-        Desktop.Label {text:"Keyboard source"}
-        SettingsComboBox {
-         objectName:"keyboardSourceSelector";Layout.fillWidth:true
-         model:["Personal (English US)","System"]
-         currentIndex:controller.systemKeyboard?1:0
-         enabled:!controller.signInMode
-         onActivated:controller.systemKeyboard=currentIndex===1
-        }
-       }
        SettingsCheckBox {
         visible:controller.layout.layoutMode==="canvas"
         text:"Save move/resize changes to original XML"

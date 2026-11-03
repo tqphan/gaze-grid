@@ -139,8 +139,7 @@ int main(int argc,char **argv){
  qputenv("QT_QUICK_CONTROLS_STYLE","Fusion");
 #endif
  bool inputMethodMode=false;for(int i=1;i<argc;++i)inputMethodMode|=QString::fromLocal8Bit(argv[i])=="--input-method";
- bool localIme=false;for(int i=1;i<argc;++i)localIme|=QString::fromLocal8Bit(argv[i])=="--local-ime";
- if(localIme&&inputMethodMode){QTextStream(stderr)<<"--local-ime cannot be combined with --input-method\n";return 2;}
+ const bool localIme=!signInMode&&!inputMethodMode;
  if(localIme){qputenv("QT_IM_MODULE","qtvirtualkeyboard");qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");}
  if(inputMethodMode&&qEnvironmentVariableIsEmpty("WAYLAND_SOCKET")){QTextStream(stderr)<<"Input-method mode must be launched by KWin through Virtual Keyboard settings or a nested test session.\n";return 2;}
  bool diagnose=false,audit=false,smoke=false,portalCheck=false,inputCheck=false,inputTarget=false,pointerCheck=false,pointerTarget=false;

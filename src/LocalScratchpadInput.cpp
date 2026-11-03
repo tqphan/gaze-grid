@@ -79,7 +79,7 @@ bool LocalScratchpadInput::ready(){
 }
 bool LocalScratchpadInput::dispatch(int key,const QString &text,int mods,bool useEngine){
  if(useEngine){
-  if(!engine||engine->thread()!=QThread::currentThread()){failure="Local input method unavailable; launch with --local-ime and Qt Virtual Keyboard installed";return false;}
+  if(!engine||engine->thread()!=QThread::currentThread()){failure="Local input method unavailable; install Qt Virtual Keyboard";return false;}
   if(engine->property("requiresFocus").toBool()&&QGuiApplication::focusObject()!=editor){failure="Focus the scratchpad before using the local input method";return false;}
   QVariant accepted;
   const bool invoked=QMetaObject::invokeMethod(engine,"dispatch",Qt::DirectConnection,Q_RETURN_ARG(QVariant,accepted),Q_ARG(QVariant,QVariant(key)),Q_ARG(QVariant,QVariant(text)),Q_ARG(QVariant,QVariant(mods)));

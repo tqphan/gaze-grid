@@ -84,7 +84,7 @@ private slots:
   values["cacheKeyboards"]="invalid";QVERIFY(!ProfileStore::valid(values));
  }
  void localImeCandidatesPageAndRejectStaleDwell(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);c.setSystemKeyboard(true);c.openLayout("keyboard-conversation-bottom",false);
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
   LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());
   engine.replace({"one","two","three","four","five","six","seven","eight"});
   QCOMPARE(c.displaySuggestions().size(),6);const auto stale=c.suggestionPrefix()+"0";
@@ -93,7 +93,7 @@ private slots:
   const auto current=c.suggestionPrefix()+"1";engine.replace({"replacement"});c.clickCommand(current);QCOMPARE(engine.selected,-1);
   c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.displaySuggestions().isEmpty());
   engine.replace({"paused"});const auto beforePause=c.suggestionPrefix()+"0";c.togglePause();c.clickCommand(beforePause);QCOMPARE(engine.selected,0);
-  c.togglePause();c.setSystemKeyboard(false);QVERIFY(!c.localImeActive());QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  c.togglePause();c.attachScratchpadInputEngine(nullptr);QVERIFY(!c.localImeActive());QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void localImeLanguagePersistsAndValidates(){
@@ -118,24 +118,17 @@ private slots:
   QVERIFY(!c.setScratchpadText("external"));QCOMPARE(c.property("scratchpad").toString(),value);
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
- void personalKeyboardRemainsDefault(){
-  Controller c;c.resetPreferences();QVERIFY(!c.systemKeyboard());
-  c.openLayout("keyboard-alphabet-14x4-bottom",false);
-  const auto layout=c.property("layout").toMap();
-  const auto labels=c.keyboardLabels();QVERIFY(!labels.isEmpty());
-  c.setSystemKeyboard(true);QVERIFY(c.systemKeyboard());
-  QCOMPARE(c.property("layout").toMap(),layout);
-  QVERIFY(!c.displaySuggestions().isEmpty());
-  c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
-  c.setPredictionMode("context");QVERIFY(!c.displaySuggestions().isEmpty());
+ void systemKeyboardIsAlwaysEnabled(){
+  Controller c;c.resetPreferences();QVERIFY(c.systemKeyboard());QVERIFY(c.localImeEnabled());
   QVERIFY(c.savePreferences());
-  {Controller restored;QVERIFY(restored.systemKeyboard());}
-  c.setSystemKeyboard(false);QCOMPARE(c.keyboardLabels(),labels);QCOMPARE(c.property("layout").toMap(),layout);
-  c.resetPreferences();QVERIFY(!c.systemKeyboard());QVERIFY(c.savePreferences());
+  auto values=ProfileStore::defaults();values["systemKeyboard"]=false;QString error;
+  QVERIFY(ProfileStore(QDir(appConfigDirectory()).filePath("profile.json")).save(values,error));
+  {Controller restored;QVERIFY(restored.systemKeyboard());QVERIFY(restored.localImeEnabled());}
+  c.resetPreferences();QVERIFY(c.systemKeyboard());QVERIFY(c.savePreferences());
  }
  void systemConversationAllowsPredictions(){
   Controller c;c.resetPreferences();c.setProperty("paused",false);
-  c.openLayout("keyboard-conversation-bottom",false);c.setSystemKeyboard(true);
+  c.openLayout("keyboard-conversation-bottom",false);
   QVERIFY(c.scratchpadEditable());QVERIFY(!c.localImeActive());
   QVERIFY(c.setScratchpadText("thank "));QVERIFY(c.displaySuggestions().contains("you"));
   c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());

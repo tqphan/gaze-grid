@@ -11,7 +11,7 @@ jobs:
     container: archlinux:base
     steps:
       - name: Install build and desktop dependencies
-        run: pacman -Syu --noconfirm --needed git cmake ninja gcc pkgconf qt6-base qt6-declarative qt6-svg qt6-wayland layer-shell-qt libei speech-dispatcher kirigami qqc2-desktop-style dbus
+        run: pacman -Syu --noconfirm --needed git cmake ninja gcc pkgconf qt6-base qt6-declarative qt6-svg qt6-virtualkeyboard qt6-wayland layer-shell-qt libei speech-dispatcher kirigami qqc2-desktop-style dbus
       - uses: actions/checkout@v4
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGAZE_GRID_WITH_TOBII=OFF
       - run: cmake --build build --parallel 2
@@ -30,7 +30,7 @@ jobs:
           py7zrversion: '==1.1.4'
           version: '6.12.0'
           arch: win64_msvc2022_64
-          modules: qttasktree
+          modules: qtvirtualkeyboard qttasktree
           cache: true
       - name: Configure WiX 3 and test certificate
         shell: pwsh

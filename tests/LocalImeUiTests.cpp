@@ -81,7 +81,6 @@ class LocalImeUiTests:public QObject {
     editor=visual(window->contentItem(),QString("scratchpadEditor:%1").arg(i));break;
    }
    if(!real){method.editor=editor;controller.attachScratchpadInputEngine(&method);}
-   controller.setSystemKeyboard(true);
    window->setProperty("gazeCheck",false);
   }
   ~View(){if(window)window->setProperty("gazeCheck",true);controller.setProperty("paused",true);}
@@ -107,7 +106,8 @@ class LocalImeUiTests:public QObject {
  };
 private slots:
  void fullUiLanguageDwellPagingAndCommit(){
-  View view;QVERIFY(view.window);QVERIFY(view.editor);QVERIFY(view.controller.localImeActive());
+  View view;QVERIFY(view.window);QVERIFY(view.editor);QVERIFY(view.controller.localImeEnabled());QVERIFY(view.controller.systemKeyboard());QVERIFY(view.controller.localImeActive());
+  QVERIFY(!view.window->findChild<QObject*>("keyboardSourceSelector"));
   auto language=view.window->findChild<QObject*>("localImeLanguageSelector");QVERIFY(language);
   language->setProperty("currentIndex",1);QVERIFY(QMetaObject::invokeMethod(language,"activated",Q_ARG(int,1)));
   QCOMPARE(view.controller.localImeLocale(),QString("zh_CN"));QCOMPARE(view.method.locale,QString("zh_CN"));
@@ -143,13 +143,14 @@ private slots:
   view.controller.togglePause();view.controller.openLayout("keyboard-alphabet-14x4-bottom",false);
   QVERIFY(!view.controller.scratchpadEditable());QVERIFY(!view.controller.localImeActive());QVERIFY(!view.controller.ready());
  }
- void moduleFailureLeavesPersonalTypingUsable(){
+ void moduleFailureReportsUnavailableInput(){
   View view;QVERIFY(view.window);view.controller.attachScratchpadInputEngine(nullptr);
   auto loader=view.window->findChild<QObject*>("localInputMethodLoader");QVERIFY(loader);
   QQmlProperty::write(loader,"source",QUrl("qrc:/ui/UnavailableInputMethod.qml"));QQmlProperty::write(loader,"active",true);
   QTRY_COMPARE(loader->property("status").toInt(),3);QVERIFY(!view.controller.localImeActive());
-  view.controller.setSystemKeyboard(false);const int key=view.find("Text","q");QVERIFY(key>=0);view.lookAtKey(key);
-  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("q"));view.stop();QVERIFY(!view.controller.ready());
+  const int key=view.find("Text","q");QVERIFY(key>=0);view.lookAtKey(key);
+  QTRY_VERIFY(view.controller.property("actionStatus").toString().contains("Local input method unavailable"));
+  view.stop();QVERIFY(view.controller.property("scratchpad").toString().isEmpty());QVERIFY(!view.controller.ready());
  }
  void focusChangesNeverSendToAnotherEditor(){
   View view;QVERIFY(view.window);QVERIFY(view.editor);view.method.requiresFocus=true;
@@ -164,6 +165,18 @@ private slots:
   const int key=view.find("Text","n");QVERIFY(key>=0);view.lookAtKey(key);
   QTRY_VERIFY(view.method.keyCount>0||view.controller.property("actionStatus").toString().contains("Focus the scratchpad"));view.stop();
   QCOMPARE(other->property("text").toString(),QString("other"));QVERIFY(!view.method.wrongFocus);QVERIFY(!view.controller.ready());
+ }
+ void realEnglishTypingUsesDefaultSource(){
+  if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
+  View view(true);QVERIFY(view.window);QVERIFY(view.editor);
+  QTRY_VERIFY(view.controller.localImeLocales().contains("en_US"));
+  view.controller.setLocalImeLocale("en_US");
+  QMetaObject::invokeMethod(view.editor,"prepareInput");QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
+  auto loader=view.window->findChild<QObject*>("localInputMethodLoader");QVERIFY(loader);
+  QTRY_VERIFY(loader->property("item").value<QObject*>()&&loader->property("item").value<QObject*>()->property("ready").toBool());
+  QMetaObject::invokeMethod(view.editor,"prepareInput");QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
+  const int key=view.find("Text","q");QVERIFY(key>=0);view.lookAtKey(key);
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("q"));view.stop();
  }
  void realCompositionThroughProductionUi_data(){
   QTest::addColumn<QString>("locale");QTest::addColumn<QString>("reading");QTest::addColumn<QString>("expected");
@@ -202,9 +215,7 @@ int main(int argc,char **argv){
  qputenv("XDG_CACHE_HOME",(profile.path()+"/cache").toUtf8());qputenv("QT_QPA_PLATFORM","offscreen");qputenv("QT_QUICK_BACKEND","software");
  qputenv("QT_QUICK_CONTROLS_STYLE","Fusion");
  if(qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME")){qputenv("QT_IM_MODULE","qtvirtualkeyboard");qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");}
- QList<QByteArray> arguments;for(int i=0;i<argc;++i)arguments<<QByteArray(argv[i]);arguments<<"--local-ime";
- QList<char*> pointers;for(auto &argument:arguments)pointers<<argument.data();pointers<<nullptr;int count=arguments.size();
- QApplication app(count,pointers.data());app.setOrganizationName("gaze-gridTests");app.setApplicationName("LocalImeUi");
- LocalImeUiTests tests;auto testArguments=app.arguments();testArguments.removeAll("--local-ime");return QTest::qExec(&tests,testArguments);
+ QApplication app(argc,argv);app.setOrganizationName("gaze-gridTests");app.setApplicationName("LocalImeUi");
+ LocalImeUiTests tests;return QTest::qExec(&tests,argc,argv);
 }
 #include "LocalImeUiTests.moc"
