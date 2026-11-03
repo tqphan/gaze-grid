@@ -16,7 +16,7 @@ Window {
  property bool canvasDragging:false
  Loader {
   objectName:"localInputMethodLoader"
-  active:controller.localImeEnabled&&controller.scratchpadEditable&&controller.systemKeyboard
+  active:controller.localImeEnabled&&controller.systemKeyboard
   source:active?"LocalInputMethod.qml":""
   onLoaded:Qt.callLater(function(){if(active&&item)controller.attachScratchpadInputEngine(item)})
   onActiveChanged:if(!active)Qt.callLater(function(){if(!active)controller.attachScratchpadInputEngine(null)})

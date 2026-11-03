@@ -105,6 +105,19 @@ class LocalImeUiTests:public QObject {
   void stop(){window->setProperty("gazeValid",false);controller.hover("");}
  };
 private slots:
+ void keyboardLanguagesWithoutScratchpad(){
+  if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
+  View view(true);QVERIFY(view.window);
+  view.controller.openLayout("keyboard-alphabet-14x4-bottom",false);
+  QVERIFY(!view.controller.scratchpadEditable());
+  QCoreApplication::processEvents();
+  QCoreApplication::processEvents();
+  auto settings=view.window->findChild<QObject*>("settingsWindow");QVERIFY(settings);
+  settings->setProperty("visible",true);
+  auto language=settings->findChild<QObject*>("localImeLanguageSelector");QVERIFY(language);
+  QTRY_VERIFY(language->property("count").toInt()>0);
+  QVERIFY(view.controller.localImeLocales().contains("en_US"));
+ }
  void fullUiLanguageDwellPagingAndCommit(){
   View view;QVERIFY(view.window);QVERIFY(view.editor);QVERIFY(view.controller.localImeEnabled());QVERIFY(view.controller.systemKeyboard());QVERIFY(view.controller.localImeActive());
   QVERIFY(!view.window->findChild<QObject*>("keyboardSourceSelector"));
