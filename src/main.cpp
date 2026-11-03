@@ -833,12 +833,14 @@ int main(int argc,char **argv){
    return nullptr;
   };
   auto thumb=findThumb(key);if(!thumb)return 2;
-  const double centeredX=thumb->x();
   auto poll=new QTimer(&app);poll->setInterval(50);
-  QObject::connect(poll,&QTimer::timeout,&app,[&,area,key,thumb,centeredX,stage=0]()mutable{
+  QObject::connect(poll,&QTimer::timeout,&app,[&,area,key,thumb,stage=0]()mutable{
    if(!window->isVisible())return;
+   // Settings activation and layout polish can arrive after the first injected
+   // mouse event. Observe the settled geometry and retry within the test timeout.
+   const double centeredX=(thumb->parentItem()->width()-thumb->width())/2;
    if(stage==4){
-    if(key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1){QTextStream(stderr)<<"FAIL: gaze joystick blocked by Settings"<<Qt::endl;app.exit(2);return;}
+    if(key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1)return;
     QTextStream(stdout)<<"PASS: mouse and gaze joystick input with Settings open"<<Qt::endl;app.quit();return;
    }
    const QPointF local(stage<2?area->width()*.8:area->width()/2,area->height()/2);
@@ -849,10 +851,10 @@ int main(int argc,char **argv){
     ++stage;return;
    }
    if(stage==1){
-    if(window->property("hovered").toString()!="key:0"||key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1){QTextStream(stderr)<<"FAIL: mouse joystick dot did not move"<<Qt::endl;app.exit(2);return;}
+    if(window->property("hovered").toString()!="key:0"||key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1){stage=0;return;}
     stage=2;return;
    }
-   if(std::abs(key->property("stickX").toDouble())>.01||std::abs(thumb->x()-centeredX)>1){QTextStream(stderr)<<"FAIL: mouse joystick did not center"<<Qt::endl;app.exit(2);return;}
+   if(std::abs(key->property("stickX").toDouble())>.01||std::abs(thumb->x()-centeredX)>1){stage=2;return;}
    QMetaObject::invokeMethod(area,"exited");
    if(!window->property("hovered").toString().isEmpty()){app.exit(2);return;}
    if(settings->isVisible()){
@@ -862,7 +864,7 @@ int main(int argc,char **argv){
    }
    QTextStream(stdout)<<"PASS: actual joystick dot moves and centers with gaze unavailable"<<Qt::endl;app.quit();
   });
-  poll->start();QTimer::singleShot(3000,&app,[&]{app.exit(2);});return app.exec();
+  poll->start();QTimer::singleShot(3000,&app,[&]{QTextStream(stderr)<<"FAIL: joystick UI did not settle before timeout"<<Qt::endl;app.exit(2);});return app.exec();
  }
 
  if(app.arguments().contains("--prediction-hover-ui-check")){
