@@ -674,7 +674,7 @@ double Controller::hover(QString key){
  lastHoldHover=clock.elapsed();
  if(key.startsWith("suggest:")){
   bool valid=false;const int i=key.mid(8).toInt(&valid);
-  if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()){dwell.reset();return 0;}
+  if(showingImeCandidates()||!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()){dwell.reset();return 0;}
  }
  if(key.startsWith("ime:")){int index=0;if(!imeTarget(key,index)){dwell.reset();return 0;}}
  const bool recovery=key=="Pause"||key=="Recover"||key=="CancelTarget"||key=="Connect"||key=="Tobii"||key=="Settings"||key=="Speak"||key=="StopSpeech"||isSleepKey(key);
@@ -845,6 +845,7 @@ void Controller::activate(QString key){
   refreshLocalIme();return;
  }
  if(key.startsWith("suggest:")){
+  if(showingImeCandidates())return;
   bool valid=false;int i=key.mid(8).toInt(&valid);if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()||(!runner.textOnly&&!ready()))return;
   if(!runner.heldKeys().isEmpty()){actionStatus="Release held keys before accepting a suggestion";emit changed();return;}
   QString prefix=WordPrediction::prefix(typingContext(),predictionLanguageValue);auto word=suggestions[i];
@@ -978,7 +979,7 @@ bool Controller::performAction(QString action){
  if(action=="NextSuggestions"||action=="PreviousSuggestions"){
   if(sensitiveInput){suggestions.clear();emit changed();return true;}
   int pageSize=4;for(const auto &v:layout["keys"].toList()){auto k=v.toMap();if(k["kind"]=="SuggestionRow")pageSize=qMax(1,k.value("suggestionCount",k["width"].toInt()/2).toInt());}
-  if(localImeActive()){
+  if(showingImeCandidates()){
    const int localPageSize=suggestionPageSize();
    const int next=imeCandidateOffset+(action=="NextSuggestions"?localPageSize:-localPageSize);
    if(next>=0&&next<imeCandidateSnapshot.size()){imeCandidateOffset=next;++imeRevision;emit changed();}
@@ -1116,10 +1117,10 @@ int Controller::suggestionPageSize()const{
  }
  return 4;
 }
-QStringList Controller::displaySuggestions()const{return localImeActive()?imeCandidateSnapshot.mid(imeCandidateOffset,suggestionPageSize()):suggestions;}
-QString Controller::suggestionPrefix()const{return localImeActive()?QString("ime:%1:").arg(imeRevision):QString("suggest:");}
+QStringList Controller::displaySuggestions()const{return showingImeCandidates()?imeCandidateSnapshot.mid(imeCandidateOffset,suggestionPageSize()):suggestions;}
+QString Controller::suggestionPrefix()const{return showingImeCandidates()?QString("ime:%1:").arg(imeRevision):QString("suggest:");}
 bool Controller::imeTarget(const QString &target,int &index)const{
- if(!localImeActive()||!target.startsWith(suggestionPrefix()))return false;
+ if(!showingImeCandidates()||!target.startsWith(suggestionPrefix()))return false;
  bool valid=false;const int slot=target.mid(suggestionPrefix().size()).toInt(&valid);
  if(!valid||slot<0||slot>=suggestionPageSize())return false;
  index=imeCandidateOffset+slot;

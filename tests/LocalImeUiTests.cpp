@@ -177,6 +177,15 @@ private slots:
   QMetaObject::invokeMethod(view.editor,"prepareInput");QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
   const int key=view.find("Text","q");QVERIFY(key>=0);view.lookAtKey(key);
   QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("q"));view.stop();
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Action"},{"text","ClearScratchpad"}}}));
+  QTRY_VERIFY(!view.controller.executingCommands());
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text","thank "}}}));
+  QTRY_VERIFY(!view.controller.executingCommands());
+  QCOMPARE(view.controller.property("scratchpad").toString(),QString("thank "));
+  QTRY_VERIFY(view.controller.displaySuggestions().contains("you"));
+  QCOMPARE(view.controller.suggestionPrefix(),QString("suggest:"));
+  view.lookAtCandidate(view.controller.displaySuggestions().indexOf("you"));
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("thank you "));view.stop();
  }
  void realCompositionThroughProductionUi_data(){
   QTest::addColumn<QString>("locale");QTest::addColumn<QString>("reading");QTest::addColumn<QString>("expected");

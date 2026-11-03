@@ -91,7 +91,7 @@ private slots:
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
   QCOMPARE(c.displaySuggestions(),QStringList({"seven","eight"}));c.clickCommand(stale);QCOMPARE(engine.selected,-1);
   const auto current=c.suggestionPrefix()+"1";engine.replace({"replacement"});c.clickCommand(current);QCOMPARE(engine.selected,-1);
-  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.displaySuggestions().isEmpty());
+  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QCOMPARE(c.suggestionPrefix(),QString("suggest:"));QVERIFY(!c.displaySuggestions().isEmpty());
   engine.replace({"paused"});const auto beforePause=c.suggestionPrefix()+"0";c.togglePause();c.clickCommand(beforePause);QCOMPARE(engine.selected,0);
   c.togglePause();c.attachScratchpadInputEngine(nullptr);QVERIFY(!c.localImeActive());QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
   c.resetPreferences();QVERIFY(c.savePreferences());
@@ -132,6 +132,20 @@ private slots:
   QVERIFY(c.scratchpadEditable());QVERIFY(!c.localImeActive());
   QVERIFY(c.setScratchpadText("thank "));QVERIFY(c.displaySuggestions().contains("you"));
   c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void conversationPredictionsReturnWhenEngineHasNoCandidates(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+  LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);
+  QVERIFY(c.localImeActive());QVERIFY(c.setScratchpadText("thank "));
+  QVERIFY(c.displaySuggestions().contains("you"));QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
+  const auto nextPage=c.displaySuggestions();QVERIFY(!nextPage.isEmpty());QVERIFY(!nextPage.contains("you"));
+  engine.replace({"candidate"});QCOMPARE(c.displaySuggestions(),QStringList{"candidate"});QVERIFY(c.suggestionPrefix().startsWith("ime:"));
+  c.clickCommand("suggest:0");QVERIFY(!c.executingCommands());QCOMPARE(engine.selected,-1);
+  engine.replace({});QCOMPARE(c.displaySuggestions(),nextPage);QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
+  engine.replace({"candidate"});QCOMPARE(c.displaySuggestions(),QStringList{"candidate"});
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void conversationCapsLockShowsToggleState(){

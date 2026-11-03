@@ -290,6 +290,7 @@ public:
  QStringList localImeLocales()const{return localInput.availableLocales();}
  QString localImeLocale()const{return wantedImeLocale.isEmpty()?localInput.locale():wantedImeLocale;}
  void setLocalImeLocale(const QString &locale);
+ bool showingImeCandidates()const{return localImeActive()&&!imeCandidateSnapshot.isEmpty();}
  QStringList displaySuggestions()const;
  QString suggestionPrefix()const;
 signals:
