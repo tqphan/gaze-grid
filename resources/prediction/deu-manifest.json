@@ -5,20 +5,24 @@
   "source": "https://downloads.tatoeba.org/exports/per_language/deu/deu_sentences.tsv.bz2",
   "license": "CC BY 2.0 FR",
   "attribution": "Tatoeba contributors (https://tatoeba.org)",
-  "retrieved_utc": "2026-11-01T22:43:19.019495+00:00",
+  "retrieved_utc": "2026-11-02T23:52:59.015512+00:00",
   "source_sha256": "3338f9fc53f53af3c532a999aae50402d8e506af46c055c14342cffb76c08eec",
-  "model_sha256": "577071bec011c0da20b21affbdaa601d3126ff3fae5584faf170789e79ed8dc0",
+  "model_sha256": "e04c8ae7cc7f827af073141a34d398aada82c21d0df24d40311e0f3abe819d57",
   "training_sentences": 200000,
   "heldout_sentences": 1000,
   "maximum_training_sentences": 200000,
-  "compressed_bytes": 1064969,
+  "compressed_bytes": 1308057,
   "counts": {
-    "unigrams": 31523,
+    "unigrams": 64244,
+    "case_forms": 14493,
     "b": 74638,
     "t": 65593,
     "q": 41702
   },
   "split": "SHA256 of normalized tokens, first 4 bytes modulo 20; zero held out; exact duplicates removed",
   "selection": "Export order, first maximum eligible training sentences",
-  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context"
+  "normalization": "NFC, lowercase, letters and combining marks, internal apostrophes; sentence punctuation resets context",
+  "minimum_word_count": 1,
+  "maximum_vocabulary": 100000,
+  "casing": "Most common non-sentence-initial surface; minimum 2 observations and 60 percent share"
 }

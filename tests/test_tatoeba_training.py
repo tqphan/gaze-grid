@@ -23,6 +23,10 @@ class TrainingTests(unittest.TestCase):
         for case in cases:
             self.assertEqual(trainer.word_segmentation.segment(case["text"],case["language"]),case["tokens"])
 
+    def test_german_surface_case(self):
+        self.assertEqual(trainer.tokens("ein Haus", "deu",False),["ein","Haus"])
+        self.assertEqual(trainer.tokens("ein Haus", "deu"),["ein","haus"])
+
     def test_turkish_casing(self):
         self.assertEqual(trainer.tokens("ISLAK \u0130STANBUL", "tur"),["\u0131slak", "istanbul"])
         self.assertEqual(trainer.tokens("I\u0307STANBUL", "tur"),["istanbul"])

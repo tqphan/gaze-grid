@@ -20,6 +20,7 @@
 #include "MagnifierGeometry.h"
 #include "WordPrediction.h"
 #include "PredictionLanguage.h"
+#include "DesktopTextContext.h"
 #include "ShortcutMappings.h"
 #include "PortalPermissionStore.h"
 #include <QJsonArray>
@@ -65,6 +66,25 @@ private slots:
  }
 
 
+ void nativeSurroundingTextOffsets(){
+  const auto value=QString::fromUtf8("caf\xc3\xa9 \xf0\x9f\x98\x80 tail").toUtf8();
+  const auto context=DesktopTextContext::fromUtf8(value,10,10);
+  QVERIFY(context.available);QCOMPARE(context.before.toUtf8(),value.left(10));
+  QVERIFY(!DesktopTextContext::fromUtf8(value,4,4).available);
+  QVERIFY(!DesktopTextContext::fromUtf8(value,10,11).available);
+  QVERIFY(!DesktopTextContext::fromUtf8("e\xcc\x81",1,1).available);
+  QVERIFY(!DesktopTextContext::fromUtf8(value,-1,-1).available);
+ }
+ void germanCaseFormsAndCompletionReplacement(){
+  const auto words=WordPrediction::dictionary("deu");
+  QVERIFY(WordPrediction::suggest("ein ha",words,{},1000,true,false,"never","deu").contains("Haus"));
+  QVERIFY(WordPrediction::suggest("ein HA",words,{},1000,true,false,"never","deu").contains("HAUS"));
+  QCOMPARE(PredictionLanguage::caseReplacement("ein ha","Haus","deu"),QString("ha"));
+  ActionRunner runner;runner.textOnly=true;QSignalSpy text(&runner,&ActionRunner::textCommitted),finished(&runner,&ActionRunner::finished);
+  auto completion=cmd("Text","Haus ");completion["literalCompletion"]=true;completion["removePrefix"]=2;
+  QVERIFY(runner.start({completion}));QTRY_COMPARE(finished.size(),1);
+  QCOMPARE(text.size(),1);QCOMPARE(text.first().first().toString(),QString("\b\bHaus "));
+ }
  void segmentationMatchesTrainer(){
   QFile file(":/resources/prediction/segmentation/cases.json");QVERIFY(file.open(QIODevice::ReadOnly));
   for(const auto &item:QJsonDocument::fromJson(file.readAll()).array()){
@@ -77,6 +97,8 @@ private slots:
   const auto chinese=QString::fromUtf8("\xe4\xb8\xad\xe5\x9b\xbd");
   const auto thai=QString::fromUtf8("\xe0\xb8\xa0\xe0\xb8\xb2\xe0\xb8\xa9\xe0\xb8\xb2\xe0\xb9\x84\xe0\xb8\x97\xe0\xb8\xa2");
   QCOMPARE(WordSegmentation::segment(chinese,"cmn"),QStringList{chinese});
+  const auto edit=PredictionLanguage::edit(chinese.left(1),chinese.mid(1),chinese,"cmn",true);
+  QVERIFY(edit.valid);QCOMPARE(edit.removeAfter,1);QCOMPARE(edit.text,chinese.mid(1));
   QVERIFY(!WordSegmentation::segment(thai,"tha").isEmpty());
   for(const auto language:QStringList{"cmn","tha"}){
    const auto words=WordPrediction::dictionary(language);

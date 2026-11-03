@@ -63,6 +63,14 @@ private slots:
   QInputMethodEvent preedit("pending",{});QCoreApplication::sendEvent(editor.get(),&preedit);
   QVERIFY(!input.predictionContext(text,cursor));
  }
+ void completionRestoresGermanCaseAtomically(){
+  QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));
+  std::unique_ptr<QObject> editor(component.create());QVERIFY2(editor,qPrintable(component.errorString()));
+  editor->setProperty("readOnly",false);editor->setProperty("committedText","ein haus!");editor->setProperty("cursorPosition",6);
+  LocalScratchpadInput input;input.setEditor(editor.get());QString text;int cursor=0;
+  QVERIFY(input.predictionContext(text,cursor));QVERIFY(input.complete("Haus","deu",true,text,cursor));
+  QCOMPARE(editor->property("text").toString(),QString("ein Haus!"));
+ }
  void qtVirtualKeyboardAdapterRoutesRealKeys(){
   if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional Qt Virtual Keyboard runtime test");
   QQmlEngine engine;QQmlComponent component(&engine,QUrl::fromLocalFile(SCRATCHPAD_QML));

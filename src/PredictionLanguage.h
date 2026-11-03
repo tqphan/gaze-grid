@@ -82,11 +82,47 @@ inline QStringList tokens(const QString &text,const QString &language){
  return clusters;
 }
 inline bool appendSpace(const QString &language){return language!="cmn"&&language!="jpn"&&language!="tha";}
+inline QString caseReplacement(const QString &text,const QString &candidate,const QString &language){
+ const auto raw=rawPrefix(text,language),prefix=normalize(raw);
+ if(language=="deu"&&!prefix.isEmpty()&&candidate.left(prefix.size())!=prefix
+    &&lower(candidate.left(prefix.size()),language)==lower(prefix,language))return raw;
+ return {};
+}
 // Preserve the original prefix (including decomposed accents and apostrophes).
 // Only the suffix is inserted, so acceptance never deletes user text.
 inline QString completion(const QString &text,const QString &candidate,const QString &language,bool space){
  const auto prefix=normalize(rawPrefix(text,language));
  if(!lower(normalize(candidate),language).startsWith(lower(prefix,language)))return {};
  return candidate.mid(prefix.size())+(space&&appendSpace(language)?QString(" "):QString());
+}
+struct CompletionEdit {
+ int removeBefore=0,removeAfter=0;
+ QString text;
+ bool valid=false;
+};
+inline CompletionEdit edit(const QString &before,const QString &after,const QString &candidate,const QString &language,bool space){
+ CompletionEdit result;
+ const auto prefix=rawPrefix(before,language);
+ if(!lower(normalize(candidate),language).startsWith(lower(normalize(prefix),language)))return result;
+ result.removeBefore=caseReplacement(before,candidate,language).size();
+ if(!prefix.isEmpty()&&appendSpace(language))for(auto ch:after.toStdU32String()){
+  if(!wordCharacter(ch))break;result.removeAfter+=ch>0xffff?2:1;
+ }
+ if(!prefix.isEmpty()&&WordSegmentation::supported(language)){
+  const auto runBefore=rawPrefix(before,"eng");QString runAfter;
+  for(auto ch:after.toStdU32String()){
+   if(!wordCharacter(ch))break;runAfter+=QString::fromUcs4(&ch,1);
+  }
+  int offset=0;
+  for(const auto &token:WordSegmentation::segment(runBefore+runAfter,language)){
+   const int end=offset+token.size();
+   if(offset<runBefore.size()&&runBefore.size()<end){result.removeAfter=end-runBefore.size();break;}
+   offset=end;
+  }
+ }
+ const auto following=after.mid(result.removeAfter);
+ const bool addSpace=space&&appendSpace(language)&&(following.isEmpty()||(!following.front().isSpace()&&!following.front().isPunct()));
+ result.text=result.removeBefore?candidate+(addSpace?QString(" "):QString()):completion(before,candidate,language,addSpace);
+ result.valid=true;return result;
 }
 }

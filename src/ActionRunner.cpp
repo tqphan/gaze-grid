@@ -131,6 +131,15 @@ void ActionRunner::step(){
             if(!editingLocal())emit textCommitted("\b");
             if(appendSpaceAfterPunctuation&&appendSpaceAfterPunctuation(effective)){value+=' ';effective+=' ';}
         }
+        QString removed;
+        const int removePrefix=command.value("removePrefix").toInt();
+        const int removeSuffix=command.value("removeSuffix").toInt();
+        if(removePrefix<0||removePrefix>64||removeSuffix<0||removeSuffix>64||((shortcut||editingLocal()||!held.isEmpty())&&(removePrefix||removeSuffix))){fail("Completion replacement unavailable");return;}
+        for(int i=0;i<removePrefix;++i){
+            if(!textOnly&&!tap("BACK")){fail("Could not replace completion prefix");return;}
+            removed+='\b';
+        }
+        for(int i=0;i<removeSuffix;++i)if(!textOnly&&!tap("DELETE")){fail("Could not replace completion suffix");return;}
         QString composed;
         const bool completion=command.value("literalCompletion").toBool();
         const bool unicodeCompletion=completion&&(command.value("alwaysUnicode").toBool()||std::any_of(value.cbegin(),value.cend(),[](QChar ch){return ch.unicode()>127;}));
@@ -157,7 +166,7 @@ void ActionRunner::step(){
             if(!ok)break;composed+=physicalText?translated:QString(KeyNames::usTypedCharacter(ch,upper));
         }
         }
-        if(ok&&!editingLocal()&&(textOnly||!shortcut)&&(!physicalText||textOnly||!composed.isEmpty()))emit textCommitted(composed);
+        if(ok&&!editingLocal()&&(textOnly||!shortcut)&&(!physicalText||textOnly||!composed.isEmpty()))emit textCommitted(removed+composed);
     }else if(tag=="ChangeKeyboard"){
         bool back=command["attributes"].toMap().value("backreturnshere","true").toString().compare("false",Qt::CaseInsensitive)!=0;
         if(navigate)navigate(value.trimmed(),back);else ok=false;

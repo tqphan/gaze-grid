@@ -120,7 +120,7 @@ apostrophes, and inserts only a matching suffix. Chinese, Japanese, and Thai
 continue to omit completion spaces.
 
 The rules layer is shared by the word and character models. German noun
-capitalization remains limited by the current lowercased training vocabulary.
+capitalization uses the surface forms described below.
 
 Runtime dictionary validation and context tokenization operate on Unicode scalar
 values. Supplementary-plane letters (including CJK Extension B) remain intact;
@@ -170,8 +170,8 @@ runtime; unknown letters retain attached marks. Prefix lookup considers lexical
 suffixes, so a partial word can span an earlier provisional boundary. Without an
 explicit separator, the row interleaves word completions and continuations. A
 continuation label includes the current prefix; acceptance inserts its suffix.
-At a caret inside unspaced text, acceptance inserts rather than guessing how much
-of the following text belongs to the word.
+At a caret inside unspaced Chinese or Thai text, acceptance uses the same lexical
+segmentation to replace the remaining suffix of the word containing the caret.
 
 The rebuilt holdouts use segmented words and different deterministic splits;
 their scores cannot be compared directly with the old character-model reports.
@@ -187,3 +187,16 @@ locale changes again. Korean local input maps gaze QWERTY keys to two-set Hangul
 jamo, including shifted consonants and vowels; those keys show jamo labels.
 Personal keyboards keep literal input. The installed Qt engines are covered by
 real Pinyin, Japanese conversion/edit/cancel, and Korean Hangul composition tests.
+
+## German casing and attested word forms
+
+German retains frequent surface spellings observed away from sentence starts.
+A form needs two observations and at least a 60% share to override lowercase.
+All-capital prefixes stay uppercase. Acceptance can replace the typed prefix
+when canonical capitalization differs; local edits use one input-method commit.
+
+German and Turkish retain up to 100,000 attested vocabulary entries, including
+single observations, to cover more compounds and inflected forms. Their rebuilt
+vocabularies contain 64,244 and 75,301 entries. This increases coverage while also
+admitting rare corpus errors; it does not invent unseen grammatical forms.
+Model and holdout checksums and updated scores are in multilingual-evaluation.json.

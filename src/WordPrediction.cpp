@@ -49,6 +49,7 @@ struct Distribution {
 };
 struct Model {
  QHash<QString,double> prior;
+ QHash<QString,QString> forms;
  QHash<QString,Distribution> contexts;
  Model(const QString &language){
   QFile file(":/resources/prediction/"+language+"-v1.bin");
@@ -60,7 +61,8 @@ struct Model {
   if(readLine()!="gaze-grid-prediction-v1")qFatal("Invalid prediction model");
   while(!input.atEnd()){
    const auto fields=readLine().split('\t');
-   if(fields.size()==3&&fields[0]=="u")prior.insert(QString::fromUtf8(fields[1]),fields[2].toDouble());
+   if(fields.size()==3&&fields[0]=="c")forms.insert(QString::fromUtf8(fields[1]),QString::fromUtf8(fields[2]));
+   else if(fields.size()==3&&fields[0]=="u")prior.insert(QString::fromUtf8(fields[1]),fields[2].toDouble());
    else if((fields.size()==4&&fields[0]=="b")||(fields.size()==5&&fields[0]=="t")||(fields.size()==6&&fields[0]=="q")){
     QString context=QString::fromUtf8(fields[1]);
     for(int i=2;i<fields.size()-2;++i)context+=' '+QString::fromUtf8(fields[i]);
@@ -121,7 +123,7 @@ static QStringList suggestTokens(const QString &text,const QStringList &dictiona
  const auto &words=index.sorted;
  const auto lower=PredictionLanguage::lower(current,languageCode);
  auto context=PredictionLanguage::lower(normalized.left(normalized.size()-current.size()),languageCode);
- const int boundary=context.lastIndexOf(QRegularExpression("[.!?;:\\n\u3002\uff01\uff1f\u061b\u061f]"));
+ const int boundary=context.lastIndexOf(QRegularExpression("[.!?;:\\r\\n\u3002\uff01\uff1f\u061b\u061f]"));
  context=context.mid(boundary+1);
  QStringList history{"<s>","<s>","<s>"};
  history+=PredictionLanguage::tokens(context,languageCode);
@@ -201,6 +203,7 @@ static QStringList suggestTokens(const QString &text,const QStringList &dictiona
    if(current.size()>1&&current==PredictionLanguage::upper(current,languageCode))suffix=PredictionLanguage::upper(suffix,languageCode);
    word=current+suffix;
   }else if(sentenceStart)word=PredictionLanguage::upper(word.left(1),languageCode)+word.mid(1);
+  if(languageCode=="deu"&&(current.isEmpty()||current!=PredictionLanguage::upper(current,languageCode)))word=language.forms.value(ranked[i].word,word);
   if(languageCode=="eng"&&(word=="i"||word.startsWith("i'")))word[0]='I';
   result<<word;
  }
