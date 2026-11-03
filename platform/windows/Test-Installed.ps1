@@ -47,7 +47,7 @@ $accessibility = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Accessibili
 $atName = 'gaze-grid_gaze-grid_v1'
 $desktopRun = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 function Test-DesktopStartup([bool]$Expected) {
-    $entry = Get-ItemPropertyValue -LiteralPath $desktopRun -Name 'gaze-grid' -ErrorAction SilentlyContinue
+    $entry = (Get-ItemProperty -LiteralPath $desktopRun -Name 'gaze-grid' -ErrorAction SilentlyContinue).'gaze-grid'
     if ($Expected) {
         if ($entry -ne ('"' + $installed + '"')) { throw 'Desktop startup entry is missing or points to the wrong executable.' }
     } elseif ($entry) { throw 'Desktop startup was enabled despite opting out.' }
