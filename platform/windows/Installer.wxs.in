@@ -9,6 +9,12 @@
     </Property>
     <SetProperty Id="GAZE_GRID_TRUST_CERTIFICATE" Value="[GAZE_GRID_SAVED_MODE]" After="AppSearch" Sequence="both">Installed AND GAZE_GRID_SAVED_MODE</SetProperty>
     <Property Id="GAZE_GRID_STARTUP" Value="1" Secure="yes" />
+    <Property Id="GAZE_GRID_SAVED_STARTUP" Secure="yes">
+      <RegistrySearch Id="SavedStartup" Root="HKLM" Key="Software\gaze-grid\Installer" Name="Startup" Type="raw" Win64="yes" />
+    </Property>
+    <SetProperty Id="GAZE_GRID_STARTUP" Value="[GAZE_GRID_SAVED_STARTUP]" After="DisableUntrustedSignIn" Sequence="both">Installed AND GAZE_GRID_SAVED_STARTUP</SetProperty>
+    <Property Id="GAZE_GRID_STARTUP_CHOICE" Value="0" />
+    <SetProperty Id="GAZE_GRID_STARTUP_CHOICE" Value="1" Before="PrepareSignIn" Sequence="execute">GAZE_GRID_STARTUP = "1"</SetProperty>
     <Property Id="GAZE_GRID_SIGN_IN" Value="1" Secure="yes" />
     <Property Id="GAZE_GRID_SAVED_SIGN_IN" Secure="yes">
       <RegistrySearch Id="SavedSignIn" Root="HKLM" Key="Software\gaze-grid\Installer" Name="SignIn" Type="raw" Win64="yes" />
@@ -64,11 +70,12 @@
         <Condition>GAZE_GRID_TRUST_CERTIFICATE &lt;&gt; "1"</Condition>
         <File Id="gaze_gridUnsignedExe" Source="@CMAKE_BINARY_DIR@/unsigned/gaze-grid.exe" KeyPath="yes" />
       </Component>
-      <!-- Separate key path preserves app changes during repair. -->
-      <Component Id="gaze_gridStartup" Guid="0C103E18-0AF3-4DCF-B160-E7483BB875CA" Win64="yes" NeverOverwrite="yes">
+      <!-- Check the actual launch entry, so repair restores it when missing.
+           Never overwrite an existing entry or Windows' startup approval. -->
+      <Component Id="gaze_gridStartup" Guid="30BE25CB-E3EA-4140-9346-C65295547C81" Win64="yes" NeverOverwrite="yes">
         <Condition>GAZE_GRID_STARTUP = "1"</Condition>
-        <RegistryValue Root="HKCU" Key="Software\gaze-grid\Installer" Name="Startup" Value="1" Type="integer" KeyPath="yes" />
-        <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="gaze-grid" Value="&quot;[INSTALL_ROOT]gaze-grid.exe&quot;" Type="string" />
+        <RegistryValue Root="HKCU" Key="Software\gaze-grid\Installer" Name="Startup" Value="1" Type="integer" />
+        <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="gaze-grid" Value="&quot;[INSTALL_ROOT]gaze-grid.exe&quot;" Type="string" KeyPath="yes" />
       </Component>
       <Component Id="gaze_gridSignInSettings" Guid="833B331F-8831-4C30-9B50-3864F5C8CA07" Win64="yes">
         <RegistryKey Root="HKLM" Key="Software\gaze-grid\SignIn" ForceDeleteOnUninstall="yes">
@@ -78,6 +85,7 @@
       <Component Id="gaze_gridMode" Guid="30BCF52D-69E3-4E56-813B-7FCA2DD5F966" Win64="yes">
         <RegistryValue Root="HKLM" Key="Software\gaze-grid\Installer" Name="TrustCertificate" Value="[GAZE_GRID_TRUST_CERTIFICATE]" Type="string" KeyPath="yes" />
         <RegistryValue Root="HKLM" Key="Software\gaze-grid\Installer" Name="SignIn" Value="[GAZE_GRID_SIGN_IN]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\gaze-grid\Installer" Name="Startup" Value="[GAZE_GRID_STARTUP_CHOICE]" Type="string" />
       </Component>
       <!-- Trust is deliberately persistent: never remove a root that may already
            be trusted by an administrator or used by another gaze-grid release. -->

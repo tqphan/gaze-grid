@@ -45,16 +45,29 @@ function Test-KeyboardInstanceLifecycle {
 Remove-Item "Cert:\LocalMachine\Root\$CertificateThumbprint" -Force
 $accessibility = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Accessibility'
 $atName = 'gaze-grid_gaze-grid_v1'
+$desktopRun = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+function Test-DesktopStartup([bool]$Expected) {
+    $entry = Get-ItemPropertyValue -LiteralPath $desktopRun -Name 'gaze-grid' -ErrorAction SilentlyContinue
+    if ($Expected) {
+        if ($entry -ne ('"' + $installed + '"')) { throw 'Desktop startup entry is missing or points to the wrong executable.' }
+    } elseif ($entry) { throw 'Desktop startup was enabled despite opting out.' }
+}
 $originalStartup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ -and $_.Trim() -ne $atName })
-foreach ($mode in @('decline', 'default', 'accept', 'sign-in', 'sign-in-off', 'decline-trusted')) {
+foreach ($mode in @('decline', 'default', 'accept', 'sign-in', 'sign-in-off', 'decline-trusted', 'startup-off')) {
 Write-Host "Checking installation mode: $mode"
 $expectedUIAccess = $mode -in @('default', 'accept', 'sign-in', 'sign-in-off')
 $expectedSignIn = $expectedUIAccess -and $mode -ne 'sign-in-off'
 [string[]]$properties = if ($mode -eq 'default') { @() } elseif ($expectedUIAccess) { @('GAZE_GRID_TRUST_CERTIFICATE=1') } else { @('GAZE_GRID_TRUST_CERTIFICATE=0') }
 if ($mode -eq 'sign-in') { $properties += 'GAZE_GRID_SIGN_IN=1' }
 if ($mode -eq 'sign-in-off') { $properties += 'GAZE_GRID_SIGN_IN=0' }
+if ($mode -eq 'startup-off') { $properties += 'GAZE_GRID_STARTUP=0' }
 Run-Msi '/i' $properties
 try {
+    Test-DesktopStartup ($mode -ne 'startup-off')
+    if ($mode -eq 'default') {
+        # Leave the old installer marker in place: it must not hide a missing Run entry.
+        Remove-ItemProperty -LiteralPath $desktopRun -Name 'gaze-grid'
+    }
     $rootTrusted = Test-Path "Cert:\LocalMachine\Root\$CertificateThumbprint"
     if ($mode -eq 'decline' -and $rootTrusted) { throw 'Declined installation unexpectedly trusted the certificate.' }
     if ($mode -ne 'decline' -and !$rootTrusted) { throw 'Accepted certificate trust is missing.' }
@@ -69,6 +82,7 @@ try {
     }
     # A repair with no consent property must preserve the original mode.
     Run-Msi '/fomus'
+    Test-DesktopStartup ($mode -ne 'startup-off')
     $startup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
     if (($atName -in $startup) -ne $expectedSignIn) { throw 'Unexpected sign-in startup selection after repair.' }
     if (@(Compare-Object $originalStartup @($startup | Where-Object { $_.Trim() -ne $atName })).Count) { throw 'Other accessibility startup entries changed.' }
@@ -155,6 +169,7 @@ try {
     if ($mode -eq 'default') { Test-KeyboardInstanceLifecycle }
 } finally { Run-Msi '/x' }
 $remainingStartup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
+Test-DesktopStartup $false
 if ($atName -in $remainingStartup) { throw 'Sign-in startup remained after uninstall.' }
 if (@(Compare-Object $originalStartup $remainingStartup).Count) { throw 'Uninstall changed another accessibility startup entry.' }
 if (Test-Path "$accessibility\ATs\$atName") { throw 'Sign-in registration remained after uninstall.' }
