@@ -1,6 +1,7 @@
 #include "WindowsAutomationContext.h"
 #include "PredictionLanguage.h"
 #include "WindowsInput.h"
+#include <objbase.h>
 #include <uiautomationclient.h>
 #include <oleauto.h>
 namespace {
