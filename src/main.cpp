@@ -40,6 +40,7 @@
 #include "WindowsTheme.h"
 #include "WindowsSignIn.h"
 #include "WindowsDesktopSession.h"
+#include "WindowsTextContext.h"
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -267,14 +268,23 @@ int main(int argc,char **argv){
 #ifdef _WIN32
  Controller controller(signInMode,signInMode?WindowsSignIn::profile():QJsonObject{});
  std::unique_ptr<WindowsDesktop::Monitor> desktopMonitor;
+ std::unique_ptr<WindowsTextContext> textContextMonitor;
  if(keyboardInstance){
   desktopMonitor=std::make_unique<WindowsDesktop::Monitor>();
   QObject::connect(desktopMonitor.get(),&WindowsDesktop::Monitor::activeChanged,&controller,[&](bool active){
+   if(textContextMonitor)textContextMonitor->setEnabled(active);
    controller.setDesktopActive(active);
    // The user desktop persists. A secure copy exits when its desktop loses
    // input, releasing the tracker before the user instance resumes.
    if(secureDesktop&&!active)app.quit();
   });
+  if(!signInMode&&!secureDesktop&&!localTestBuild()){
+   textContextMonitor=std::make_unique<WindowsTextContext>();
+   QObject::connect(textContextMonitor.get(),&WindowsTextContext::contextChanged,&controller,&Controller::updateDesktopTextContext);
+   controller.setDesktopContextProvider([]{return WindowsTextContext::current();});
+   controller.setDesktopCompletionProvider(&WindowsTextContext::replaceCurrent);
+   textContextMonitor->start();
+  }
   desktopMonitor->start();
   if(secureDesktop&&!desktopMonitor->active())return 0;
  }
@@ -294,6 +304,9 @@ int main(int argc,char **argv){
  if(inputMethod){
   controller.configureInputMethod([&](QString text){return inputMethod->commitText(text);},[&](QString name,bool down){return inputMethod->sendKey(name,down);});
   QObject::connect(inputMethod.get(),&PlasmaInputMethod::contextInvalidated,&controller,&Controller::invalidateInputContext);
+  QObject::connect(inputMethod.get(),&PlasmaInputMethod::surroundingTextChanged,&controller,&Controller::updateDesktopTextContext);
+  controller.setDesktopContextProvider([&]{return inputMethod->textContext();});
+  controller.setDesktopCompletionProvider([&](const DesktopTextContext &expected,const QString &candidate,const QString &language,bool space){return inputMethod->replaceText(expected,candidate,language,space);});
   QObject::connect(inputMethod.get(),&PlasmaInputMethod::stateChanged,&controller,[&]{controller.inputContextChanged(inputMethod->ready(),inputMethod->sensitive());});
  }
  int inputMethodCheckStage=0;

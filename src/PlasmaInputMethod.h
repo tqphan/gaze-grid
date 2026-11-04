@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <memory>
+#include "DesktopTextContext.h"
 class QWindow;
 // KWin launches this backend on its privileged input-method Wayland connection.
 class PlasmaInputMethod:public QObject {
@@ -14,9 +15,12 @@ public:
  bool sendKey(const QString &name,bool down);
  bool ready()const;
  bool sensitive()const;
+ DesktopTextContext textContext()const;
+ bool replaceText(const DesktopTextContext &expected,const QString &candidate,const QString &language,bool space);
 signals:
  void stateChanged();
  void contextInvalidated();
+ void surroundingTextChanged(const DesktopTextContext &context);
 private:
  struct Impl;
  std::unique_ptr<Impl> d;

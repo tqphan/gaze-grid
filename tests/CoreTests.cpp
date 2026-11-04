@@ -19,6 +19,8 @@
 #include <limits>
 #include "MagnifierGeometry.h"
 #include "WordPrediction.h"
+#include "PredictionLanguage.h"
+#include "DesktopTextContext.h"
 #include "ShortcutMappings.h"
 #include "PortalPermissionStore.h"
 #include <QJsonArray>
@@ -29,6 +31,112 @@ class CoreTests:public QObject{
  Q_OBJECT
 static QVariantMap cmd(QString tag,QString text){return {{"tag",tag},{"text",text}};}
 private slots:
+ void predictionLanguageRules(){
+  const QString decomposed=QString::fromUtf8("cafe\xcc\x81");
+  QCOMPARE(WordPrediction::prefix(decomposed,"fra"),QString::fromUtf8("caf\xc3\xa9"));
+  QCOMPARE(PredictionLanguage::rawPrefix(decomposed,"fra"),decomposed);
+  QCOMPARE(WordPrediction::completedWord(decomposed,"fra"),QString::fromUtf8("caf\xc3\xa9"));
+  QCOMPARE(PredictionLanguage::completion(decomposed,QString::fromUtf8("caf\xc3\xa9s"),"fra",true),QString("s "));
+  QCOMPARE(PredictionLanguage::completion(QString::fromUtf8("l\xe2\x80\x99"),"l'amour","fra",false),QString("amour"));
+  QVERIFY(PredictionLanguage::completion("ca","hello","fra",true).isEmpty());
+  QCOMPARE(PredictionLanguage::completion("","hello","eng",false),QString("hello"));
+  for(const auto &language:QStringList{"cmn","jpn","tha"}){
+   QVERIFY(!PredictionLanguage::appendSpace(language));
+   QCOMPARE(PredictionLanguage::completion("",QString::fromUtf8("\xe4\xbd\xa0"),language,true),QString::fromUtf8("\xe4\xbd\xa0"));
+  }
+  QCOMPARE(PredictionLanguage::lower("I","tur"),QString(QChar(0x131)));
+  QCOMPARE(PredictionLanguage::upper("i","tur"),QString(QChar(0x130)));
+  QCOMPARE(WordPrediction::completedWord("ISLAK!","tur"),QString(QChar(0x131))+"slak");
+  QCOMPARE(WordPrediction::completedWord("ISLAK!","eng"),QString("islak"));
+ }
+
+ void predictionUnicodeScalars(){
+  const char32_t scalar=0x20000;
+  const auto supplementary=QString::fromUcs4(&scalar,1);
+  QVERIFY(PredictionLanguage::validWord(supplementary));
+  QCOMPARE(WordPrediction::prefix(supplementary,"eng"),supplementary);
+  QCOMPARE(WordPrediction::completedWord(supplementary+"!"),supplementary);
+  QVERIFY(WordPrediction::prefix("123"+supplementary).isEmpty());
+  QCOMPARE(PredictionLanguage::tokens(supplementary+QString(QChar(0x301))+" "+supplementary,"jpn"),QStringList({supplementary+QString(QChar(0x301)),supplementary}));
+  QCOMPARE(PredictionLanguage::tokens("L'amour, cafe\xcc\x81!","fra"),QStringList({"l'amour",QString::fromUtf8("caf\xc3\xa9")}));
+  const QStringList dictionary{supplementary};
+  QCOMPARE(WordPrediction::suggest("",dictionary,{},8,false,true,"never","jpn"),dictionary);
+  QCOMPARE(WordPrediction::suggest(supplementary,dictionary,{},8,false,true,"never","jpn"),dictionary);
+  QCOMPARE(PredictionLanguage::completion(supplementary,supplementary,"jpn",true),supplementary);
+ }
+
+
+ void nativeSurroundingTextOffsets(){
+  const auto value=QString::fromUtf8("caf\xc3\xa9 \xf0\x9f\x98\x80 tail").toUtf8();
+  const auto context=DesktopTextContext::fromUtf8(value,10,10);
+  QVERIFY(context.available);QCOMPARE(context.before.toUtf8(),value.left(10));
+  QVERIFY(!DesktopTextContext::fromUtf8(value,4,4).available);
+  QVERIFY(!DesktopTextContext::fromUtf8(value,10,11).available);
+  QVERIFY(!DesktopTextContext::fromUtf8("e\xcc\x81",1,1).available);
+  QVERIFY(!DesktopTextContext::fromUtf8(value,-1,-1).available);
+ }
+ void germanCaseFormsAndCompletionReplacement(){
+  const auto words=WordPrediction::dictionary("deu");
+  QVERIFY(WordPrediction::suggest("ein ha",words,{},1000,true,false,"never","deu").contains("Haus"));
+  QVERIFY(WordPrediction::suggest("ein HA",words,{},1000,true,false,"never","deu").contains("HAUS"));
+  QCOMPARE(PredictionLanguage::caseReplacement("ein ha","Haus","deu"),QString("ha"));
+  ActionRunner runner;runner.textOnly=true;QSignalSpy text(&runner,&ActionRunner::textCommitted),finished(&runner,&ActionRunner::finished);
+  auto completion=cmd("Text","Haus ");completion["literalCompletion"]=true;completion["removePrefix"]=2;
+  QVERIFY(runner.start({completion}));QTRY_COMPARE(finished.size(),1);
+  QCOMPARE(text.size(),1);QCOMPARE(text.first().first().toString(),QString("\b\bHaus "));
+ }
+ void segmentationMatchesTrainer(){
+  QFile file(":/resources/prediction/segmentation/cases.json");QVERIFY(file.open(QIODevice::ReadOnly));
+  for(const auto &item:QJsonDocument::fromJson(file.readAll()).array()){
+   const auto entry=item.toObject();QStringList expected;
+   for(const auto &token:entry["tokens"].toArray())expected<<token.toString();
+   QCOMPARE(WordSegmentation::segment(entry["text"].toString(),entry["language"].toString()),expected);
+  }
+ }
+ void segmentedWordPrediction(){
+  const auto chinese=QString::fromUtf8("\xe4\xb8\xad\xe5\x9b\xbd");
+  const auto thai=QString::fromUtf8("\xe0\xb8\xa0\xe0\xb8\xb2\xe0\xb8\xa9\xe0\xb8\xb2\xe0\xb9\x84\xe0\xb8\x97\xe0\xb8\xa2");
+  QCOMPARE(WordSegmentation::segment(chinese,"cmn"),QStringList{chinese});
+  const auto edit=PredictionLanguage::edit(chinese.left(1),chinese.mid(1),chinese,"cmn",true);
+  QVERIFY(edit.valid);QCOMPARE(edit.removeAfter,1);QCOMPARE(edit.text,chinese.mid(1));
+  QVERIFY(!WordSegmentation::segment(thai,"tha").isEmpty());
+  for(const auto language:QStringList{"cmn","tha"}){
+   const auto words=WordPrediction::dictionary(language);
+   const auto context=language=="cmn"?chinese:thai;
+   const auto results=WordPrediction::suggest(context,words,{},8,true,false,"never",language);
+   QVERIFY2(!results.isEmpty(),qPrintable(language));
+   const auto prefix=WordPrediction::prefix(context,language);
+   for(const auto &candidate:results){
+    QVERIFY(candidate.startsWith(prefix));
+    const auto inserted=PredictionLanguage::completion(context,candidate,language,true);
+    QVERIFY(!inserted.isEmpty());QVERIFY(!inserted.contains(' '));
+   }
+  }
+ }
+ void vietnamesePhraseCompletion(){
+  const auto words=WordPrediction::dictionary("vie");
+  const auto phrase=QString::fromUtf8("xin l\xe1\xbb\x97i");
+  const auto results=WordPrediction::suggest("xin",words,{},8,true,false,"never","vie");
+  QVERIFY(results.contains(phrase));
+  QVERIFY(!results.contains("xin"));
+  QCOMPARE(PredictionLanguage::completion("xin",phrase,"vie",true),phrase.mid(3)+" ");
+  const auto frequency=WordPrediction::suggest("xin",words,{},8,false,false,"never","vie");
+  for(const auto &word:frequency)QVERIFY(!word.contains(' '));
+  const auto english=WordPrediction::suggest("xin",words,{},8,true,false,"never","eng");
+  for(const auto &word:english)QVERIFY(!word.contains(' '));
+  QCOMPARE(WordPrediction::suggest("xin",words,{},1,true,false,"always","vie"),QStringList{"xin"});
+  QVERIFY(WordPrediction::suggest("xin",words,{},0,true,false,"never","vie").isEmpty());
+ }
+ void turkishPredictionCasing(){
+  const QString word=QString(QChar(0x131))+"slak";
+  const QStringList words{word,"istanbul"};
+  const auto results=WordPrediction::suggest("IS",words,{},8,false,false,"never","tur");
+  QVERIFY(results.contains("ISLAK"));
+  QVERIFY(!results.contains("ISTANBUL"));
+  const auto dotted=WordPrediction::suggest(QString(QChar(0x130))+"s",words,{},8,false,false,"never","tur");
+  QVERIFY(dotted.contains(QString(QChar(0x130))+"stanbul"));
+ }
+
  void keyboardFileCache(){
   QTemporaryDir dir;QVERIFY(dir.isValid());const auto path=dir.filePath("keyboard.xml");
   const QByteArray first="<Keyboard><Name>A</Name></Keyboard>",second="<Keyboard><Name>B</Name></Keyboard>";

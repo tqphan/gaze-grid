@@ -9,11 +9,12 @@ The languages are English, Spanish, French, German, Portuguese, Italian, Dutch,
 Russian, Ukrainian, Polish, Turkish, Vietnamese, Indonesian, Arabic, Chinese
 (Mandarin), Japanese, Korean, and Thai.
 
-Chinese, Japanese, and Thai use character sequences, including attached combining
-marks. Their suggestions predict the next character cluster, without appending a
-space. These are initial character models, not segmented word completion or IME
-conversion engines. Korean uses whitespace-delimited words. Vietnamese tokens
-are whitespace-delimited and often correspond to syllables rather than full words.
+Chinese and Thai use lexicon-segmented word models. Typing without spaces offers
+both completions of the current lexical prefix and continuations after committed
+words. Japanese retains a character model alongside its local IME conversion
+candidates. None of these three languages appends completion spaces. Korean uses
+whitespace-delimited words. Vietnamese tokens often correspond to syllables;
+context-aware mode additionally offers observed two-token phrases.
 Installing these models does not add gaze keyboard layouts for their scripts.
 Local IME composition keeps its own candidate row.
 
@@ -106,3 +107,126 @@ and a 3,084,107-byte model.
 Chinese, Japanese, and Thai
 next-token results describe character clusters; other rows describe word tokens.
 These units differ, so percentages should not be compared directly across rows.
+
+## Language rules
+
+`src/PredictionLanguage.h` shares prefix boundaries, Unicode normalization,
+case conversion, and completion spacing between prediction and acceptance.
+Turkish uses dotted/dotless I casing for dictionary lookup, suggestions, and
+personal learning. The Turkish trainer uses the same casing rules, and its bundled
+model has been rebuilt from the cached source recorded in the manifest. Other languages retain Unicode default casing. Completion
+preserves the text already typed, including combining accents and curly
+apostrophes, and inserts only a matching suffix. Chinese, Japanese, and Thai
+continue to omit completion spaces.
+
+The rules layer is shared by the word and character models. German noun
+capitalization uses the surface forms described below.
+
+Runtime dictionary validation and context tokenization operate on Unicode scalar
+values. Supplementary-plane letters (including CJK Extension B) remain intact;
+character-model tokens attach combining marks to the preceding letter, matching
+the trainer. This prevents valid model entries from being discarded merely
+because they require a UTF-16 surrogate pair.
+
+## Vietnamese phrase suggestions
+
+Context-aware Vietnamese prediction also offers two-token continuations from
+observed bigrams, including after a complete syllable has been typed. It expands
+at most 32 leading syllables, selecting one continuation per syllable when it
+accounts for at least 25% of the recorded continuations. Both tokens must be in
+the active dictionary. Phrase scores use the syllable score times continuation
+share, discounted by 0.9; ordinary single-token suggestions remain available.
+Frequency mode retains single-token behavior. This reuses the bundled offline
+model and adds no settings or downloads. These are corpus-based suggestions,
+not linguistic word segmentation. The Vietnamese evaluation now also reports
+exact two-token matches in the top three suggestions. Token accuracy checks the
+first token of each suggestion; phrase accuracy requires both tokens to match.
+These offline metrics do not establish gaze savings or native-speaker usability.
+
+On the recorded 200-sentence Vietnamese holdout, two-token completion top-three
+accuracy is 9.79% (1,266 eligible events); next-phrase accuracy is 1.04% (1,439
+events). Phrases compete for the same slots: token completion accuracy changes
+from the previous recorded 85.17% to 83.78%, and next-token accuracy from 35.27%
+to 34.72%. The model and held-out checksums are unchanged. This is an explicit
+slot-allocation tradeoff, not an across-the-board prediction accuracy gain.
+
+## Caret and composition
+
+In the app-owned scratchpad, prediction reads committed text before the caret.
+Accepting a completion replaces the remaining suffix of a space-delimited word,
+preserves following text, and avoids inserting a duplicate space before existing
+spacing or punctuation. Predictions are suppressed while text is selected or
+composition is active. Cursor, selection, and composition changes invalidate old
+dwell targets. IME candidates own the row while available or composing; committed
+predictions return afterwards, and accepting them commits text directly without
+feeding it back through the composition engine. Supported desktop fields use the context paths below; unsupported targets retain
+best-effort context.
+
+## Chinese and Thai word models
+
+`segmentation/README.md` documents the pinned lexicons, licenses, integer-cost
+algorithm, and rebuild commands. Segmentation is identical in the trainer and
+runtime; unknown letters retain attached marks. Prefix lookup considers lexical
+suffixes, so a partial word can span an earlier provisional boundary. Without an
+explicit separator, the row interleaves word completions and continuations. A
+continuation label includes the current prefix; acceptance inserts its suffix.
+At a caret inside unspaced Chinese or Thai text, acceptance uses the same lexical
+segmentation to replace the remaining suffix of the word containing the caret.
+
+The rebuilt holdouts use segmented words and different deterministic splits;
+their scores cannot be compared directly with the old character-model reports.
+The evaluation uses actual inserted suffixes and preserves unspaced context.
+Chinese currently has 15,022 vocabulary entries; Thai has 1,892. The small Thai
+training corpus remains a material coverage limitation.
+
+## Local composition languages
+
+Changing the local IME locale selects the corresponding prediction model when
+one is bundled. A later manual prediction-language choice remains until the IME
+locale changes again. Korean local input maps gaze QWERTY keys to two-set Hangul
+jamo, including shifted consonants and vowels; those keys show jamo labels.
+Personal keyboards keep literal input. The installed Qt engines are covered by
+real Pinyin, Japanese conversion/edit/cancel, and Korean Hangul composition tests.
+
+## German casing and attested word forms
+
+German retains frequent surface spellings observed away from sentence starts.
+A form needs two observations and at least a 60% share to override lowercase.
+All-capital prefixes stay uppercase. Acceptance can replace the typed prefix
+when canonical capitalization differs; local edits use one input-method commit.
+
+German and Turkish retain up to 100,000 attested vocabulary entries, including
+single observations, to cover more compounds and inflected forms. Their rebuilt
+vocabularies contain 64,244 and 75,301 entries. This increases coverage while also
+admitting rare corpus errors; it does not invent unseen grammatical forms.
+Model and holdout checksums and updated scores are in multilingual-evaluation.json.
+
+## External text fields
+
+Windows samples the focused field on a worker thread, every 150 ms between
+samples. Unicode Edit/RichEdit controls use bounded native messages. Other
+editable controls can expose UI Automation TextPattern ranges; calls use bounded
+connection and transaction timeouts. Password fields, active selections, and
+reported compositions do not supply predictions. The snapshot is rechecked at
+acceptance. Native fields use a selected-range replacement; UI Automation selects
+a verified range and inserts Unicode text into the still-focused target.
+
+Plasma native input consumes committed surrounding-text transactions. UTF-8 byte
+offsets are validated and converted to Unicode text, with at most 4,096 UTF-16
+units retained on either side of the caret. Replacement uses the input-method
+protocol's delete-surrounding-text and commit-string transaction. Private-field
+hints discard surrounding text. This does not add a general Wayland screen reader.
+
+Field identity changes clear stale context. Edits observed in another application
+do not train personal counts by themselves. Unsupported custom controls retain
+best-effort context from GazeGrid's own keys; an identified field with unavailable
+caret/range data suppresses prediction. Accessibility provider coverage and
+concurrent user edits cannot be guaranteed for arbitrary applications.
+
+## Completion punctuation
+
+Automatic completion spaces remain before opening brackets and opening quotation
+marks. Apostrophes and hyphens join without an extra following space. French
+colons retain a preceding space. Manually typed spaces remain untouched by this
+cleanup. French regional conventions for other punctuation and nonbreaking-space
+typesetting are not imposed by the language-only model selector.

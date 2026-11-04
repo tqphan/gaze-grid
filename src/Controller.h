@@ -1,4 +1,5 @@
 #pragma once
+#include "DesktopTextContext.h"
 #include <QObject>
 #include <QElapsedTimer>
 #include <QVariantList>
@@ -175,6 +176,9 @@ public:
  bool ready()const{return desktopActive&&(nativeActive||portal.ready());}
  void configureInputMethod(std::function<bool(QString)> text,std::function<bool(QString,bool)> key);
  void inputContextChanged(bool active,bool sensitive);
+ void updateDesktopTextContext(const DesktopTextContext &context);
+ void setDesktopContextProvider(std::function<DesktopTextContext()> provider){desktopContextProvider=std::move(provider);}
+ void setDesktopCompletionProvider(std::function<bool(const DesktopTextContext &,const QString &,const QString &,bool)> provider){desktopCompletionProvider=std::move(provider);}
  void invalidateInputContext();
  int keyboardScale()const{return scalePercent;}
  void setKeyboardScale(int scale);
@@ -290,7 +294,6 @@ public:
  QStringList localImeLocales()const{return localInput.availableLocales();}
  QString localImeLocale()const{return wantedImeLocale.isEmpty()?localInput.locale():wantedImeLocale;}
  void setLocalImeLocale(const QString &locale);
- bool showingImeCandidates()const{return localImeActive()&&!imeCandidateSnapshot.isEmpty();}
  QStringList displaySuggestions()const;
  QString suggestionPrefix()const;
 signals:
@@ -306,14 +309,19 @@ signals:
  void gazePoint(double x,double y,bool valid);
 private slots:
  void refreshLocalIme();
+ void refreshScratchpadContext();
 private:
+ bool showingImeCandidates()const;
  int suggestionPageSize()const;
  bool imeTarget(const QString &target,int &index)const;
- QString wantedImeLocale;
+ QString wantedImeLocale,lastPredictionImeLocale;
  QStringList imeCandidateSnapshot;
  int imeCandidateOffset=0;
  quint64 imeRevision=0;
  QList<QMetaObject::Connection> imeConnections;
+ QList<QMetaObject::Connection> editorConnections;
+ quint64 predictionRevision=0;
+ bool scratchpadRefreshPending=false;
  SystemKeyboard systemLayout;
  LocalScratchpadInput localInput;
  bool localIme=false;
@@ -450,7 +458,12 @@ private:
  bool hasScratchpad()const;
  QString &typingContext();
  const QString &typingContext()const;
+ QString predictionText()const;
  QString predictionContext;
+ DesktopTextContext externalContext,pendingExternalContext;
+ bool externalContextObserved=false,externalContextPending=false;
+ std::function<DesktopTextContext()> desktopContextProvider;
+ std::function<bool(const DesktopTextContext &,const QString &,const QString &,bool)> desktopCompletionProvider;
  QString scratchpad;QStringList suggestions,dictionary;QMap<QString,int> frequencies;
  QJsonObject mappingProfile;
 };

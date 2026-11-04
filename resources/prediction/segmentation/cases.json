@@ -1,0 +1,81 @@
+[
+  {
+    "language": "cmn",
+    "text": "中国人",
+    "tokens": [
+      "中国",
+      "人"
+    ]
+  },
+  {
+    "language": "cmn",
+    "text": "我喜欢学习中文",
+    "tokens": [
+      "我",
+      "喜欢",
+      "学习",
+      "中文"
+    ]
+  },
+  {
+    "language": "cmn",
+    "text": "北京大学",
+    "tokens": [
+      "北京大学"
+    ]
+  },
+  {
+    "language": "cmn",
+    "text": "hello中国",
+    "tokens": [
+      "hello",
+      "中国"
+    ]
+  },
+  {
+    "language": "cmn",
+    "text": "𠀀中国",
+    "tokens": [
+      "𠀀",
+      "中国"
+    ]
+  },
+  {
+    "language": "tha",
+    "text": "ภาษาไทย",
+    "tokens": [
+      "ภาษาไทย"
+    ]
+  },
+  {
+    "language": "tha",
+    "text": "ฉันอยากกินข้าว",
+    "tokens": [
+      "ฉัน",
+      "อยาก",
+      "กินข้าว"
+    ]
+  },
+  {
+    "language": "tha",
+    "text": "helloภาษาไทย",
+    "tokens": [
+      "hello",
+      "ภาษาไทย"
+    ]
+  },
+  {
+    "language": "tha",
+    "text": "กิน",
+    "tokens": [
+      "กิน"
+    ]
+  },
+  {
+    "language": "tha",
+    "text": "กิ",
+    "tokens": [
+      "กิ"
+    ]
+  }
+]

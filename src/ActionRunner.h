@@ -18,6 +18,7 @@ public:
     std::function<bool()> canCommitText;
     std::function<bool(QString)> removeSpaceBeforeText;
     std::function<bool(QString)> appendSpaceAfterPunctuation;
+    std::function<QString(QString)> punctuationPrefix;
     std::function<bool(QString)> supportsPhysicalKey;
     std::function<bool(QString)> performAction;
     std::function<void(QString)> speakLabel;

@@ -1,3 +1,4 @@
+#include "WordPrediction.h"
 #include <QtTest>
 #include <QTemporaryDir>
 #include "Controller.h"
@@ -23,8 +24,12 @@ class LocalImeEditor:public QObject {
  Q_PROPERTY(QString committedText MEMBER text)
  Q_PROPERTY(QString text MEMBER text)
  Q_PROPERTY(bool readOnly MEMBER readOnly)
+ Q_PROPERTY(int cursorPosition READ cursorPosition)
+ Q_PROPERTY(int selectionStart READ cursorPosition)
+ Q_PROPERTY(int selectionEnd READ cursorPosition)
 public:
  QString text;bool readOnly=false;
+ int cursorPosition()const{return text.size();}
  Q_INVOKABLE void prepareInput(){}
 };
 class LocalImeEngine:public QObject {
@@ -85,15 +90,16 @@ private slots:
  }
  void localImeCandidatesPageAndRejectStaleDwell(){
   Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
-  LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());
+  LocalImeEditor editor;editor.text="thank ";QVERIFY(c.setScratchpadText(editor.text));
+  LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());
   engine.replace({"one","two","three","four","five","six","seven","eight"});
   QCOMPARE(c.displaySuggestions().size(),6);const auto stale=c.suggestionPrefix()+"0";
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
   QCOMPARE(c.displaySuggestions(),QStringList({"seven","eight"}));c.clickCommand(stale);QCOMPARE(engine.selected,-1);
   const auto current=c.suggestionPrefix()+"1";engine.replace({"replacement"});c.clickCommand(current);QCOMPARE(engine.selected,-1);
-  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QCOMPARE(c.suggestionPrefix(),QString("suggest:"));QVERIFY(!c.displaySuggestions().isEmpty());
+  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.suggestionPrefix().startsWith("suggest:"));QVERIFY(!c.displaySuggestions().isEmpty());
   engine.replace({"paused"});const auto beforePause=c.suggestionPrefix()+"0";c.togglePause();c.clickCommand(beforePause);QCOMPARE(engine.selected,0);
-  c.togglePause();c.attachScratchpadInputEngine(nullptr);QVERIFY(!c.localImeActive());QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  c.togglePause();c.attachScratchpadInputEngine(nullptr);QVERIFY(!c.localImeActive());QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void localImeLanguagePersistsAndValidates(){
@@ -136,14 +142,14 @@ private slots:
  }
  void conversationPredictionsReturnWhenEngineHasNoCandidates(){
   Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
-  LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);
+  LocalImeEditor editor;editor.text="thank ";LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);
   QVERIFY(c.localImeActive());QVERIFY(c.setScratchpadText("thank "));
-  QVERIFY(c.displaySuggestions().contains("you"));QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  QVERIFY(c.displaySuggestions().contains("you"));QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
   const auto nextPage=c.displaySuggestions();QVERIFY(!nextPage.isEmpty());QVERIFY(!nextPage.contains("you"));
   engine.replace({"candidate"});QCOMPARE(c.displaySuggestions(),QStringList{"candidate"});QVERIFY(c.suggestionPrefix().startsWith("ime:"));
   c.clickCommand("suggest:0");QVERIFY(!c.executingCommands());QCOMPARE(engine.selected,-1);
-  engine.replace({});QCOMPARE(c.displaySuggestions(),nextPage);QCOMPARE(c.suggestionPrefix(),QString("suggest:"));
+  engine.replace({});QCOMPARE(c.displaySuggestions(),nextPage);QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
   c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
   engine.replace({"candidate"});QCOMPARE(c.displaySuggestions(),QStringList{"candidate"});
   c.resetPreferences();QVERIFY(c.savePreferences());
@@ -702,6 +708,54 @@ private slots:
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
   QVERIFY(c.property("suggestions").toStringList().isEmpty());
  }
+
+
+ void desktopContextFollowsCaretAndReplacesSuffix(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  QString document="thank yuo today";int cursor=7;int outputCount=0;
+  c.configureInputMethod([&](QString text){document.insert(cursor,text);cursor+=text.size();++outputCount;return true;},[&](QString key,bool down){
+   if(down&&key=="DELETE")document.remove(cursor,1);
+   if(down&&key=="BACK"&&cursor>0)document.remove(--cursor,1);
+   return true;
+  });c.inputContextChanged(true,false);
+  auto snapshot=[&]{DesktopTextContext result;result.supported=true;result.available=true;result.identity="field";result.before=document.left(cursor);result.after=document.mid(cursor);return result;};
+  c.setDesktopContextProvider(snapshot);c.updateDesktopTextContext(snapshot());
+  QVERIFY(c.displaySuggestions().contains("you"));
+  const auto target=c.suggestionPrefix()+QString::number(c.displaySuggestions().indexOf("you"));
+  c.clickCommand(target);QTRY_VERIFY(!c.executingCommands());QCOMPARE(document,QString("thank you today"));
+  c.updateDesktopTextContext(snapshot());const auto stale=c.suggestionPrefix()+"0";cursor=0;
+  const int before=outputCount;c.clickCommand(stale);QCOMPARE(outputCount,before);
+  auto privateContext=snapshot();privateContext.available=false;privateContext.privateField=true;privateContext.before.clear();privateContext.after.clear();
+  c.updateDesktopTextContext(privateContext);QVERIFY(c.displaySuggestions().isEmpty());
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void vietnamesePhraseAcceptance(){
+  Controller c;c.openLayout("keyboard-conversation-bottom",false);
+  c.setPredictionLanguage("vie");c.setAddSpaceAfterCompletion(true);
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","xin"}}}));QTRY_VERIFY(!c.executingCommands());
+  const auto phrase=QString::fromUtf8("xin l\xe1\xbb\x97i");
+  const auto suggestions=c.property("suggestions").toStringList();
+  const int index=suggestions.indexOf(phrase);QVERIFY(index>=0);
+  c.clickCommand(QString("suggest:%1").arg(index));QTRY_VERIFY(!c.executingCommands());
+  QCOMPARE(c.property("scratchpad").toString(),phrase+" ");
+ }
+ void multilingualCompletionPreservesTypedPrefix(){
+  for(const QString language:QStringList{"fra","tur","cmn"}){
+   Controller c;c.openLayout("keyboard-conversation-bottom",false);
+   c.setPredictionLanguage(language);c.setAddSpaceAfterCompletion(true);
+   const QString prefix=language=="fra"?QString::fromUtf8("cafe\xcc\x81"):language=="tur"?QString("IS"):QString();
+   if(!prefix.isEmpty()){
+    QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",prefix}}}));QTRY_VERIFY(!c.executingCommands());
+   }
+   const auto suggestions=c.property("suggestions").toStringList();
+   QVERIFY2(!suggestions.isEmpty(),qPrintable(language));
+   const auto candidate=suggestions.first();
+   const auto normalizedPrefix=WordPrediction::prefix(prefix,language);
+   const auto expected=prefix+candidate.mid(normalizedPrefix.size())+(language=="cmn"?QString():QString(" "));
+   c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
+   QCOMPARE(c.property("scratchpad").toString(),expected);
+  }
+ }
  void completionSpaceCanBeDisabled(){
   for(bool addSpace:{false,true}){
    for(const QString prefix:{QString("thank "),QString("thank y")}){
@@ -778,6 +832,17 @@ private slots:
   c.setAddSpaceAfterCompletion(false);type(".");
   QCOMPARE(c.property("scratchpad").toString(),QString("thank you."));
   c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void multilingualPunctuationPreservesNaturalSpacing(){
+  for(const auto punctuation:QStringList{":","'","-","("}){
+   Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+   c.setPredictionLanguage("fra");c.setTypedWordSuggestionMode("always");
+   auto type=[&](QString text){QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",text}}}));QTRY_VERIFY(!c.executingCommands());};
+   type("bonjour");c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
+   QCOMPARE(c.property("scratchpad").toString(),QString("bonjour "));type(punctuation);
+   const auto expected=punctuation==":"?QString("bonjour : "):punctuation=="("?QString("bonjour ("):"bonjour"+punctuation;
+   QCOMPARE(c.property("scratchpad").toString(),expected);
+  }
  }
  void punctuationSpacePreferencePersistsAndResets(){
   {Controller c;c.setRemoveCompletionSpaceBeforePunctuation(false);QVERIFY(c.savePreferences());}
