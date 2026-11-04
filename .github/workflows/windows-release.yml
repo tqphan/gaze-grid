@@ -75,7 +75,11 @@ jobs:
         shell: pwsh
         run: |
           $msi = (Get-ChildItem build/windows/*.msi | Select-Object -First 1).FullName
-          ./platform/windows/Test-Installed.ps1 -Msi $msi -CertificateThumbprint $env:SIGNING_THUMBPRINT -ExpectTobii -ExpectLocalIme
+          # Keep an upgrade regression against the release whose startup entry
+          # could disappear when NeverOverwrite met early product removal.
+          $previous = "$env:RUNNER_TEMP/gaze-grid-0.4.9-Windows-x64.msi"
+          Invoke-WebRequest "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v0.4.9/gaze-grid-0.4.9-Windows-x64.msi" -OutFile $previous
+          ./platform/windows/Test-Installed.ps1 -Msi $msi -CertificateThumbprint $env:SIGNING_THUMBPRINT -ExpectTobii -ExpectLocalIme -UpgradeFromMsi $previous
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software

@@ -70,9 +70,10 @@
         <Condition>GAZE_GRID_TRUST_CERTIFICATE &lt;&gt; "1"</Condition>
         <File Id="gaze_gridUnsignedExe" Source="@CMAKE_BINARY_DIR@/unsigned/gaze-grid.exe" KeyPath="yes" />
       </Component>
-      <!-- Check the actual launch entry, so repair restores it when missing.
-           Never overwrite an existing entry or Windows' startup approval. -->
-      <Component Id="gaze_gridStartup" Guid="30BE25CB-E3EA-4140-9346-C65295547C81" Win64="yes" NeverOverwrite="yes">
+      <!-- Rewrite the launch entry on upgrade: NeverOverwrite can skip it
+           before RemoveExistingProducts deletes the old registration.
+           Windows' separate StartupApproved value remains untouched. -->
+      <Component Id="gaze_gridStartup" Guid="30BE25CB-E3EA-4140-9346-C65295547C81" Win64="yes">
         <Condition>GAZE_GRID_STARTUP = "1"</Condition>
         <RegistryValue Root="HKCU" Key="Software\gaze-grid\Installer" Name="Startup" Value="1" Type="integer" />
         <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="gaze-grid" Value="&quot;[INSTALL_ROOT]gaze-grid.exe&quot;" Type="string" KeyPath="yes" />
