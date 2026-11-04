@@ -17,6 +17,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QEnterEvent>
+#include <QAbstractNativeEventFilter>
 #include <QWheelEvent>
 #include <memory>
 #include <atomic>
@@ -52,6 +53,36 @@
 #ifdef GAZE_GRID_LINUX
 #include <LayerShellQt/Window>
 #include "PlasmaInputMethod.h"
+#endif
+#ifdef _WIN32
+// Both surfaces are topmost. Restore their relative order after the keyboard
+// is shown or restacked, without activating either window or remapping capture.
+class TargetStacking:public QObject,public QAbstractNativeEventFilter {
+public:
+ TargetStacking(QWindow *keyboard,QWindow *target):QObject(target),keyboard(keyboard),target(target){
+  QCoreApplication::instance()->installNativeEventFilter(this);
+  connect(target,&QWindow::visibleChanged,this,[this](bool visible){if(visible)scheduleRaise();});
+ }
+ ~TargetStacking()override{QCoreApplication::instance()->removeNativeEventFilter(this);}
+ bool nativeEventFilter(const QByteArray &,void *message,qintptr *)override{
+  const auto msg=static_cast<MSG*>(message);
+  if(msg->message==WM_WINDOWPOSCHANGED&&msg->hwnd==reinterpret_cast<HWND>(keyboard->winId()))
+   scheduleRaise();
+  return false;
+ }
+private:
+ void scheduleRaise(){
+  if(pending||!target->isVisible())return;
+  pending=true;
+  QTimer::singleShot(0,this,[this]{
+   pending=false;
+   if(target->isVisible())SetWindowPos(reinterpret_cast<HWND>(target->winId()),HWND_TOPMOST,
+                                    0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE);
+  });
+ }
+ QWindow *keyboard,*target;
+ bool pending=false;
+};
 #endif
 class MagnifierProvider:public QQuickImageProvider {
 public:
@@ -420,6 +451,7 @@ int main(int argc,char **argv){
  if(target)target->setTransientParent(nullptr);
 #ifdef _WIN32
  if(target&&QGuiApplication::platformName()=="windows"){
+  new TargetStacking(window,target);
   SetWindowDisplayAffinity(reinterpret_cast<HWND>(target->winId()),0x00000011 /* WDA_EXCLUDEFROMCAPTURE */);
   target->setProperty("waitForFreshFrame",true);
   target->setProperty("frameReady",false);
@@ -944,6 +976,39 @@ int main(int argc,char **argv){
   return app.exec();
  }
 
+#ifdef _WIN32
+ if(app.arguments().contains("--target-stacking-check")){
+  if(!target||QGuiApplication::platformName()!="windows")return 2;
+  window->setProperty("gazeCheck",true);
+  window->show();controller.setProperty("targeting",true);
+  auto poll=new QTimer(&app);poll->setInterval(100);
+  QObject::connect(poll,&QTimer::timeout,&app,[&,stage=0,focus=HWND(nullptr)]()mutable{
+   const auto keyboardHandle=reinterpret_cast<HWND>(window->winId());
+   const auto targetHandle=reinterpret_cast<HWND>(target->winId());
+   bool above=false;
+   for(auto handle=GetWindow(keyboardHandle,GW_HWNDPREV);handle;handle=GetWindow(handle,GW_HWNDPREV))
+    if(handle==targetHandle){above=true;break;}
+   if(!above||(stage>0&&GetForegroundWindow()!=focus)){
+    QTextStream(stderr)<<"FAIL: target stacking or foreground focus changed at stage "<<stage<<Qt::endl;
+    app.exit(2);return;
+   }
+   focus=GetForegroundWindow();
+   if(stage==0){
+    SetWindowPos(keyboardHandle,HWND_TOPMOST,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE);
+   }else if(stage==1){
+    window->hide();window->show();
+   }else if(stage==2){
+    controller.setProperty("targeting",false);controller.setProperty("targeting",true);
+   }else{
+    controller.setProperty("targeting",false);
+    QTextStream(stdout)<<"PASS: target stays above keyboard on show, restack and selection restart without taking focus"<<Qt::endl;
+    app.quit();return;
+   }
+   ++stage;
+  });
+  poll->start();return app.exec();
+ }
+#endif
  if(app.arguments().contains("--target-overlay-frame-check")){
   if(!target||!target->property("waitForFreshFrame").toBool())return 2;
   window->setProperty("gazeCheck",true);
