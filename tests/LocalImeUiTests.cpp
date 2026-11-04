@@ -209,6 +209,7 @@ private slots:
   QMetaObject::invokeMethod(view.editor,"prepareInput");QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
   const int key=view.find("Text","q");QVERIFY(key>=0);view.lookAtKey(key);
   QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("q"));view.stop();
+  QTRY_VERIFY(!view.controller.executingCommands());
   QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Action"},{"text","ClearScratchpad"}}}));
   QTRY_VERIFY(!view.controller.executingCommands());
   QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text","thank "}}}));

@@ -59,18 +59,26 @@
 // is shown or restacked, without activating either window or remapping capture.
 class TargetStacking:public QObject,public QAbstractNativeEventFilter {
 public:
- TargetStacking(QWindow *keyboard,QWindow *target):QObject(target),keyboard(keyboard),target(target){
+ TargetStacking(QWindow *keyboard,QWindow *target):QObject(target),keyboardHandle(reinterpret_cast<HWND>(keyboard->winId())),target(target){
+  keyboard->installEventFilter(this);
   QCoreApplication::instance()->installNativeEventFilter(this);
   connect(target,&QWindow::visibleChanged,this,[this](bool visible){if(visible)scheduleRaise();});
  }
  ~TargetStacking()override{QCoreApplication::instance()->removeNativeEventFilter(this);}
  bool nativeEventFilter(const QByteArray &,void *message,qintptr *)override{
   const auto msg=static_cast<MSG*>(message);
-  if(msg->message==WM_WINDOWPOSCHANGED&&msg->hwnd==reinterpret_cast<HWND>(keyboard->winId()))
+  if(msg->message==WM_WINDOWPOSCHANGED&&msg->hwnd==keyboardHandle)
    scheduleRaise();
   return false;
  }
 private:
+ bool eventFilter(QObject *object,QEvent *event)override{
+  // Refresh after Qt recreates the keyboard surface (for example, focus flags).
+  // Never call winId() from the native filter: during surface destruction it
+  // can recreate the window recursively inside the Windows message callback.
+  if(event->type()==QEvent::Show)keyboardHandle=reinterpret_cast<HWND>(static_cast<QWindow*>(object)->winId());
+  return false;
+ }
  void scheduleRaise(){
   if(pending||!target->isVisible())return;
   pending=true;
@@ -80,7 +88,8 @@ private:
                                     0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE);
   });
  }
- QWindow *keyboard,*target;
+ HWND keyboardHandle;
+ QWindow *target;
  bool pending=false;
 };
 #endif
