@@ -330,9 +330,11 @@ With Qt 6.12 LTS MinGW x64, its matching compiler, CMake and Ninja installed und
 
 ## Start with Windows
 
-Select **Start with Windows** in setup or under **Settings ? Keyboard ? Startup**
-to launch gaze-grid after signing in. Setup leaves it unchecked by default; silent
-installations can opt in with `GAZE_GRID_STARTUP=1`. This registers the app for the
+Select **Start with Windows** in setup or under **Settings > System > Startup**
+to launch gaze-grid after signing in. Setup selects it by default; silent
+installations can opt out with `GAZE_GRID_STARTUP=0`. Repair retains the setup
+choice and restores a missing launch entry when startup was selected.
+This registers the app for the
 current user in Windows **Settings ? Apps ? Startup** and Task Manager. Changes
 apply immediately without saving preferences. Windows startup controls can also
 disable it. Startup before sign-in remains a separate option. Uninstall removes

@@ -342,7 +342,7 @@ private slots:
   }
  }
  void systemKeyboardProfileCompatibility(){
-  auto profile=ProfileStore::defaults();QCOMPARE(profile["systemKeyboard"].toBool(),false);QVERIFY(ProfileStore::valid(profile));
+  auto profile=ProfileStore::defaults();QCOMPARE(profile["systemKeyboard"].toBool(),true);QVERIFY(ProfileStore::valid(profile));
   profile.remove("systemKeyboard");QVERIFY(ProfileStore::valid(profile));
   profile["systemKeyboard"]=true;QVERIFY(ProfileStore::valid(profile));
   profile["systemKeyboard"]="system";QVERIFY(!ProfileStore::valid(profile));

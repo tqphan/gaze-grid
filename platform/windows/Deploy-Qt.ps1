@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory)][string]$Directory,
     [Parameter(Mandatory)][string]$QtDirectory,
     [Parameter(Mandatory)][string]$QmlDirectory,
-    [switch]$LocalIme,
+    [switch]$LocalIme = $true,
     [switch]$NoCompilerRuntime
 )
 $ErrorActionPreference = 'Stop'
@@ -17,7 +17,7 @@ $Directory = (Resolve-Path -LiteralPath $Directory).Path
 $scan = Join-Path (Split-Path (Resolve-Path -LiteralPath $QmlDirectory).Path) 'qt-deploy-qml'
 New-Item -ItemType Directory -Force $scan | Out-Null
 # Scan the generated Windows Main, plus dynamically loaded source components.
-# Keep the optional module out of the ordinary deployment scan.
+# Include the local input engine in default deployments.
 Get-ChildItem -LiteralPath $scan -File -Filter '*.qml' | ForEach-Object { Remove-Item -LiteralPath $_.FullName }
 Copy-Item -LiteralPath (Join-Path $QmlDirectory 'Main.qml') -Destination $scan
 Get-ChildItem "$root/ui/*.qml" | Where-Object {
@@ -26,7 +26,7 @@ Get-ChildItem "$root/ui/*.qml" | Where-Object {
 $keyboardQml = Join-Path $QtDirectory 'qml/QtQuick/VirtualKeyboard'
 $keyboardContext = Join-Path $QtDirectory 'plugins/platforminputcontexts/qtvirtualkeyboardplugin.dll'
 if ($LocalIme -and (!(Test-Path "$keyboardQml/qmldir") -or !(Test-Path $keyboardContext))) {
-    throw 'Install Qt Virtual Keyboard in the selected Qt kit before using -LocalIme.'
+    throw 'Install Qt Virtual Keyboard in the selected Qt kit before building GazeGrid.'
 }
 $deployArguments = @('--release', '--qmldir', $scan, '--dir', $Directory, $Application)
 if ($NoCompilerRuntime) { $deployArguments = @('--no-compiler-runtime') + $deployArguments }

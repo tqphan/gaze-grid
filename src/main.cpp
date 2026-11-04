@@ -17,6 +17,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QEnterEvent>
+#include <QAbstractNativeEventFilter>
 #include <QWheelEvent>
 #include <memory>
 #include <atomic>
@@ -53,6 +54,45 @@
 #ifdef GAZE_GRID_LINUX
 #include <LayerShellQt/Window>
 #include "PlasmaInputMethod.h"
+#endif
+#ifdef _WIN32
+// Both surfaces are topmost. Restore their relative order after the keyboard
+// is shown or restacked, without activating either window or remapping capture.
+class TargetStacking:public QObject,public QAbstractNativeEventFilter {
+public:
+ TargetStacking(QWindow *keyboard,QWindow *target):QObject(target),keyboardHandle(reinterpret_cast<HWND>(keyboard->winId())),target(target){
+  keyboard->installEventFilter(this);
+  QCoreApplication::instance()->installNativeEventFilter(this);
+  connect(target,&QWindow::visibleChanged,this,[this](bool visible){if(visible)scheduleRaise();});
+ }
+ ~TargetStacking()override{QCoreApplication::instance()->removeNativeEventFilter(this);}
+ bool nativeEventFilter(const QByteArray &,void *message,qintptr *)override{
+  const auto msg=static_cast<MSG*>(message);
+  if(msg->message==WM_WINDOWPOSCHANGED&&msg->hwnd==keyboardHandle)
+   scheduleRaise();
+  return false;
+ }
+private:
+ bool eventFilter(QObject *object,QEvent *event)override{
+  // Refresh after Qt recreates the keyboard surface (for example, focus flags).
+  // Never call winId() from the native filter: during surface destruction it
+  // can recreate the window recursively inside the Windows message callback.
+  if(event->type()==QEvent::Show)keyboardHandle=reinterpret_cast<HWND>(static_cast<QWindow*>(object)->winId());
+  return false;
+ }
+ void scheduleRaise(){
+  if(pending||!target->isVisible())return;
+  pending=true;
+  QTimer::singleShot(0,this,[this]{
+   pending=false;
+   if(target->isVisible())SetWindowPos(reinterpret_cast<HWND>(target->winId()),HWND_TOPMOST,
+                                    0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE);
+  });
+ }
+ HWND keyboardHandle;
+ QWindow *target;
+ bool pending=false;
+};
 #endif
 class MagnifierProvider:public QQuickImageProvider {
 public:
@@ -140,8 +180,7 @@ int main(int argc,char **argv){
  qputenv("QT_QUICK_CONTROLS_STYLE","Fusion");
 #endif
  bool inputMethodMode=false;for(int i=1;i<argc;++i)inputMethodMode|=QString::fromLocal8Bit(argv[i])=="--input-method";
- bool localIme=false;for(int i=1;i<argc;++i)localIme|=QString::fromLocal8Bit(argv[i])=="--local-ime";
- if(localIme&&inputMethodMode){QTextStream(stderr)<<"--local-ime cannot be combined with --input-method\n";return 2;}
+ const bool localIme=!signInMode&&!inputMethodMode;
  if(localIme){qputenv("QT_IM_MODULE","qtvirtualkeyboard");qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");}
  if(inputMethodMode&&qEnvironmentVariableIsEmpty("WAYLAND_SOCKET")){QTextStream(stderr)<<"Input-method mode must be launched by KWin through Virtual Keyboard settings or a nested test session.\n";return 2;}
  bool diagnose=false,audit=false,smoke=false,portalCheck=false,inputCheck=false,inputTarget=false,pointerCheck=false,pointerTarget=false;
@@ -434,6 +473,7 @@ int main(int argc,char **argv){
  if(target)target->setTransientParent(nullptr);
 #ifdef _WIN32
  if(target&&QGuiApplication::platformName()=="windows"){
+  new TargetStacking(window,target);
   SetWindowDisplayAffinity(reinterpret_cast<HWND>(target->winId()),0x00000011 /* WDA_EXCLUDEFROMCAPTURE */);
   target->setProperty("waitForFreshFrame",true);
   target->setProperty("frameReady",false);
@@ -847,12 +887,14 @@ int main(int argc,char **argv){
    return nullptr;
   };
   auto thumb=findThumb(key);if(!thumb)return 2;
-  const double centeredX=thumb->x();
   auto poll=new QTimer(&app);poll->setInterval(50);
-  QObject::connect(poll,&QTimer::timeout,&app,[&,area,key,thumb,centeredX,stage=0]()mutable{
+  QObject::connect(poll,&QTimer::timeout,&app,[&,area,key,thumb,stage=0]()mutable{
    if(!window->isVisible())return;
+   // Settings activation and layout polish can arrive after the first injected
+   // mouse event. Observe the settled geometry and retry within the test timeout.
+   const double centeredX=(thumb->parentItem()->width()-thumb->width())/2;
    if(stage==4){
-    if(key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1){QTextStream(stderr)<<"FAIL: gaze joystick blocked by Settings"<<Qt::endl;app.exit(2);return;}
+    if(key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1)return;
     QTextStream(stdout)<<"PASS: mouse and gaze joystick input with Settings open"<<Qt::endl;app.quit();return;
    }
    const QPointF local(stage<2?area->width()*.8:area->width()/2,area->height()/2);
@@ -863,10 +905,10 @@ int main(int argc,char **argv){
     ++stage;return;
    }
    if(stage==1){
-    if(window->property("hovered").toString()!="key:0"||key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1){QTextStream(stderr)<<"FAIL: mouse joystick dot did not move"<<Qt::endl;app.exit(2);return;}
+    if(window->property("hovered").toString()!="key:0"||key->property("stickX").toDouble()<.5||thumb->x()<=centeredX+1){stage=0;return;}
     stage=2;return;
    }
-   if(std::abs(key->property("stickX").toDouble())>.01||std::abs(thumb->x()-centeredX)>1){QTextStream(stderr)<<"FAIL: mouse joystick did not center"<<Qt::endl;app.exit(2);return;}
+   if(std::abs(key->property("stickX").toDouble())>.01||std::abs(thumb->x()-centeredX)>1){stage=2;return;}
    QMetaObject::invokeMethod(area,"exited");
    if(!window->property("hovered").toString().isEmpty()){app.exit(2);return;}
    if(settings->isVisible()){
@@ -876,7 +918,7 @@ int main(int argc,char **argv){
    }
    QTextStream(stdout)<<"PASS: actual joystick dot moves and centers with gaze unavailable"<<Qt::endl;app.quit();
   });
-  poll->start();QTimer::singleShot(3000,&app,[&]{app.exit(2);});return app.exec();
+  poll->start();QTimer::singleShot(3000,&app,[&]{QTextStream(stderr)<<"FAIL: joystick UI did not settle before timeout"<<Qt::endl;app.exit(2);});return app.exec();
  }
 
  if(app.arguments().contains("--prediction-hover-ui-check")){
@@ -956,6 +998,39 @@ int main(int argc,char **argv){
   return app.exec();
  }
 
+#ifdef _WIN32
+ if(app.arguments().contains("--target-stacking-check")){
+  if(!target||QGuiApplication::platformName()!="windows")return 2;
+  window->setProperty("gazeCheck",true);
+  window->show();controller.setProperty("targeting",true);
+  auto poll=new QTimer(&app);poll->setInterval(100);
+  QObject::connect(poll,&QTimer::timeout,&app,[&,stage=0,focus=HWND(nullptr)]()mutable{
+   const auto keyboardHandle=reinterpret_cast<HWND>(window->winId());
+   const auto targetHandle=reinterpret_cast<HWND>(target->winId());
+   bool above=false;
+   for(auto handle=GetWindow(keyboardHandle,GW_HWNDPREV);handle;handle=GetWindow(handle,GW_HWNDPREV))
+    if(handle==targetHandle){above=true;break;}
+   if(!above||(stage>0&&GetForegroundWindow()!=focus)){
+    QTextStream(stderr)<<"FAIL: target stacking or foreground focus changed at stage "<<stage<<Qt::endl;
+    app.exit(2);return;
+   }
+   focus=GetForegroundWindow();
+   if(stage==0){
+    SetWindowPos(keyboardHandle,HWND_TOPMOST,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE);
+   }else if(stage==1){
+    window->hide();window->show();
+   }else if(stage==2){
+    controller.setProperty("targeting",false);controller.setProperty("targeting",true);
+   }else{
+    controller.setProperty("targeting",false);
+    QTextStream(stdout)<<"PASS: target stays above keyboard on show, restack and selection restart without taking focus"<<Qt::endl;
+    app.quit();return;
+   }
+   ++stage;
+  });
+  poll->start();return app.exec();
+ }
+#endif
  if(app.arguments().contains("--target-overlay-frame-check")){
   if(!target||!target->property("waitForFreshFrame").toBool())return 2;
   window->setProperty("gazeCheck",true);

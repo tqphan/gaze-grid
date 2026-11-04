@@ -60,8 +60,8 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  connect(&speech,&SpeechOutput::status,this,[this](QString message){actionStatus=message;emit changed();});
  clock.start();auto profile=signInMode?ProfileStore::Loaded{ProfileStore::valid(signInProfile)?signInProfile:ProfileStore::defaults(),{}}:ProfileStore(configFile("profile.json")).load();
  if(signInMode){profile.values["predictionMode"]="off";profile.values["learning"]=false;}
- runner.physicalText=profile.values.value("systemKeyboard").toBool(false)&&!signInMode;
- localIme=QCoreApplication::arguments().contains("--local-ime")&&!signInMode;
+ runner.physicalText=!signInMode;
+ localIme=!signInMode;
  wantedImeLocale=profile.values["localImeLocale"].toString();
  connect(this,&Controller::layoutChanged,this,&Controller::refreshLocalIme);
  connect(&runner,&ActionRunner::cancelled,this,[this]{localInput.cancelComposition();refreshLocalIme();});
@@ -356,7 +356,7 @@ void Controller::scheduleTrackerRetry(){
  trackerRetryTimer.start(delay);emit changed();
 }
 void Controller::configureInputMethod(std::function<bool(QString)> text,std::function<bool(QString,bool)> key){
- nativeMode=true;sensitiveInput=true;
+ nativeMode=true;sensitiveInput=true;runner.physicalText=false;
  runner.sendText=[this,text=std::move(text)](QString value){return desktopActive&&nativeActive&&text(value);};
  runner.canCommitText=[this]{return desktopActive&&nativeActive;};
  runner.sendKey=[this,key=std::move(key)](QString name,bool down){return (!down||desktopActive)&&(portal.ready()?portal.key(KeyNames::linuxCode(name),down):(!systemKeyboard()&&key(name,down)));};
@@ -413,16 +413,6 @@ void Controller::refreshKeyboardLabels(){
  });
  if(labels!=keyboardLabelValues){keyboardLabelValues=labels;emit keyboardLabelsChanged();}
 }
-void Controller::setSystemKeyboard(bool enabled){
- if(signInMode||systemKeyboard()==enabled)return;
- localInput.cancelComposition();
- runner.cancel();endButtonHold();clearOverlap();dwell.reset();
- runner.physicalText=enabled;systemLayout.refresh();
- refreshLocalIme();
- completionSpaceContext.clear();pendingCompletionText.clear();
- actionStatus=enabled?(scratchpadEditable()?(localInput.inputEngine()?"Local input method enabled":"Local input method unavailable"):(systemLayout.available()?"System keyboard enabled":"System keyboard layout unavailable")):"Personal keyboard enabled";
- updateSuggestions();emit changed();
-}
 bool Controller::savePreferences(){
  if(signInMode)return false;
  QJsonObject values{{"cacheKeyboards",cacheKeyboards()},{"transitionDurationMs",transitionDurationMs},{"keyboardTransition",keyboardTransition},{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
@@ -452,7 +442,7 @@ void Controller::setCacheKeyboards(bool enabled){if(enabled==cacheKeyboards())re
 void Controller::resetPreferences(){
  localInput.cancelComposition();
  wantedImeLocale.clear();
- runner.physicalText=false;systemCaps=false;
+ runner.physicalText=!signInMode;systemCaps=false;
  pendingCompletionText.clear();completionSpaceContext.clear();
  if(signInMode)return;
  QString error;auto values=ProfileStore::defaults();
@@ -710,8 +700,14 @@ double Controller::hover(QString key){
  }
  lastHoldHover=clock.elapsed();
  if(key.startsWith("suggest:")){
-  bool valid=false;const int i=key.mid(8).toInt(&valid);
-  if(!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()){dwell.reset();return 0;}
+  auto target=key.mid(8);
+  if(target.contains(':')){
+   bool valid=false;const auto revision=target.section(':',0,0).toULongLong(&valid);
+   if(!valid||revision!=predictionRevision){dwell.reset();return 0;}
+   target=target.section(':',1);
+  }
+  bool valid=false;const int i=target.toInt(&valid);
+  if(showingImeCandidates()||!valid||i<0||i>=suggestions.size()||suggestions[i].trimmed().isEmpty()){dwell.reset();return 0;}
  }
  if(key.startsWith("ime:")){int index=0;if(!imeTarget(key,index)){dwell.reset();return 0;}}
  const bool recovery=key=="Pause"||key=="Recover"||key=="CancelTarget"||key=="Connect"||key=="Tobii"||key=="Settings"||key=="Speak"||key=="StopSpeech"||isSleepKey(key);
@@ -1240,7 +1236,7 @@ void Controller::refreshLocalIme(){
  imeCandidateSnapshot=localImeActive()?localInput.candidates():QStringList();
  // Candidate commands carry the new revision, so their dwell restarts naturally.
  // Resetting all dwell here would re-arm a consumed letter or paging key.
- imeCandidateOffset=0;++imeRevision;updateSuggestions();
+ imeCandidateOffset=0;++imeRevision;emit changed();
 }
 void Controller::attachScratchpadInputEngine(QObject *engine){
  if(localInput.inputEngine()==engine)return;

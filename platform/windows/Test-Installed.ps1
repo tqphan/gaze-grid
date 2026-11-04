@@ -1,13 +1,53 @@
 # Run only on an isolated Windows test machine: temporarily removes this test root.
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Msi, [Parameter(Mandatory)][string]$CertificateThumbprint, [switch]$ExpectTobii, [switch]$ExpectLocalIme)
+param([Parameter(Mandatory)][string]$Msi, [Parameter(Mandatory)][string]$CertificateThumbprint, [switch]$ExpectTobii, [switch]$ExpectLocalIme, [string]$UpgradeFromMsi)
 $ErrorActionPreference = 'Stop'
 $path = (Resolve-Path $Msi).Path
 & "$PSScriptRoot/Assert-NoTobiiRuntime.ps1" -Msi $path
 $installed = [IO.Path]::GetFullPath("$env:ProgramFiles/gaze-grid/gaze-grid.exe")
-function Run-Msi([string]$Operation, [string[]]$Properties = @()) {
-    $process = Start-Process msiexec.exe -ArgumentList (@($Operation, "`"$path`"", '/qn', '/norestart', '/l*v', "`"$env:RUNNER_TEMP/gaze-grid-msi-$mode-$($Operation.TrimStart('/')).log`"") + $Properties) -Wait -PassThru
+function Run-Msi([string]$Operation, [string[]]$Properties = @(), [string]$Package = $path) {
+    $process = Start-Process msiexec.exe -ArgumentList (@($Operation, "`"$Package`"", '/qn', '/norestart', '/l*v', "`"$env:RUNNER_TEMP/gaze-grid-msi-$mode-$($Operation.TrimStart('/')).log`"") + $Properties) -Wait -PassThru
     if ($process.ExitCode -notin @(0, 3010)) { throw "MSI failed: $($process.ExitCode)" }
+}
+
+# Unlike a fresh install or repair, an upgrade costs components while the old
+# Run entry still exists, then removes the old product before writing new keys.
+function Test-StartupUpgrade {
+    $previous = (Resolve-Path -LiteralPath $UpgradeFromMsi).Path
+    $mode = 'startup-upgrade-baseline'
+    Run-Msi '/i' @('GAZE_GRID_STARTUP=1', 'GAZE_GRID_SIGN_IN=0') $previous
+    try {
+        Test-DesktopStartup $true
+        $approvalKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'
+        New-Item -Path $approvalKey -Force | Out-Null
+        # Windows-disabled startup must remain disabled while its Run entry
+        # survives the upgrade. The installer must not reset user approval.
+        [byte[]]$disabled = @(3,0,0,0,0,0,0,0,0,0,0,0)
+        New-ItemProperty -LiteralPath $approvalKey -Name 'gaze-grid' -Value $disabled -PropertyType Binary -Force | Out-Null
+        $mode = 'startup-upgrade'
+        Run-Msi '/i' @('GAZE_GRID_STARTUP=1', 'GAZE_GRID_SIGN_IN=0')
+        Test-DesktopStartup $true
+        $approval = (Get-ItemProperty -LiteralPath $approvalKey -Name 'gaze-grid').'gaze-grid'
+        if ([BitConverter]::ToString($approval) -ne [BitConverter]::ToString($disabled)) { throw 'Upgrade changed Windows startup approval.' }
+    } finally {
+        # The old product is gone after a successful major upgrade. On failure
+        # remove whichever product remains using its own source package.
+        $mode = 'startup-upgrade-cleanup'
+        $installer = New-Object -ComObject WindowsInstaller.Installer
+        foreach ($package in @($path, $previous)) {
+            $database = $installer.OpenDatabase($package, 0)
+            $view = $database.OpenView('SELECT `Value` FROM `Property` WHERE `Property`=''ProductCode''')
+            $view.Execute(); $record = $view.Fetch(); $code = $record.StringData(1)
+            $view.Close()
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($record)
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($view)
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($database)
+            if ($installer.ProductState($code) -eq 5) { Run-Msi '/x' @() $package }
+        }
+        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($installer)
+    }
+    Test-DesktopStartup $false
+    Write-Host 'Startup registration survived a major upgrade without changing Windows startup approval.'
 }
 function Test-KeyboardInstanceLifecycle {
     $sessionId = (Get-Process -Id $PID).SessionId
@@ -45,16 +85,29 @@ function Test-KeyboardInstanceLifecycle {
 Remove-Item "Cert:\LocalMachine\Root\$CertificateThumbprint" -Force
 $accessibility = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Accessibility'
 $atName = 'gaze-grid_gaze-grid_v1'
+$desktopRun = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+function Test-DesktopStartup([bool]$Expected) {
+    $entry = (Get-ItemProperty -LiteralPath $desktopRun -Name 'gaze-grid' -ErrorAction SilentlyContinue).'gaze-grid'
+    if ($Expected) {
+        if ($entry -ne ('"' + $installed + '"')) { throw 'Desktop startup entry is missing or points to the wrong executable.' }
+    } elseif ($entry) { throw 'Desktop startup was enabled despite opting out.' }
+}
 $originalStartup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ -and $_.Trim() -ne $atName })
-foreach ($mode in @('decline', 'default', 'accept', 'sign-in', 'sign-in-off', 'decline-trusted')) {
+foreach ($mode in @('decline', 'default', 'accept', 'sign-in', 'sign-in-off', 'decline-trusted', 'startup-off')) {
 Write-Host "Checking installation mode: $mode"
 $expectedUIAccess = $mode -in @('default', 'accept', 'sign-in', 'sign-in-off')
 $expectedSignIn = $expectedUIAccess -and $mode -ne 'sign-in-off'
 [string[]]$properties = if ($mode -eq 'default') { @() } elseif ($expectedUIAccess) { @('GAZE_GRID_TRUST_CERTIFICATE=1') } else { @('GAZE_GRID_TRUST_CERTIFICATE=0') }
 if ($mode -eq 'sign-in') { $properties += 'GAZE_GRID_SIGN_IN=1' }
 if ($mode -eq 'sign-in-off') { $properties += 'GAZE_GRID_SIGN_IN=0' }
+if ($mode -eq 'startup-off') { $properties += 'GAZE_GRID_STARTUP=0' }
 Run-Msi '/i' $properties
 try {
+    Test-DesktopStartup ($mode -ne 'startup-off')
+    if ($mode -eq 'default') {
+        # Leave the old installer marker in place: it must not hide a missing Run entry.
+        Remove-ItemProperty -LiteralPath $desktopRun -Name 'gaze-grid'
+    }
     $rootTrusted = Test-Path "Cert:\LocalMachine\Root\$CertificateThumbprint"
     if ($mode -eq 'decline' -and $rootTrusted) { throw 'Declined installation unexpectedly trusted the certificate.' }
     if ($mode -ne 'decline' -and !$rootTrusted) { throw 'Accepted certificate trust is missing.' }
@@ -69,6 +122,7 @@ try {
     }
     # A repair with no consent property must preserve the original mode.
     Run-Msi '/fomus'
+    Test-DesktopStartup ($mode -ne 'startup-off')
     $startup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
     if (($atName -in $startup) -ne $expectedSignIn) { throw 'Unexpected sign-in startup selection after repair.' }
     if (@(Compare-Object $originalStartup @($startup | Where-Object { $_.Trim() -ne $atName })).Count) { throw 'Other accessibility startup entries changed.' }
@@ -155,8 +209,11 @@ try {
     if ($mode -eq 'default') { Test-KeyboardInstanceLifecycle }
 } finally { Run-Msi '/x' }
 $remainingStartup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
+Test-DesktopStartup $false
 if ($atName -in $remainingStartup) { throw 'Sign-in startup remained after uninstall.' }
 if (@(Compare-Object $originalStartup $remainingStartup).Count) { throw 'Uninstall changed another accessibility startup entry.' }
 if (Test-Path "$accessibility\ATs\$atName") { throw 'Sign-in registration remained after uninstall.' }
 
 }
+
+if ($UpgradeFromMsi) { Test-StartupUpgrade }

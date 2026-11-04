@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][string]$CertificateThumbprint,
     [string]$BuildDirectory = 'build/windows',
     [string]$TobiiSdk = '',
-    [switch]$LocalIme
+    [switch]$LocalIme = $true
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest

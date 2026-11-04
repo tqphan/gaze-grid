@@ -24,8 +24,12 @@ class LocalImeEditor:public QObject {
  Q_PROPERTY(QString committedText MEMBER text)
  Q_PROPERTY(QString text MEMBER text)
  Q_PROPERTY(bool readOnly MEMBER readOnly)
+ Q_PROPERTY(int cursorPosition READ cursorPosition)
+ Q_PROPERTY(int selectionStart READ cursorPosition)
+ Q_PROPERTY(int selectionEnd READ cursorPosition)
 public:
  QString text;bool readOnly=false;
+ int cursorPosition()const{return text.size();}
  Q_INVOKABLE void prepareInput(){}
 };
 class LocalImeEngine:public QObject {
@@ -85,16 +89,17 @@ private slots:
   values["cacheKeyboards"]="invalid";QVERIFY(!ProfileStore::valid(values));
  }
  void localImeCandidatesPageAndRejectStaleDwell(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);c.setSystemKeyboard(true);c.openLayout("keyboard-conversation-bottom",false);
-  LocalImeEditor editor;LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+  LocalImeEditor editor;editor.text="thank ";QVERIFY(c.setScratchpadText(editor.text));
+  LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);QVERIFY(c.localImeActive());
   engine.replace({"one","two","three","four","five","six","seven","eight"});
   QCOMPARE(c.displaySuggestions().size(),6);const auto stale=c.suggestionPrefix()+"0";
   QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
   QCOMPARE(c.displaySuggestions(),QStringList({"seven","eight"}));c.clickCommand(stale);QCOMPARE(engine.selected,-1);
   const auto current=c.suggestionPrefix()+"1";engine.replace({"replacement"});c.clickCommand(current);QCOMPARE(engine.selected,-1);
-  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.displaySuggestions().isEmpty());
+  c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(engine.selected,0);QVERIFY(c.suggestionPrefix().startsWith("suggest:"));QVERIFY(!c.displaySuggestions().isEmpty());
   engine.replace({"paused"});const auto beforePause=c.suggestionPrefix()+"0";c.togglePause();c.clickCommand(beforePause);QCOMPARE(engine.selected,0);
-  c.togglePause();c.setSystemKeyboard(false);QVERIFY(!c.localImeActive());QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
+  c.togglePause();c.attachScratchpadInputEngine(nullptr);QVERIFY(!c.localImeActive());QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void localImeLanguagePersistsAndValidates(){
@@ -119,27 +124,34 @@ private slots:
   QVERIFY(!c.setScratchpadText("external"));QCOMPARE(c.property("scratchpad").toString(),value);
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
- void personalKeyboardRemainsDefault(){
-  Controller c;c.resetPreferences();QVERIFY(!c.systemKeyboard());
-  c.openLayout("keyboard-alphabet-14x4-bottom",false);
-  const auto layout=c.property("layout").toMap();
-  const auto labels=c.keyboardLabels();QVERIFY(!labels.isEmpty());
-  c.setSystemKeyboard(true);QVERIFY(c.systemKeyboard());
-  QCOMPARE(c.property("layout").toMap(),layout);
-  QVERIFY(!c.displaySuggestions().isEmpty());
-  c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
-  c.setPredictionMode("context");QVERIFY(!c.displaySuggestions().isEmpty());
+ void systemKeyboardIsAlwaysEnabled(){
+  Controller c;c.resetPreferences();QVERIFY(c.systemKeyboard());QVERIFY(c.localImeEnabled());
   QVERIFY(c.savePreferences());
-  {Controller restored;QVERIFY(restored.systemKeyboard());}
-  c.setSystemKeyboard(false);QCOMPARE(c.keyboardLabels(),labels);QCOMPARE(c.property("layout").toMap(),layout);
-  c.resetPreferences();QVERIFY(!c.systemKeyboard());QVERIFY(c.savePreferences());
+  auto values=ProfileStore::defaults();values["systemKeyboard"]=false;QString error;
+  QVERIFY(ProfileStore(QDir(appConfigDirectory()).filePath("profile.json")).save(values,error));
+  {Controller restored;QVERIFY(restored.systemKeyboard());QVERIFY(restored.localImeEnabled());}
+  c.resetPreferences();QVERIFY(c.systemKeyboard());QVERIFY(c.savePreferences());
  }
  void systemConversationAllowsPredictions(){
   Controller c;c.resetPreferences();c.setProperty("paused",false);
-  c.openLayout("keyboard-conversation-bottom",false);c.setSystemKeyboard(true);
+  c.openLayout("keyboard-conversation-bottom",false);
   QVERIFY(c.scratchpadEditable());QVERIFY(!c.localImeActive());
   QVERIFY(c.setScratchpadText("thank "));QVERIFY(c.displaySuggestions().contains("you"));
   c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
+  c.resetPreferences();QVERIFY(c.savePreferences());
+ }
+ void conversationPredictionsReturnWhenEngineHasNoCandidates(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.openLayout("keyboard-conversation-bottom",false);
+  LocalImeEditor editor;editor.text="thank ";LocalImeEngine engine;c.attachScratchpad(&editor);c.attachScratchpadInputEngine(&engine);
+  QVERIFY(c.localImeActive());QVERIFY(c.setScratchpadText("thank "));
+  QVERIFY(c.displaySuggestions().contains("you"));QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Action"},{"text","NextSuggestions"}}}));QTRY_VERIFY(!c.executingCommands());
+  const auto nextPage=c.displaySuggestions();QVERIFY(!nextPage.isEmpty());QVERIFY(!nextPage.contains("you"));
+  engine.replace({"candidate"});QCOMPARE(c.displaySuggestions(),QStringList{"candidate"});QVERIFY(c.suggestionPrefix().startsWith("ime:"));
+  c.clickCommand("suggest:0");QVERIFY(!c.executingCommands());QCOMPARE(engine.selected,-1);
+  engine.replace({});QCOMPARE(c.displaySuggestions(),nextPage);QVERIFY(c.suggestionPrefix().startsWith("suggest:"));
+  c.setPredictionMode("off");QVERIFY(c.displaySuggestions().isEmpty());
+  engine.replace({"candidate"});QCOMPARE(c.displaySuggestions(),QStringList{"candidate"});
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void conversationCapsLockShowsToggleState(){

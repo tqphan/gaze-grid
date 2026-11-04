@@ -6,7 +6,7 @@ param(
     [switch]$Run,
     [switch]$SkipTests,
     [switch]$LocalTest,
-    [switch]$LocalIme
+    [switch]$LocalIme = $true
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest

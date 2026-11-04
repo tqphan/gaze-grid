@@ -16,7 +16,7 @@ Window {
  property bool canvasDragging:false
  Loader {
   objectName:"localInputMethodLoader"
-  active:controller.localImeEnabled&&controller.scratchpadEditable&&controller.systemKeyboard
+  active:controller.localImeEnabled&&controller.systemKeyboard
   source:active?"LocalInputMethod.qml":""
   onLoaded:Qt.callLater(function(){if(active&&item)controller.attachScratchpadInputEngine(item)})
   onActiveChanged:if(!active)Qt.callLater(function(){if(!active)controller.attachScratchpadInputEngine(null)})
@@ -610,7 +610,6 @@ Window {
   component SettingsComboBox:Desktop.ComboBox {
    id:comboControl;implicitHeight:40;leftPadding:12;rightPadding:34
    contentItem:Text {text:comboControl.displayText;color:Kirigami.Theme.textColor;font.pixelSize:14;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight;clip:true;opacity:comboControl.enabled?1:0.4}
-   indicator:Text {x:parent.width-width-14;anchors.verticalCenter:parent.verticalCenter;text:"\u2304";color:Kirigami.Theme.textColor;font.pixelSize:18}
    background:Rectangle {radius:6;color:Qt.rgba(0.5,0.5,0.5,comboControl.hovered?0.13:0.07);border.width:1;border.color:comboControl.activeFocus?"#599cff":Qt.rgba(0.5,0.5,0.5,0.32)}
   }
   component SettingsCheckBox:Desktop.CheckBox {
@@ -740,23 +739,13 @@ Window {
        SettingsCheckBox {id:includeHidden;text:"Include layouts hidden by the XML pack"}
        RowLayout {
         visible:controller.localImeEnabled&&controller.systemKeyboard
-        Desktop.Label {text:"Language"}
+        Desktop.Label {text:"Input language"}
         SettingsComboBox {
          objectName:"localImeLanguageSelector";Layout.fillWidth:true
          model:controller.localImeLocales
          currentIndex:model.indexOf(controller.localImeLocale)
          displayText:currentIndex>=0?Qt.locale(currentText).nativeLanguageName+" ("+currentText+")":controller.localImeLocale
          onActivated:controller.localImeLocale=currentText
-        }
-       }
-       RowLayout {
-        Desktop.Label {text:"Keyboard source"}
-        SettingsComboBox {
-         objectName:"keyboardSourceSelector";Layout.fillWidth:true
-         model:["Personal (English US)","System"]
-         currentIndex:controller.systemKeyboard?1:0
-         enabled:!controller.signInMode
-         onActivated:controller.systemKeyboard=currentIndex===1
         }
        }
        SettingsCheckBox {
@@ -897,7 +886,7 @@ Window {
       title:"Gaze smoothing";      visible:settingsCategory.currentIndex==2;Layout.fillWidth:true
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
-       SettingsComboBox {model:["OptiKey Kalman","Exponential with saccade snap"];currentIndex:controller.gazeFilterType;onActivated:controller.gazeFilterType=currentIndex}
+       SettingsComboBox {model:["Kalman","Exponential"];currentIndex:controller.gazeFilterType;onActivated:controller.gazeFilterType=currentIndex}
        SettingSlider {visible:controller.gazeFilterType==1;label:"Filter gain";displayValue:controller.gazeFilterGain.toFixed(2);from:0.01;to:1;stepSize:0.01;value:controller.gazeFilterGain;onMoved:controller.gazeFilterGain=value}
        SettingSlider {visible:controller.gazeFilterType==1;label:"Saccade distance";displayValue:controller.gazeSaccadeDistance.toFixed(2)+" (screen coordinates)";from:0.01;to:1;stepSize:0.01;value:controller.gazeSaccadeDistance;onMoved:controller.gazeSaccadeDistance=value}
        SettingSlider {visible:controller.gazeFilterType==0;label:"Gaze smoothing";displayValue:controller.gazeSmoothingLevel+" - "+["Off","Low","Medium","High","Extreme"][controller.gazeSmoothingLevel];from:0;to:4;stepSize:1;value:controller.gazeSmoothingLevel;onMoved:controller.gazeSmoothingLevel=Math.round(value)}
@@ -1028,7 +1017,7 @@ Window {
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
        SettingSlider {objectName:"predictionTextSizeSlider";label:"Prediction text size";displayValue:controller.predictionTextScale+"%";from:50;to:300;stepSize:5;value:controller.predictionTextScale;onMoved:controller.predictionTextScale=value}
-       Desktop.Label {text:"Language"}
+       Desktop.Label {text:"Prediction language"}
        SettingsComboBox {
         id:predictionLanguageBox;objectName:"predictionLanguageSelector";Layout.fillWidth:true
         model:controller.predictionLanguages

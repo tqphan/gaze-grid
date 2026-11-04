@@ -88,7 +88,7 @@ class Controller:public QObject{
  Q_PROPERTY(QStringList heldKeys READ heldKeys NOTIFY changed)
  Q_PROPERTY(QVariantMap modifierStates READ modifierStates NOTIFY changed)
  Q_PROPERTY(bool literal MEMBER literal NOTIFY changed)
- Q_PROPERTY(bool systemKeyboard READ systemKeyboard WRITE setSystemKeyboard NOTIFY changed)
+ Q_PROPERTY(bool systemKeyboard READ systemKeyboard NOTIFY changed)
  Q_PROPERTY(QVariantList keyboardLabels READ keyboardLabels NOTIFY keyboardLabelsChanged)
  Q_PROPERTY(QString mappingJson READ mappingJson NOTIFY changed)
  Q_PROPERTY(QString scratchpad MEMBER scratchpad NOTIFY changed)
@@ -225,7 +225,6 @@ public:
  Q_INVOKABLE bool saveMappings(QString json);
  Q_INVOKABLE bool savePreferences();
  bool systemKeyboard()const{return runner.physicalText;}
- void setSystemKeyboard(bool enabled);
  QVariantList keyboardLabels()const{return keyboardLabelValues;}
  Q_INVOKABLE void resetPreferences();
  Q_INVOKABLE void connectDesktop();
