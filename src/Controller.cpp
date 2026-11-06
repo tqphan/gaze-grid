@@ -1273,6 +1273,7 @@ bool Controller::takeCompletionSpace(const QString &text){
  if(!removeCompletionSpaceEnabled||sensitiveInput||context.isEmpty()
     ||context!=typingContext()||text.size()!=1)return false;
  const auto ch=text.front();
+ if(QStringLiteral("&-/+=*<>|").contains(ch))return false;
  if(ch.category()==QChar::Punctuation_Open||ch.category()==QChar::Punctuation_InitialQuote)return false;
  return ch.isPunct()||(ch.unicode()<128&&ch.isSymbol());
 }

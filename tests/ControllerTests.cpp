@@ -814,7 +814,7 @@ private slots:
   QVERIFY(c.property("scratchpad").toString().isEmpty());
  }
  void completionSpaceIsPreservedAfterLettersSpacesAndCursorMovement(){
-  for(const QString next:{QString("a"),QString(" "),QString("Left")}){
+  for(const QString next:QStringList{"a"," ","Left","&","-","/","+","=","*","<",">","|"}){
    Controller c;c.openLayout("keyboard-conversation-bottom",false);c.setAddSpaceAfterCompletion(true);c.setRemoveCompletionSpaceBeforePunctuation(true);
    QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","thank y"}}}));QTRY_VERIFY(!c.executingCommands());
    c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
@@ -847,7 +847,7 @@ private slots:
    auto type=[&](QString text){QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",text}}}));QTRY_VERIFY(!c.executingCommands());};
    type("bonjour");c.clickCommand("suggest:0");QTRY_VERIFY(!c.executingCommands());
    QCOMPARE(c.property("scratchpad").toString(),QString("bonjour "));type(punctuation);
-   const auto expected=punctuation==":"?QString("bonjour : "):punctuation=="("?QString("bonjour ("):"bonjour"+punctuation;
+   const auto expected=punctuation==":"?QString("bonjour : "):(punctuation=="("||punctuation=="-")?"bonjour "+punctuation:"bonjour"+punctuation;
    QCOMPARE(c.property("scratchpad").toString(),expected);
   }
  }
