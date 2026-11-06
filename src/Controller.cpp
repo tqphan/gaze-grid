@@ -68,9 +68,9 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  runner.canEditLocal=[this]{return scratchpadEditable()&&localInput.attached();};
  runner.sendLocalText=[this](QString text,QStringList held){
   if(systemKeyboard()&&localInput.locale().startsWith("ko_")&&runner.capsLock&&!runner.shifted())text=text.toLower();
-  return desktopActive&&!paused&&!sensitiveInput&&localInput.text(text,held,systemKeyboard());
+  return desktopActive&&!paused&&(!sensitiveInput||signInMode)&&localInput.text(text,held,systemKeyboard()&&!signInMode);
  };
- runner.sendLocalKey=[this](QString name,QStringList held){return desktopActive&&!paused&&!sensitiveInput&&localInput.key(name,held,systemKeyboard());};
+ runner.sendLocalKey=[this](QString name,QStringList held){return desktopActive&&!paused&&(!sensitiveInput||signInMode)&&localInput.key(name,held,systemKeyboard()&&!signInMode);};
  runner.localInputError=[this]{return localInput.error();};
  connect(this,&Controller::changed,this,&Controller::refreshKeyboardLabels);
  connect(this,&Controller::layoutChanged,this,&Controller::refreshKeyboardLabels);
@@ -1040,7 +1040,7 @@ bool Controller::performAction(QString action){
  }
  if(action=="BackMany"){
   if(!runner.textOnly)return false;
-  if(scratchpadEditable()&&localInput.attached())return localInput.key("BACK",{"LCONTROL"},systemKeyboard());
+  if(scratchpadEditable()&&localInput.attached())return localInput.key("BACK",{"LCONTROL"},systemKeyboard()&&!signInMode);
   auto &text=typingContext();
   int end=text.size();while(end>0&&text[end-1].isSpace())--end;
   while(end>0&&!text[end-1].isSpace())--end;
@@ -1169,7 +1169,7 @@ bool Controller::hasScratchpad()const{
 QString &Controller::typingContext(){return hasScratchpad()?scratchpad:predictionContext;}
 const QString &Controller::typingContext()const{return hasScratchpad()?scratchpad:predictionContext;}
 bool Controller::setScratchpadText(const QString &text){
- if(!scratchpadEditable()||!desktopActive||paused||sensitiveInput||!text.isValidUtf16()||text.contains(QChar(0)))return false;
+ if(!scratchpadEditable()||!desktopActive||paused||(sensitiveInput&&!signInMode)||!text.isValidUtf16()||text.contains(QChar(0)))return false;
  if(scratchpad==text)return true;
  const bool completion=!pendingCompletionText.isEmpty()&&text==scratchpad+pendingCompletionText;
  if(learning&&!WordPrediction::characterLanguage(predictionLanguageValue)&&text.startsWith(scratchpad)){
@@ -1260,7 +1260,7 @@ void Controller::updateText(QString text){
  if(!desktopActive)return;
  const bool completion=!pendingCompletionText.isEmpty()&&text==pendingCompletionText;
  pendingCompletionText.clear();completionSpaceContext.clear();
- if(sensitiveInput||(!hasScratchpad()&&externalContext.privateField))return;
+ if((sensitiveInput&&!(signInMode&&scratchpadEditable()))||(!hasScratchpad()&&externalContext.privateField))return;
  auto &context=typingContext();
  for(auto ch:text){if(ch=='\b'){if(!context.isEmpty()){QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,context);boundary.toEnd();context.truncate(qMax(0,boundary.toPreviousBoundary()));}}else{if(ch.isSpace()&&learning){QString word=WordPrediction::characterLanguage(predictionLanguageValue)?QString():WordPrediction::completedWord(context,predictionLanguageValue);if(!word.isEmpty()&&word.size()<64)frequencies[word]=qMin(1000000,frequencies.value(word)+1);}context+=ch;}}
  if(context.size()>4096)context=context.right(4096);

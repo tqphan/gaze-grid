@@ -704,9 +704,9 @@ Window {
      }
     }
    Desktop.ScrollView {
-    id:settingsScroll;Layout.fillWidth:true;Layout.fillHeight:true;contentWidth:availableWidth;clip:true;ScrollBar.horizontal.policy:ScrollBar.AlwaysOff
+    id:settingsScroll;Layout.fillWidth:true;Layout.fillHeight:true;Layout.rightMargin:-28;contentWidth:availableWidth;clip:true;ScrollBar.horizontal.policy:ScrollBar.AlwaysOff
     ColumnLayout {
-     width:settingsScroll.availableWidth-12;spacing:16
+     width:settingsScroll.availableWidth-40;spacing:16
      SettingsCard {
       title:settings.categoryNames[0];visible:settingsCategory.currentIndex==0;Layout.fillWidth:true
       ColumnLayout {

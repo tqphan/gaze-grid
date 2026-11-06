@@ -285,7 +285,7 @@ public:
  // Used only by deterministic external-input integration checks.
  bool executeCommands(const QVariantList &commands){return desktopActive&&runner.start(commands);}
  bool executingCommands()const{return runner.busy();}
- bool scratchpadEditable()const{return runner.textOnly&&!nativeMode&&!signInMode;}
+ bool scratchpadEditable()const{return runner.textOnly&&!nativeMode;}
  Q_INVOKABLE bool setScratchpadText(const QString &text);
  bool localImeEnabled()const{return localIme;}
  Q_INVOKABLE void attachScratchpad(QObject *editor);

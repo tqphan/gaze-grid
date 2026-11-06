@@ -199,8 +199,9 @@ loading its interface or starting eye tracking. Repeated launches, including
 broker launches, exit without sending accessibility notifications. gaze-grid
 detects the Winlogon desktop and selects the restricted sign-in interface there.
 It uses the existing keyboard rendering, navigation, key output, and dwell logic.
-Prediction stays off even after switching layouts. Typed text is not retained
-in scratchpads or learned words. Personal profile files are not read or written,
+Prediction stays off even after switching layouts. Conversation layouts allow
+editing the local scratchpad in memory; keys in desktop-control layouts are not
+mirrored into it. Typed text is not learned. Personal profile files are not read or written,
 and Settings and the editor are unavailable in this mode. The magnifier can be
 toggled using the keyboard; its zoom and dwell preferences are copied when
 sign-in startup is configured. Magnifier toggles on the secure desktop are not

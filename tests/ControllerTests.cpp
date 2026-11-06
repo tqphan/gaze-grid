@@ -337,7 +337,7 @@ private slots:
   }
   {Controller c;QCOMPARE(c.property("layoutName").toString(),ProfileStore::defaults()["startLayout"].toString());c.resetPreferences();}
  }
- void signInUsesTheSelectedKeyboardWithoutRetainingText(){
+ void signInConversationScratchpadIsEditableWithoutSavingText(){
   QTemporaryDir directory;const auto previous=qgetenv("GAZE_GRID_CONFIG_DIR");
   qputenv("GAZE_GRID_CONFIG_DIR",directory.path().toUtf8());
   auto values=ProfileStore::defaults();values["startLayout"]="keyboard-conversation-bottom";
@@ -349,11 +349,18 @@ private slots:
    QCOMPARE(controller.predictionMode(),QString("off"));
    controller.setPredictionMode("context");controller.setLearning(true);
    controller.inputContextChanged(true,false);
+   QVERIFY(controller.scratchpadEditable());
+   QVERIFY(controller.setScratchpadText("draft"));
+   QCOMPARE(controller.property("scratchpad").toString(),QString("draft"));
+   QVERIFY(controller.setScratchpadText(""));
    QVERIFY(controller.executeCommands({QVariantMap{{"tag","Text"},{"text","private42 "}}}));
    QTest::qWait(50);
-   QVERIFY(controller.property("scratchpad").toString().isEmpty());
+   QCOMPARE(controller.property("scratchpad").toString(),QString("private42 "));
    QVERIFY(controller.property("suggestions").toStringList().isEmpty());
    QCOMPARE(controller.predictionMode(),QString("off"));
+   controller.openLayout("keyboard-alphabet-14x4-bottom",false);
+   QVERIFY(!controller.scratchpadEditable());
+   QVERIFY(!controller.setScratchpadText("desktop"));
    QVERIFY(!controller.savePreferences());controller.resetPreferences();controller.resetLearning();
    controller.setGazeEnabled(false);controller.setMagnifierEnabled(true);
    QVERIFY(controller.isMagnifierEnabled());

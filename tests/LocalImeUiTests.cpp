@@ -62,7 +62,7 @@ class LocalImeUiTests:public QObject {
    for(auto child:parent->childItems())if(auto found=visual(child,name))return found;
    return nullptr;
   }
-  explicit View(bool real=false){
+  explicit View(bool real=false,bool signIn=false):controller(signIn){
    QObject::connect(&engine,&QQmlEngine::warnings,&engine,[this](const QList<QQmlError> &errors){for(const auto &error:errors)if(error.url().toString()=="qrc:/ui/Main.qml"&&error.description().contains("Binding loop"))bindingWarnings<<error.toString();});
    controller.resetPreferences();controller.setGazeEnabled(false);controller.setProperty("paused",false);
    controller.setAllGroupDwellTimes(250);controller.openLayout("keyboard-conversation-bottom",false);
@@ -105,6 +105,20 @@ class LocalImeUiTests:public QObject {
   void stop(){window->setProperty("gazeValid",false);controller.hover("");}
  };
 private slots:
+ void signInScratchpadAcceptsLocalKeysWithoutIme(){
+  View view(false,true);QVERIFY(view.window);QVERIFY(view.editor);
+  QVERIFY(view.controller.scratchpadEditable());
+  QVERIFY(!view.editor->property("readOnly").toBool());
+  QVERIFY(!view.controller.localImeEnabled());
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text","hello"}}}));
+  QTRY_COMPARE(view.editor->property("text").toString(),QString("hello"));
+  QCOMPARE(view.controller.property("scratchpad").toString(),QString("hello"));
+  QCOMPARE(view.method.keyCount,0);
+  QTRY_VERIFY(!view.controller.executingCommands());
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Action"},{"text","Backspace"}}}));
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("hell"));
+  QVERIFY(view.controller.property("suggestions").toStringList().isEmpty());
+ }
  void realKoreanGazeCompositionAndPredictionHandoff(){
   if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");
   View view(true);QVERIFY(view.window);QVERIFY(view.editor);
