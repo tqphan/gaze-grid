@@ -3,6 +3,7 @@
 #include <QString>
 #include <QStringList>
 #include "WordSegmentation.h"
+#include "PunctuationSpacing.h"
 
 // Rules shared by prediction, completion acceptance, and personal learning.
 namespace PredictionLanguage {
@@ -82,10 +83,6 @@ inline QStringList tokens(const QString &text,const QString &language){
  return clusters;
 }
 inline bool appendSpace(const QString &language){return language!="cmn"&&language!="jpn"&&language!="tha";}
-inline QString punctuationPrefix(const QString &text,const QString &language){return language=="fra"&&text==":"?QString(" "):QString();}
-inline bool spaceAfterPunctuation(const QString &text,const QString &language){
- return appendSpace(language)&&text!="'"&&text!=QString(QChar(0x2019))&&text!="-";
-}
 inline QString caseReplacement(const QString &text,const QString &candidate,const QString &language){
  const auto raw=rawPrefix(text,language),prefix=normalize(raw);
  if(language=="deu"&&!prefix.isEmpty()&&candidate.left(prefix.size())!=prefix

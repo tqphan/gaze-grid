@@ -4,6 +4,7 @@
 #include <QSet>
 #include <QVariantList>
 #include <functional>
+#include "PunctuationSpacing.h"
 // Ordered, nonblocking execution. Callbacks form the platform boundary.
 class ActionRunner:public QObject {
     Q_OBJECT
@@ -16,9 +17,7 @@ public:
     std::function<bool()> canEditLocal;
     std::function<QString()> localInputError;
     std::function<bool()> canCommitText;
-    std::function<bool(QString)> removeSpaceBeforeText;
-    std::function<bool(QString)> appendSpaceAfterPunctuation;
-    std::function<QString(QString)> punctuationPrefix;
+    std::function<PredictionLanguage::PunctuationSpacing(QString)> punctuationSpacing;
     std::function<bool(QString)> supportsPhysicalKey;
     std::function<bool(QString)> performAction;
     std::function<void(QString)> speakLabel;
@@ -51,6 +50,7 @@ signals:
     void stateChanged();
     void failed(QString message);
     void textCommitted(QString text);
+    void punctuationPrepared(QString text);
     void keyPressed(QString name);
     void finished();
     void cancelled();

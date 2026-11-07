@@ -813,6 +813,28 @@ private slots:
   QCOMPARE(output,QString("thank you. "));QCOMPARE(backspaces,1);
   QVERIFY(c.property("scratchpad").toString().isEmpty());
  }
+ void caretAwarePunctuationChecksTheCurrentTarget(){
+  for(bool moved:{false,true}){
+   Controller c;QString document="thank y";int cursor=document.size(),backspaces=0;
+   c.configureInputMethod([&](QString text){document.insert(cursor,text);cursor+=text.size();return true;},
+    [&](QString key,bool down){if(down&&key=="BACK"&&cursor>0){document.remove(--cursor,1);++backspaces;}return true;});
+   c.inputContextChanged(true,false);c.setAddSpaceAfterCompletion(true);c.setRemoveCompletionSpaceBeforePunctuation(true);
+   auto snapshot=[&]{DesktopTextContext context;context.supported=true;context.available=true;context.identity="field";
+    context.before=document.left(cursor);context.after=document.mid(cursor);return context;};
+   c.setDesktopContextProvider(snapshot);
+   c.setDesktopCompletionProvider([&](const DesktopTextContext &expected,const QString &,const QString &,bool){
+    if(snapshot()!=expected)return false;document="thank you ";cursor=document.size();return true;
+   });
+   c.updateDesktopTextContext(snapshot());
+   const auto index=c.displaySuggestions().indexOf("you");QVERIFY(index>=0);
+   c.clickCommand(c.suggestionPrefix()+QString::number(index));
+   QCOMPARE(document,QString("thank you "));
+   if(moved)cursor=0;
+   QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","."}}}));QTRY_VERIFY(!c.executingCommands());
+   QCOMPARE(document,moved?QString(".thank you "):QString("thank you. "));
+   QCOMPARE(backspaces,moved?0:1);
+  }
+ }
  void completionSpaceIsPreservedAfterLettersSpacesAndCursorMovement(){
   for(const QString next:QStringList{"a"," ","Left","&","-","/","+","=","*","<",">","|"}){
    Controller c;c.openLayout("keyboard-conversation-bottom",false);c.setAddSpaceAfterCompletion(true);c.setRemoveCompletionSpaceBeforePunctuation(true);

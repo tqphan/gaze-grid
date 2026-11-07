@@ -340,7 +340,7 @@ private:
  void clearCapture();
  void updateMagnifierZoom();
  void updateText(QString text);
- bool takeCompletionSpace(const QString &text);
+ PredictionLanguage::PunctuationSpacing takeCompletionSpace(const QString &text);
  void updateSuggestions();
  QVariantList mapped(const QVariantList &commands,bool &ok);
  Q_SLOT void receiveGaze(double x,double y,bool valid,qint64 sampledAt);

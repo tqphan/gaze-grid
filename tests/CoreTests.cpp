@@ -31,6 +31,34 @@ class CoreTests:public QObject{
  Q_OBJECT
 static QVariantMap cmd(QString tag,QString text){return {{"tag",tag},{"text",text}};}
 private slots:
+ void punctuationSpacingRules(){
+  struct Example {QString language,text,before,after;bool remove;QString prefix,suffix;};
+  const QList<Example> examples{
+   {"eng",".","hello ","",true,""," "},
+   {"eng","!","hello? ","",true,""," "},
+   {"eng",")","(hello ","",true,"",""},
+   {"eng",QString(QChar(0x201d)),"hello ","",true,"",""},
+   {"eng","'","hello ","",true,"",""},
+   {"eng","\"","hello ","",false,"",""},
+   {"eng","(","hello ","",false,"",""},
+   {"eng",".","3 ","14",false,"",""},
+   {"eng",",","hello "," world",true,"",""},
+   {"fra",":","bonjour ","",true," "," "},
+   {"fra","!","bonjour ","",true,""," "},
+   {"cmn",QString(QChar(0x3002)),"hello ","",true,"",""},
+   {"jpn",QString(QChar(0x3001)),"hello ","",true,"",""},
+   {"eng",QString(QChar(0xff01)),"hello ","",true,"",""},
+   {"tha","!","hello ","",true,"",""},
+   {"deu",".","Hallo ","",true,""," "},
+   {"eng","?!","hello ","",false,"",""}
+  };
+  for(const auto &example:examples){
+   const auto result=PredictionLanguage::punctuationSpacing(example.text,example.language,example.before,example.after);
+   QCOMPARE(result.removeSpace,example.remove);QCOMPARE(result.before,example.prefix);QCOMPARE(result.after,example.suffix);
+  }
+  for(auto ch:QStringLiteral("&-/+=*<>|"))
+   QVERIFY(!PredictionLanguage::punctuationSpacing(QString(ch),"eng","hello ").removeSpace);
+ }
  void predictionLanguageRules(){
   const QString decomposed=QString::fromUtf8("cafe\xcc\x81");
   QCOMPARE(WordPrediction::prefix(decomposed,"fra"),QString::fromUtf8("caf\xc3\xa9"));
@@ -311,8 +339,10 @@ private slots:
     if(down){if(name=="BACK")output.chop(1);else if(name=="Q"||name=="SPACE")output+=runner.physicalKeyText(name);}
     return true;
    };
-   runner.removeSpaceBeforeText=[&](QString text){const bool remove=pending&&enabled&&text.size()==1&&text.front().isPunct();pending=false;return remove;};
-   runner.appendSpaceAfterPunctuation=[](QString){return true;};
+   runner.punctuationSpacing=[&](QString text){
+    const bool remove=pending&&enabled;pending=false;
+    return remove?PredictionLanguage::punctuationSpacing(text,"eng","word "):PredictionLanguage::PunctuationSpacing{};
+   };
    QSignalSpy finished(&runner,&ActionRunner::finished);
    if(shift){QVERIFY(runner.start({cmd("Action","LShift")}));QTRY_COMPARE(finished.size(),1);}
    auto punctuation=cmd("Text","a");punctuation["systemText"]="q";

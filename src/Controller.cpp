@@ -252,12 +252,10 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
   if(externalContextPending){externalContextPending=false;updateDesktopTextContext(desktopContextProvider?desktopContextProvider():pendingExternalContext);}
  },Qt::QueuedConnection);
  connect(&runner,&ActionRunner::textCommitted,this,&Controller::updateText);
- runner.removeSpaceBeforeText=[this](QString text){return (!scratchpadEditable()||!localInput.attached()||localInput.atEnd())&&takeCompletionSpace(text);};
- runner.appendSpaceAfterPunctuation=[this](QString text){
-  if(!completionSpaceEnabled||!PredictionLanguage::spaceAfterPunctuation(text,predictionLanguageValue))return false;
-  pendingCompletionText=PredictionLanguage::punctuationPrefix(text,predictionLanguageValue)+text+' ';return true;
- };
- runner.punctuationPrefix=[this](QString text){return PredictionLanguage::punctuationPrefix(text,predictionLanguageValue);};
+ runner.punctuationSpacing=[this](QString text){return takeCompletionSpace(text);};
+ connect(&runner,&ActionRunner::punctuationPrepared,this,[this](QString text){
+  if(text.endsWith(' '))pendingCompletionText=text;
+ });
  connect(&runner,&ActionRunner::keyPressed,this,[this](QString name){
   if(name=="CAPITAL")systemCaps=!systemCaps;
   if(name!="LSHIFT"&&name!="RSHIFT"&&name!="CAPITAL")completionSpaceContext.clear();
@@ -1267,15 +1265,24 @@ void Controller::updateText(QString text){
  if(completion&&context.endsWith(' '))completionSpaceContext=context;
  updateSuggestions();
 }
-bool Controller::takeCompletionSpace(const QString &text){
+PredictionLanguage::PunctuationSpacing Controller::takeCompletionSpace(const QString &text){
  const auto context=completionSpaceContext;completionSpaceContext.clear();
- // External caret changes are not tracked; removal uses the last known context.
+ // Best-effort targets use the last known context; caret-aware targets are
+ // checked again before deleting the completion space.
  if(!removeCompletionSpaceEnabled||sensitiveInput||context.isEmpty()
-    ||context!=typingContext()||text.size()!=1)return false;
- const auto ch=text.front();
- if(QStringLiteral("&-/+=*<>|").contains(ch))return false;
- if(ch.category()==QChar::Punctuation_Open||ch.category()==QChar::Punctuation_InitialQuote)return false;
- return ch.isPunct()||(ch.unicode()<128&&ch.isSymbol());
+    ||context!=predictionText()||text.size()!=1)return {};
+ if(scratchpadEditable()&&localInput.attached()&&!localInput.atEnd())return {};
+ QString after;
+ if(!hasScratchpad()&&externalContextObserved){
+  if(externalContext.privateField||(externalContext.supported&&!externalContext.available))return {};
+  if(externalContext.available){
+   if(desktopContextProvider&&desktopContextProvider()!=externalContext)return {};
+   after=externalContext.after;
+  }
+ }
+ auto spacing=PredictionLanguage::punctuationSpacing(text,predictionLanguageValue,context,after);
+ if(!completionSpaceEnabled)spacing.after.clear();
+ return spacing;
 }
 QStringList Controller::predictionSuggestions(int limit)const{
  QString document;int cursor=0;

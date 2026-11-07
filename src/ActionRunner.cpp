@@ -116,7 +116,7 @@ void ActionRunner::step(){
         bool shortcut=shortcutHeld();
         QString effective=value;
         if(textOnly||!held.isEmpty())for(auto &ch:effective)ch=KeyNames::usTypedCharacter(ch,shifted()||(capsLock&&ch.isLetter()));
-        if(!shortcut&&removeSpaceBeforeText&&physicalText&&!textOnly&&!command.value("literalCompletion").toBool()){
+        if(!shortcut&&punctuationSpacing&&physicalText&&!textOnly&&!command.value("literalCompletion").toBool()){
             effective.clear();
             for(auto ch:value){
                 auto [name,needsShift]=KeyNames::usCharacter(ch);
@@ -126,13 +126,12 @@ void ActionRunner::step(){
                 if(ownShift&&!key("LSHIFT",false)){fail("Could not release Shift");return;}
             }
         }
-        if(!shortcut&&removeSpaceBeforeText&&removeSpaceBeforeText(effective)){
+        const auto spacing=!shortcut&&punctuationSpacing?punctuationSpacing(effective):PredictionLanguage::PunctuationSpacing{};
+        if(spacing.removeSpace){
             if((!textOnly||editingLocal())&&!tap("BACK")){fail("Could not remove the completion space");return;}
             if(!editingLocal())emit textCommitted("\b");
-            const auto punctuation=effective;
-            const auto prefix=punctuationPrefix?punctuationPrefix(punctuation):QString();
-            value=prefix+value;effective=prefix+effective;
-            if(appendSpaceAfterPunctuation&&appendSpaceAfterPunctuation(punctuation)){value+=' ';effective+=' ';}
+            value=spacing.before+value+spacing.after;effective=spacing.before+effective+spacing.after;
+            emit punctuationPrepared(effective);
         }
         QString removed;
         const int removePrefix=command.value("removePrefix").toInt();
