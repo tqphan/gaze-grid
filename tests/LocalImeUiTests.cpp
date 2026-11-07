@@ -62,6 +62,11 @@ class LocalImeUiTests:public QObject {
    for(auto child:parent->childItems())if(auto found=visual(child,name))return found;
    return nullptr;
   }
+  static int editorCount(QQuickItem *parent){
+   int count=parent->property("committedText").isValid()?1:0;
+   for(auto child:parent->childItems())count+=editorCount(child);
+   return count;
+  }
   explicit View(bool real=false,bool signIn=false):controller(signIn){
    QObject::connect(&engine,&QQmlEngine::warnings,&engine,[this](const QList<QQmlError> &errors){for(const auto &error:errors)if(error.url().toString()=="qrc:/ui/Main.qml"&&error.description().contains("Binding loop"))bindingWarnings<<error.toString();});
    controller.resetPreferences();controller.setGazeEnabled(false);controller.setProperty("paused",false);
@@ -110,6 +115,11 @@ private slots:
   QVERIFY(view.controller.scratchpadEditable());
   QVERIFY(!view.editor->property("readOnly").toBool());
   QVERIFY(!view.controller.localImeEnabled());
+  QVERIFY(!view.window->flags().testFlag(Qt::WindowDoesNotAcceptFocus));
+  QVERIFY(view.editor->property("activeFocusOnPress").toBool());
+  QCOMPARE(View::editorCount(view.window->contentItem()),1);
+  QVERIFY(QMetaObject::invokeMethod(view.editor,"prepareInput"));
+  QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
   QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text","hello"}}}));
   QTRY_COMPARE(view.editor->property("text").toString(),QString("hello"));
   QCOMPARE(view.controller.property("scratchpad").toString(),QString("hello"));
@@ -118,6 +128,22 @@ private slots:
   QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Action"},{"text","Backspace"}}}));
   QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("hell"));
   QVERIFY(view.controller.property("suggestions").toStringList().isEmpty());
+  view.controller.openLayout("keyboard-alphabet-14x4-bottom",false);QCoreApplication::processEvents();
+  QVERIFY(view.window->flags().testFlag(Qt::WindowDoesNotAcceptFocus));
+  QCOMPARE(View::editorCount(view.window->contentItem()),0);
+  view.controller.openLayout("keyboard-conversation-bottom",false);QCoreApplication::processEvents();
+  const auto keys=view.keys();for(int i=0;i<keys.size();++i)if(keys[i].toMap()["kind"]=="Scratchpad"){
+   view.editor=View::visual(view.window->contentItem(),QString("scratchpadEditor:%1").arg(i));break;
+  }
+  QVERIFY(view.editor);QVERIFY(!view.window->flags().testFlag(Qt::WindowDoesNotAcceptFocus));
+  QCOMPARE(View::editorCount(view.window->contentItem()),1);
+  QTRY_COMPARE(QGuiApplication::focusObject(),view.editor.data());
+  QVERIFY(view.controller.executeCommands({QVariantMap{{"tag","Text"},{"text","o"}}}));
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("hello"));
+  QTest::keyClick(view.window,Qt::Key_1);
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("hello1"));
+  QTest::keyClick(view.window,Qt::Key_Backspace);
+  QTRY_COMPARE(view.controller.property("scratchpad").toString(),QString("hello"));QCOMPARE(view.method.keyCount,0);
  }
  void realKoreanGazeCompositionAndPredictionHandoff(){
   if(!qEnvironmentVariableIsSet("GAZE_GRID_TEST_LOCAL_IME"))QSKIP("Optional real Qt input engine");

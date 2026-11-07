@@ -23,8 +23,8 @@ TextEdit {
         })
     }
     function prepareInput() {
-        forceActiveFocus()
-        if (Window.window) Window.window.requestActivate()
+        if (!activeFocus) forceActiveFocus()
+        if (Window.window && !Window.window.active) Window.window.requestActivate()
     }
     onTextChanged: if (!readOnly && text !== committedText) committedTextEdited(text)
 }

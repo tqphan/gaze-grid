@@ -348,15 +348,20 @@ Window {
     border.width:controller.sizeMoveSelection===key.index?5:2;border.color:root.dwellColor
    }
    HeldIndicator {anchors.fill:parent;anchors.margins:2;style:key.heldStyle;color:root.dwellColor}
-   ScratchpadEditor {
-    anchors.fill:parent;anchors.margins:12;visible:key.modelData.kind==="Scratchpad";clip:true
-    objectName:"scratchpadEditor:"+key.index
-    Component.onCompleted:if(key.modelData.kind==="Scratchpad")controller.attachScratchpad(this)
-    opacity:key.foregroundOpacity
-    committedText:controller.scratchpad;color:key.foreground
-    readOnly:!controller.scratchpadEditable||controller.paused||!controller.desktopActive
-    onCommittedTextEdited:value=>controller.setScratchpadText(value)
-    font.pixelSize:24*controller.scratchpadTextScale/100;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
+   Loader {
+    anchors.fill:parent;anchors.margins:12
+    active:key.modelData.kind==="Scratchpad"
+    sourceComponent:Component {
+     ScratchpadEditor {
+      clip:true;objectName:"scratchpadEditor:"+key.index
+      Component.onCompleted:controller.attachScratchpad(this)
+      opacity:key.foregroundOpacity
+      committedText:controller.scratchpad;color:key.foreground
+      readOnly:!controller.scratchpadEditable||controller.paused||!controller.desktopActive
+      onCommittedTextEdited:value=>controller.setScratchpadText(value)
+      font.pixelSize:24*controller.scratchpadTextScale/100;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
+     }
+    }
    }
    Column {
     anchors.centerIn:parent;spacing:4
