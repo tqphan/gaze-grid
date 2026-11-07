@@ -964,7 +964,7 @@ Window {
        RowLayout {
         visible:Qt.platform.os==="windows"
         Desktop.Label {text:"Live refresh"}
-        SettingsComboBox {model:["15 Hz","30 Hz","45 Hz","60 Hz"];currentIndex:[15,30,45,60].indexOf(controller.magnifierRefreshHz);onActivated:controller.magnifierRefreshHz=[15,30,45,60][currentIndex]}
+        SettingsComboBox {model:["Off","15 Hz","30 Hz","45 Hz","60 Hz"];currentIndex:[0,15,30,45,60].indexOf(controller.magnifierRefreshHz);onActivated:controller.magnifierRefreshHz=[0,15,30,45,60][currentIndex]}
        }
        SettingsCheckBox {text:"Progressive zoom";checked:controller.progressiveZoom;onToggled:controller.progressiveZoom=checked}
        SettingSlider {label:"Zoom duration";displayValue:(controller.zoomDurationMs/1000).toFixed(1)+" s";from:500;to:5000;stepSize:100;value:controller.zoomDurationMs;enabled:controller.progressiveZoom;onMoved:controller.zoomDurationMs=value}

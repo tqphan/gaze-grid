@@ -129,7 +129,7 @@ bool ProfileStore::valid(const QJsonObject &v){
         &&(!v.contains("targetDwellRadius")||(v["targetDwellRadius"].isDouble()&&v["targetDwellRadius"].toDouble()==v["targetDwellRadius"].toInt()&&v["targetDwellRadius"].toInt()>=10&&v["targetDwellRadius"].toInt()<=100))
         &&(!v.contains("zoomDurationMs")||(v["zoomDurationMs"].isDouble()&&v["zoomDurationMs"].toDouble()==v["zoomDurationMs"].toInt()&&v["zoomDurationMs"].toInt()>=500&&v["zoomDurationMs"].toInt()<=5000))
         &&(!v.contains("enlargeShortLabels")||v["enlargeShortLabels"].isBool())
-        &&(!v.contains("magnifierRefreshHz")||(v["magnifierRefreshHz"].isDouble()&&(v["magnifierRefreshHz"].toDouble()==15||v["magnifierRefreshHz"].toDouble()==30||v["magnifierRefreshHz"].toDouble()==45||v["magnifierRefreshHz"].toDouble()==60)))
+        &&(!v.contains("magnifierRefreshHz")||(v["magnifierRefreshHz"].isDouble()&&(v["magnifierRefreshHz"].toDouble()==0||v["magnifierRefreshHz"].toDouble()==15||v["magnifierRefreshHz"].toDouble()==30||v["magnifierRefreshHz"].toDouble()==45||v["magnifierRefreshHz"].toDouble()==60)))
         &&(!v.contains("magnifierEnabled")||v["magnifierEnabled"].isBool())
         &&(!v.contains("clickDurationMs")||(v["clickDurationMs"].isDouble()&&v["clickDurationMs"].toDouble()==v["clickDurationMs"].toInt()&&v["clickDurationMs"].toInt()>=0&&v["clickDurationMs"].toInt()<=250))
         &&(!v.contains("magneticMouseRelative")||v["magneticMouseRelative"].isBool())

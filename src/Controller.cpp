@@ -228,7 +228,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  connect(&screenshot,&ScreenshotPortal::liveFrame,this,&Controller::receiveLiveMagnifierFrame);
  connect(&screenshot,&ScreenshotPortal::captured,this,[this](QImage image){
   receiveMagnifierFrame(image);
-  if(magnifierReady)screenshot.startLive(magnifierRefreshHz);
+  if(magnifierReady&&magnifierRefreshHz>0)screenshot.startLive(magnifierRefreshHz);
  });
  connect(&pointer,&PointerActions::completed,this,[this](bool ok){actionStatus=pointer.prompt();runner.resume(ok);emit changed();});
  runner.sendKey=[this](QString name,bool down){return (!down||desktopActive)&&portal.key(KeyNames::linuxCode(name),down);};
@@ -1105,7 +1105,7 @@ double Controller::dwellAt(double x,double y,bool valid){
  return pointDwell.progress(clock.elapsed(),duration);
 }
 void Controller::receiveLiveMagnifierFrame(QImage image){
- if(!targeting||paused||!magnifierReady)return;
+ if(!targeting||paused||!magnifierReady||magnifierRefreshHz==0)return;
  if(image.size()!=captureSize){clearCapture();pointer.cancel();actionStatus="Display size changed; target selection cancelled";emit changed();return;}
  capturedImage=std::move(image);updateMagnifierZoom();
 }
@@ -1140,10 +1140,10 @@ void Controller::clearCapture(){
  ++captureEpoch;screenshot.cancel();capturePending=false;magnifierReady=false;magnifiedImage={};magnifierCrop={};captureSize={};
 }
 void Controller::setMagnifierRefreshHz(int hz){
- if(hz!=15&&hz!=30&&hz!=45&&hz!=60)return;
+ if(hz!=0&&hz!=15&&hz!=30&&hz!=45&&hz!=60)return;
  if(magnifierRefreshHz==hz)return;
  magnifierRefreshHz=hz;
- if(magnifierReady)screenshot.startLive(hz);
+ if(magnifierReady){if(hz>0)screenshot.startLive(hz);else screenshot.cancel();}
  emit changed();
 }
 void Controller::setMagnifierEnabled(bool enabled){

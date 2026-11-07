@@ -1438,7 +1438,7 @@ private slots:
  void magnifierRefreshPreferences(){
   Controller controller;controller.resetPreferences();
   QCOMPARE(controller.property("magnifierRefreshHz").toInt(),30);
-  for(int hz:{15,30,45,60}){
+  for(int hz:{0,15,30,45,60}){
    controller.setProperty("magnifierRefreshHz",hz);QVERIFY(controller.savePreferences());
    Controller restored;QCOMPARE(restored.property("magnifierRefreshHz").toInt(),hz);
   }
@@ -1447,6 +1447,40 @@ private slots:
   auto profile=ProfileStore::defaults();profile["magnifierRefreshHz"]=30.5;
   QVERIFY(!ProfileStore::valid(profile));
   controller.resetPreferences();
+ }
+ void magnifierRefreshOffUsesOneScreenshot(){
+  for(bool progressive:{false,true}){
+   Controller controller;controller.setMagnifierRefreshHz(0);controller.setProperty("progressiveZoom",progressive);
+   controller.setProperty("zoomDurationMs",500);controller.setProperty("targeting",true);controller.setProperty("capturePending",true);
+   QImage frame(QGuiApplication::primaryScreen()->size(),QImage::Format_RGB32);frame.fill(Qt::red);
+   QVERIFY(QMetaObject::invokeMethod(&controller,"receiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+   QCOMPARE(controller.property("zoomAnimating").toBool(),progressive);
+   frame.fill(Qt::blue);
+   QVERIFY(QMetaObject::invokeMethod(&controller,"receiveLiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+   QCOMPARE(controller.magnifierImage().pixelColor(0,0),QColor(Qt::red));
+   QTRY_VERIFY(!controller.property("zoomAnimating").toBool());
+   QCOMPARE(controller.magnifierImage().size(),QSize(frame.width()/4,frame.height()/4));
+   const auto image=controller.magnifierImage();const int revision=controller.property("magnifierRevision").toInt();
+   QTest::qWait(100);
+   QVERIFY(QMetaObject::invokeMethod(&controller,"receiveLiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+   QCOMPARE(controller.magnifierImage(),image);QCOMPARE(controller.property("magnifierRevision").toInt(),revision);
+  }
+ }
+ void liveMagnifierCanFreezeAndResume(){
+  Controller controller;controller.setMagnifierRefreshHz(30);controller.setProperty("progressiveZoom",false);
+  controller.setProperty("targeting",true);controller.setProperty("capturePending",true);
+  QImage frame(QGuiApplication::primaryScreen()->size(),QImage::Format_RGB32);frame.fill(Qt::red);
+  QVERIFY(QMetaObject::invokeMethod(&controller,"receiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+  frame.fill(Qt::blue);
+  QVERIFY(QMetaObject::invokeMethod(&controller,"receiveLiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+  QCOMPARE(controller.magnifierImage().pixelColor(0,0),QColor(Qt::blue));
+  controller.setMagnifierRefreshHz(0);const int revision=controller.property("magnifierRevision").toInt();
+  frame.fill(Qt::green);
+  QVERIFY(QMetaObject::invokeMethod(&controller,"receiveLiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+  QCOMPARE(controller.magnifierImage().pixelColor(0,0),QColor(Qt::blue));QCOMPARE(controller.property("magnifierRevision").toInt(),revision);
+  controller.setMagnifierRefreshHz(45);
+  QVERIFY(QMetaObject::invokeMethod(&controller,"receiveLiveMagnifierFrame",Qt::DirectConnection,Q_ARG(QImage,frame)));
+  QCOMPARE(controller.magnifierImage().pixelColor(0,0),QColor(Qt::green));QVERIFY(controller.property("magnifierReady").toBool());
  }
  void liveMagnifierReplacesPixelsAndIgnoresCancelledFrames(){
   Controller controller;controller.setProperty("targeting",true);controller.setProperty("capturePending",true);

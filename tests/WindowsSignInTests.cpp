@@ -69,12 +69,13 @@ private slots:
   QVERIFY(contains(L"osk, gaze-grid_gaze-grid_v1 ,narrator"));
  }
  void sharedProfileOnlyContainsValidatedKeyboardPreferences(){
-  auto values=ProfileStore::defaults();values["learning"]=true;values["predictionMode"]="context";values["magnifierEnabled"]=true;
+  auto values=ProfileStore::defaults();values["learning"]=true;values["predictionMode"]="context";values["magnifierEnabled"]=true;values["magnifierRefreshHz"]=0;
   values["scratchpadTextScale"]=175;values["keyboardScale"]=120;values["startLayout"]="main-14x1-top";values["invalidGazeToleranceMs"]=250;
   values["clampGazeForKeyboard"]=false;values["clampGazeForPointSelection"]=false;
   auto result=WindowsSignIn::validatedProfile(values);
   QCOMPARE(result["startLayout"].toString(),QString("main-14x1-top"));QCOMPARE(result["keyboardScale"].toInt(),120);
   QCOMPARE(result["predictionMode"].toString(),QString("off"));QVERIFY(!result["learning"].toBool());QVERIFY(result["magnifierEnabled"].toBool());
+  QCOMPARE(result["magnifierRefreshHz"].toInt(-1),0);
   QCOMPARE(result["invalidGazeToleranceMs"].toInt(),250);QCOMPARE(result["scratchpadTextScale"].toInt(),175);
   QVERIFY(!result["clampGazeForKeyboard"].toBool());QVERIFY(!result["clampGazeForPointSelection"].toBool());
   values["startLayout"]="../user-keyboard";QVERIFY(WindowsSignIn::validatedProfile(values).isEmpty());
