@@ -123,7 +123,7 @@ inline CompletionEdit edit(const QString &before,const QString &after,const QStr
  }
  const auto following=after.mid(result.removeAfter);
  const bool beforeColon=language=="fra"&&following.startsWith(':');
- const bool addSpace=space&&appendSpace(language)&&(following.isEmpty()||beforeColon||(!following.front().isSpace()&&!following.front().isPunct()));
+ const bool addSpace=space&&appendSpace(language)&&(atLineEnd(following)||beforeColon||(!following.front().isSpace()&&!following.front().isPunct()));
  result.text=result.removeBefore?candidate+(addSpace?QString(" "):QString()):completion(before,candidate,language,addSpace);
  result.valid=true;return result;
 }

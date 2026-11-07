@@ -2,6 +2,13 @@
 #include <QString>
 
 namespace PredictionLanguage {
+// Accessibility providers may expose a line terminator even at the end of
+// an editor. It does not supply the space needed to keep typing on that line.
+inline bool atLineEnd(const QString &after){
+ if(after.isEmpty())return true;
+ const auto ch=after.front();
+ return ch=='\r'||ch=='\n'||ch==QChar(0x2028)||ch==QChar(0x2029);
+}
 struct PunctuationSpacing {
  bool removeSpace=false;
  QString before,after;
@@ -30,7 +37,7 @@ inline PunctuationSpacing punctuationSpacing(const QString &text,const QString &
  const bool closing=ch.category()==QChar::Punctuation_Close||ch.category()==QChar::Punctuation_FinalQuote;
  const bool apostrophe=ch=='\''||ch==QChar(0x2019);
  if(language!="cmn"&&language!="jpn"&&language!="tha"&&!nativePunctuation
-    &&!closing&&!apostrophe&&after.isEmpty())result.after=" ";
+    &&!closing&&!apostrophe&&atLineEnd(after))result.after=" ";
  return result;
 }
 }

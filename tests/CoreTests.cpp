@@ -35,6 +35,9 @@ private slots:
   struct Example {QString language,text,before,after;bool remove;QString prefix,suffix;};
   const QList<Example> examples{
    {"eng",".","hello ","",true,""," "},
+   {"eng",".","hello ","\r\nnext",true,""," "},
+   {"eng",".","hello ",QString(QChar(0x2028)),true,""," "},
+   {"eng",",","hello ","\tworld",true,"",""},
    {"eng","!","hello? ","",true,""," "},
    {"eng",")","(hello ","",true,"",""},
    {"eng",QString(QChar(0x201d)),"hello ","",true,"",""},
@@ -76,6 +79,27 @@ private slots:
   QCOMPARE(PredictionLanguage::upper("i","tur"),QString(QChar(0x130)));
   QCOMPARE(WordPrediction::completedWord("ISLAK!","tur"),QString(QChar(0x131))+"slak");
   QCOMPARE(WordPrediction::completedWord("ISLAK!","eng"),QString("islak"));
+ }
+ void completionSpacingBeforeLineBreaks(){
+  for(const auto after:QStringList{"","\n","\r","\r\nnext",QString(QChar(0x2028)),QString(QChar(0x2029))+"next"}){
+   for(bool enabled:{false,true}){
+    const auto edit=PredictionLanguage::edit("thank y",after,"you","eng",enabled);
+    QVERIFY(edit.valid);QCOMPARE(edit.text,enabled?QString("ou "):QString("ou"));
+    QCOMPARE(edit.removeAfter,0);
+   }
+  }
+  for(const auto after:QStringList{" "," today","\t",".",")"}){
+   const auto edit=PredictionLanguage::edit("thank y",after,"you","eng",true);
+   QVERIFY(edit.valid);QCOMPARE(edit.text,QString("ou"));
+  }
+  const auto suffix=PredictionLanguage::edit("thank y","uo\r\nnext","you","eng",true);
+  QVERIFY(suffix.valid);QCOMPARE(suffix.removeAfter,2);QCOMPARE(suffix.text,QString("ou "));
+  const auto recase=PredictionLanguage::edit("ein ha","us\n","Haus","deu",true);
+  QVERIFY(recase.valid);QCOMPARE(recase.removeBefore,2);QCOMPARE(recase.removeAfter,2);QCOMPARE(recase.text,QString("Haus "));
+  for(const auto language:QStringList{"cmn","jpn","tha"}){
+   const auto edit=PredictionLanguage::edit("","\n","hello",language,true);
+   QVERIFY(edit.valid);QCOMPARE(edit.text,QString("hello"));
+  }
  }
 
  void predictionUnicodeScalars(){

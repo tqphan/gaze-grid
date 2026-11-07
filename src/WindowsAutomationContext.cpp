@@ -67,17 +67,19 @@ struct Session {
    if(SUCCEEDED(edit->GetActiveComposition(composition.out()))&&composition)return result;
   }
   if(FAILED(element->GetCurrentPatternAs(UIA_TextPatternId,IID_IUIAutomationTextPattern,reinterpret_cast<void**>(pattern.out())))||!pattern)return result;
+  Com<IUIAutomationTextRange> document;
+  if(FAILED(pattern->get_DocumentRange(document.out()))||!document)return result;
+  QString className,accessibleName;BSTR value=nullptr;
+  if(SUCCEEDED(element->get_CurrentClassName(&value)))className=QString::fromWCharArray(value,int(SysStringLen(value)));
+  SysFreeString(value);value=nullptr;
+  if(className=="native-edit-context"){
+   if(SUCCEEDED(element->get_CurrentName(&value)))accessibleName=QString::fromWCharArray(value,int(SysStringLen(value)));
+   SysFreeString(value);
+  }
   Com<IUIAutomationTextRangeArray> ranges;int count=0;
-  if(FAILED(pattern->GetSelection(ranges.out()))||!ranges||FAILED(ranges->get_Length(&count))||count!=1
-     ||FAILED(ranges->GetElement(0,caret.out()))||!caret)return result;
-  int difference=1;
-  if(FAILED(caret->CompareEndpoints(TextPatternRangeEndpoint_Start,caret.value,TextPatternRangeEndpoint_End,&difference))||difference)return result;
-  Com<IUIAutomationTextRange> before,after;int moved=0;QString left,right;
-  if(FAILED(caret->Clone(before.out()))||FAILED(caret->Clone(after.out()))
-     ||FAILED(before->MoveEndpointByUnit(TextPatternRangeEndpoint_Start,TextUnit_Character,-4096,&moved))
-     ||FAILED(after->MoveEndpointByUnit(TextPatternRangeEndpoint_End,TextUnit_Character,4096,&moved))
-     ||!rangeText(before.value,left)||!rangeText(after.value,right))return result;
-  auto context=DesktopTextContext::fromUtf8((left+right).toUtf8(),left.toUtf8().size(),left.toUtf8().size());
+  if(SUCCEEDED(pattern->GetSelection(ranges.out()))&&ranges&&SUCCEEDED(ranges->get_Length(&count))&&count==1)
+   ranges->GetElement(0,caret.out());
+  auto context=WindowsAutomationContext::readRange(caret.value,document.value,className,accessibleName);
   context.identity=result.identity;
   if(focused&&!stillFocused())context.available=false;
   return context;
@@ -111,6 +113,37 @@ struct Session {
   return insert(plan.text);
  }
 };
+}
+DesktopTextContext WindowsAutomationContext::readRange(IUIAutomationTextRange *caret,IUIAutomationTextRange *document,
+                                                       const QString &className,const QString &accessibleName){
+ DesktopTextContext result;result.supported=true;if(!document)return result;
+ if(className=="native-edit-context"){
+  QString text;
+  if(rangeText(document,text)){
+   while(text.endsWith('\r')||text.endsWith('\n'))text.chop(1);
+   // Monaco's EditContext has no editor text until screen-reader content is
+   // enabled. Chromium may expose its accessible label as the document instead.
+   // Retain key-based prediction rather than treating this as an empty editor.
+   if(text.isEmpty()||text==accessibleName){result.supported=false;return result;}
+  }
+ }
+ if(!caret)return result;
+ int difference=1;
+ if(FAILED(caret->CompareEndpoints(TextPatternRangeEndpoint_Start,caret,TextPatternRangeEndpoint_End,&difference))||difference
+    ||FAILED(caret->CompareEndpoints(TextPatternRangeEndpoint_Start,document,TextPatternRangeEndpoint_Start,&difference))||difference<0
+    ||FAILED(caret->CompareEndpoints(TextPatternRangeEndpoint_End,document,TextPatternRangeEndpoint_End,&difference))||difference>0)return result;
+ Com<IUIAutomationTextRange> before,after;int moved=0;QString left,right;
+ if(FAILED(caret->Clone(before.out()))||!before||FAILED(caret->Clone(after.out()))||!after
+    ||FAILED(before->MoveEndpointByUnit(TextPatternRangeEndpoint_Start,TextUnit_Character,-4096,&moved))
+    ||FAILED(after->MoveEndpointByUnit(TextPatternRangeEndpoint_End,TextUnit_Character,4096,&moved)))return result;
+ // Chromium ranges can navigate beyond an embedded editor into the surrounding
+ // page. Clamp before reading, rather than accepting neighboring UI as text.
+ if(FAILED(before->CompareEndpoints(TextPatternRangeEndpoint_Start,document,TextPatternRangeEndpoint_Start,&difference)))return result;
+ if(difference<0&&FAILED(before->MoveEndpointByRange(TextPatternRangeEndpoint_Start,document,TextPatternRangeEndpoint_Start)))return result;
+ if(FAILED(after->CompareEndpoints(TextPatternRangeEndpoint_End,document,TextPatternRangeEndpoint_End,&difference)))return result;
+ if(difference>0&&FAILED(after->MoveEndpointByRange(TextPatternRangeEndpoint_End,document,TextPatternRangeEndpoint_End)))return result;
+ if(!rangeText(before.value,left)||!rangeText(after.value,right))return result;
+ return DesktopTextContext::fromUtf8((left+right).toUtf8(),left.toUtf8().size(),left.toUtf8().size());
 }
 DesktopTextContext WindowsAutomationContext::current(){
  DWORD process=0;GetWindowThreadProcessId(GetForegroundWindow(),&process);

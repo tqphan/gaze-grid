@@ -376,7 +376,7 @@ void Controller::updateDesktopTextContext(const DesktopTextContext &context){
  if(context.available)predictionContext=context.before;
  else if(changedField||context.supported||context.privateField)predictionContext.clear();
  pendingCompletionText.clear();
- if(changedField||!context.available||!context.after.isEmpty()||completionSpaceContext!=context.before)completionSpaceContext.clear();
+ if(changedField||!context.available||!PredictionLanguage::atLineEnd(context.after)||completionSpaceContext!=context.before)completionSpaceContext.clear();
  if(!hasScratchpad())updateSuggestions();
 }
 void Controller::inputContextChanged(bool active,bool sensitive){
@@ -898,7 +898,7 @@ void Controller::activate(QString key){
    if(accepted&&learning&&!externalContext.privateField&&!WordPrediction::characterLanguage(predictionLanguageValue))
     for(const auto &token:PredictionLanguage::tokens(word,predictionLanguageValue))frequencies[token]=qMin(1000000,frequencies.value(token)+1);
    if(desktopContextProvider)updateDesktopTextContext(desktopContextProvider());
-   if(accepted&&edit.text.endsWith(' ')&&expected.after.mid(edit.removeAfter).isEmpty())
+   if(accepted&&edit.text.endsWith(' ')&&PredictionLanguage::atLineEnd(expected.after.mid(edit.removeAfter)))
     completionSpaceContext=expected.before.left(expected.before.size()-edit.removeBefore)+edit.text;
    return;
   }
