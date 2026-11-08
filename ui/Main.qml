@@ -1040,6 +1040,12 @@ Window {
         onActivated:controller.predictionMode=["context","frequency","off"][currentIndex]
         Accessible.name:"Prediction style"
        }
+       Desktop.CheckBox {
+        objectName:"bestEffortPredictionOnlyCheckBox";text:"Best-effort only"
+        checked:controller.bestEffortPredictionOnly
+        enabled:controller.predictionMode!=="off"
+        onToggled:controller.bestEffortPredictionOnly=checked
+       }
        Desktop.Label {text:"Unicode insertion"}
        SettingsComboBox {
         objectName:"predictionUnicodeModeSelector";Layout.fillWidth:true

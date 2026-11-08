@@ -162,6 +162,34 @@ private slots:
   QVERIFY(c.executeCommands(caps));QTRY_VERIFY(!c.executingCommands());QVERIFY(!c.keyToggled(caps));
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
+ void bestEffortPredictionOnly(){
+  Controller c;c.resetPreferences();QVERIFY(c.bestEffortPredictionOnly());
+  c.setBestEffortPredictionOnly(false);QVERIFY(c.savePreferences());
+  {Controller restored;QVERIFY(!restored.bestEffortPredictionOnly());}
+  c.setBestEffortPredictionOnly(true);
+  c.setProperty("paused",false);
+  QString output;int replacements=0;
+  c.configureInputMethod([&](QString text){output+=text;return true;},[](QString,bool){return true;});
+  c.inputContextChanged(true,false);
+  auto context=DesktopTextContext::fromUtf8("different",9,9);context.identity="field";
+  c.setDesktopContextProvider([&]{return context;});
+  c.setDesktopCompletionProvider([&](const DesktopTextContext &,const QString &,const QString &,bool){++replacements;return false;});
+  c.updateDesktopTextContext(context);
+  for(auto ch:QString("thank y")){
+   QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",QString(ch)}}}));
+   QTRY_VERIFY(!c.executingCommands());
+   context.before+="external";c.updateDesktopTextContext(context);
+  }
+  const int index=c.displaySuggestions().indexOf("you");QVERIFY(index>=0);
+  c.clickCommand(c.suggestionPrefix()+QString::number(index));QTRY_VERIFY(!c.executingCommands());
+  QCOMPARE(output,QString("thank you "));QCOMPARE(replacements,0);
+  context.available=false;context.supported=true;c.updateDesktopTextContext(context);
+  QVERIFY(!c.displaySuggestions().isEmpty());
+  context.privateField=true;c.updateDesktopTextContext(context);QVERIFY(c.displaySuggestions().isEmpty());
+  c.resetPreferences();QVERIFY(c.bestEffortPredictionOnly());QVERIFY(c.savePreferences());
+  auto values=ProfileStore::defaults();values.remove("bestEffortPredictionOnly");QVERIFY(ProfileStore::valid(values));
+  values["bestEffortPredictionOnly"]="true";QVERIFY(!ProfileStore::valid(values));
+ }
  void predictionUnicodeModePersists(){
   Controller c;c.resetPreferences();QCOMPARE(c.predictionUnicodeMode(),QString("nonAscii"));
   c.setPredictionUnicodeMode("always");QVERIFY(c.savePreferences());
@@ -719,7 +747,7 @@ private slots:
 
 
  void desktopContextFollowsCaretAndReplacesSuffix(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
   QString document="thank yuo today";int cursor=7;int outputCount=0;
   c.configureInputMethod([&](QString text){document.insert(cursor,text);cursor+=text.size();++outputCount;return true;},[&](QString key,bool down){
    if(down&&key=="DELETE")document.remove(cursor,1);
@@ -738,7 +766,7 @@ private slots:
   c.resetPreferences();QVERIFY(c.savePreferences());
  }
  void nativeEditorWithoutAccessibleTextPredictsFromTypedKeys(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
   QString output;int nativeReplacements=0,contextReads=0;bool transientRead=true;
   c.configureInputMethod([&](QString text){output+=text;return true;},[](QString,bool){return true;});
   c.inputContextChanged(true,false);
@@ -762,13 +790,13 @@ private slots:
   QCOMPARE(c.displaySuggestions(),WordPrediction::suggest("",WordPrediction::dictionary("eng"),{},8,true,true,"fallback","eng"));
  }
  void emptyDesktopMessageBoxOffersSuggestions(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
   c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
   auto context=DesktopTextContext::fromUtf8({},0,0);context.identity="uia:message-box";
   c.updateDesktopTextContext(context);QVERIFY(!c.displaySuggestions().isEmpty());
  }
  void nonemptyDesktopMessageBoxRecoversAfterCaretFailure(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
   c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
   QString document="thank y";
   auto snapshot=[&]{auto bytes=document.toUtf8();auto context=DesktopTextContext::fromUtf8(bytes,bytes.size(),bytes.size());context.identity="uia:message-box";return context;};
@@ -785,7 +813,7 @@ private slots:
   c.clickCommand(c.suggestionPrefix()+QString::number(index));QCOMPARE(document,QString("thank you "));
  }
  void latestDesktopContextWinsAfterQueuedEdits(){
-  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
   c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
   DesktopTextContext original;original.supported=true;original.available=true;original.identity="field";original.before="thank ";
   c.updateDesktopTextContext(original);const auto suggestions=c.displaySuggestions();QVERIFY(suggestions.contains("you"));
@@ -796,7 +824,7 @@ private slots:
  }
  void desktopCompletionSpacingAtLineEnd(){
   for(bool nativeReplacement:{false,true})for(bool enabled:{false,true})for(const auto after:QStringList{"\n","\r\nnext"}){
-   Controller c;c.resetPreferences();c.setProperty("paused",false);c.setAddSpaceAfterCompletion(enabled);
+   Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);c.setAddSpaceAfterCompletion(enabled);
    QString document="thank y"+after;int cursor=7,backspaces=0;
    c.configureInputMethod([&](QString text){document.insert(cursor,text);cursor+=text.size();return true;},
     [&](QString key,bool down){if(down&&key=="BACK"&&cursor>0){document.remove(--cursor,1);++backspaces;}return true;});

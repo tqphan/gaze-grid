@@ -421,3 +421,5 @@ Save preferences to retain the choice. Next-word predictions are unchanged.
 **Keyboard ? Appearance ? Latch style / Lock style** offers Border Highlight, Solid Fill, Bottom Line, Soft Pulse, Expanding Ripple, Light Sweep, and Moving Border independently, with previews. Save preferences to retain these styles.
 
 Prediction languages are selected under Settings > Typing & speech > Word prediction > Language. See [multilingual prediction models](resources/prediction/MULTILINGUAL.md) for the 18 languages, training data, and evaluation. Chinese and Thai use offline lexicon-segmented word models; Japanese retains character prediction alongside local IME conversion. Scratchpad prediction follows the caret and returns after composition ends.
+
+**Settings > Typing & speech > Word prediction > Best-effort only** uses GazeGrid's typed-key history for desktop prediction and completion, even when the target exposes text and caret context. It defaults to on. Private fields remain excluded; scratchpad prediction is unchanged. Save preferences to retain the choice.

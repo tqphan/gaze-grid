@@ -102,6 +102,7 @@ class Controller:public QObject{
  Q_PROPERTY(QStringList suggestions MEMBER suggestions NOTIFY changed)
  Q_PROPERTY(bool learning READ learningEnabled WRITE setLearning NOTIFY changed)
  Q_PROPERTY(QString typedWordSuggestionMode READ typedWordSuggestionMode WRITE setTypedWordSuggestionMode NOTIFY changed)
+ Q_PROPERTY(bool bestEffortPredictionOnly READ bestEffortPredictionOnly WRITE setBestEffortPredictionOnly NOTIFY changed)
  Q_PROPERTY(QString predictionUnicodeMode READ predictionUnicodeMode WRITE setPredictionUnicodeMode NOTIFY changed)
  Q_PROPERTY(QString predictionLanguage READ predictionLanguage WRITE setPredictionLanguage NOTIFY changed)
  Q_PROPERTY(QStringList predictionLanguages READ predictionLanguages CONSTANT)
@@ -255,6 +256,9 @@ public:
  void setLearning(bool enabled);
  QString typedWordSuggestionMode()const{return typedWordMode;}
  void setTypedWordSuggestionMode(const QString &mode);
+ bool bestEffortPredictionOnly()const{return bestEffortPredictionOnlyValue;}
+ void setBestEffortPredictionOnly(bool enabled);
+ DesktopTextContext predictionDesktopContext(DesktopTextContext context)const;
  QString predictionUnicodeMode()const{return predictionUnicodeModeValue;}
  void setPredictionUnicodeMode(const QString &mode);
  QString predictionLanguage()const{return predictionLanguageValue;}
@@ -449,6 +453,7 @@ private:
  QVariantMap layout;QString layoutName,startupLayout;QStringList layoutNames,menuLayoutNames,backStack;
  int suggestionOffset=0;
  QString typedWordMode="fallback";
+ bool bestEffortPredictionOnlyValue=true;
  QString predictionUnicodeModeValue="nonAscii";
  QString predictionLanguageValue="eng";
  QString predictionModeValue="context";bool nextWordEnabled=true;bool completionSpaceEnabled=true;bool sentenceStartersEnabled=true;

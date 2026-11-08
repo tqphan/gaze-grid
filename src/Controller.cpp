@@ -118,6 +118,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  gazeEnabled=profile.values["gazeEnabled"].toBool(true);
  typedWordMode=profile.values["typedWordSuggestionMode"].toString("fallback");
  predictionModeValue=profile.values["predictionMode"].toString("context");
+ bestEffortPredictionOnlyValue=profile.values["bestEffortPredictionOnly"].toBool(true);
  predictionUnicodeModeValue=profile.values["predictionUnicodeMode"].toString("nonAscii");
  nextWordEnabled=profile.values["predictNextWord"].toBool(true);
  completionSpaceEnabled=profile.values["addSpaceAfterCompletion"].toBool(true);
@@ -367,7 +368,24 @@ void Controller::invalidateInputContext(){
  pendingCompletionText.clear();completionSpaceContext.clear();
  runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();portal.releaseAll();dwell.reset();speech.stop();scratchpad.clear();predictionContext.clear();suggestions.clear();emit changed();
 }
-void Controller::updateDesktopTextContext(const DesktopTextContext &context){
+DesktopTextContext Controller::predictionDesktopContext(DesktopTextContext context)const{
+ if(bestEffortPredictionOnlyValue){
+  context.before.clear();context.after.clear();context.cursor=-1;
+  context.supported=false;context.available=false;
+ }
+ return context;
+}
+void Controller::setBestEffortPredictionOnly(bool enabled){
+ if(signInMode||bestEffortPredictionOnlyValue==enabled)return;
+ runner.cancel();dwell.reset();
+ bestEffortPredictionOnlyValue=enabled;
+ predictionContext.clear();completionSpaceContext.clear();pendingCompletionText.clear();
+ externalContext={};externalContextObserved=false;externalContextPending=false;
+ if(desktopContextProvider)updateDesktopTextContext(desktopContextProvider());
+ updateSuggestions();
+}
+void Controller::updateDesktopTextContext(const DesktopTextContext &incoming){
+ const auto context=predictionDesktopContext(incoming);
  if(signInMode)return;
  if(externalContextObserved&&externalContext==context){
   if(externalContextPending)pendingExternalContext=context;
@@ -422,6 +440,7 @@ bool Controller::savePreferences(){
  values["systemKeyboard"]=systemKeyboard();
  values["localImeLocale"]=wantedImeLocale;
  values["predictionLanguage"]=predictionLanguageValue;
+ values["bestEffortPredictionOnly"]=bestEffortPredictionOnlyValue;
  values["predictionUnicodeMode"]=predictionUnicodeModeValue;
  values["groupDwellTimes"]=QJsonObject::fromVariantMap(groupDwellValues);
  values["speechProfiles"]=QJsonArray::fromVariantList(speechProfiles);
@@ -464,6 +483,7 @@ void Controller::resetPreferences(){
  dwellIndicatorStyle="bar";
  groupDwellValues.clear();
  setPredictionLanguage("eng");
+ setBestEffortPredictionOnly(true);
  predictionUnicodeModeValue="nonAscii";
  dwellMs=values["dwellMs"].toInt();literal=false;learning=false;predictionModeValue="context";typedWordMode="fallback";nextWordEnabled=true;completionSpaceEnabled=true;sentenceStartersEnabled=true;backStack.clear();
  repeatIntervalMs=750;
@@ -889,7 +909,7 @@ void Controller::activate(QString key){
   if(!runner.heldKeys().isEmpty()){actionStatus="Release held keys before accepting a suggestion";emit changed();return;}
   if(showingImeCandidates())return;
   if(!hasScratchpad()&&desktopContextProvider){
-   const auto current=desktopContextProvider();
+   const auto current=predictionDesktopContext(desktopContextProvider());
    if(current!=externalContext){updateDesktopTextContext(current);return;}
   }
   const auto word=suggestions[i];
@@ -1279,7 +1299,7 @@ PredictionLanguage::PunctuationSpacing Controller::takeCompletionSpace(const QSt
  if(!hasScratchpad()&&externalContextObserved){
   if(externalContext.privateField||(externalContext.supported&&!externalContext.available))return {};
   if(externalContext.available){
-   if(desktopContextProvider&&desktopContextProvider()!=externalContext)return {};
+   if(desktopContextProvider&&predictionDesktopContext(desktopContextProvider())!=externalContext)return {};
    after=externalContext.after;
   }
  }
