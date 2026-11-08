@@ -926,7 +926,7 @@ private slots:
  }
  void caretAwarePunctuationChecksTheCurrentTarget(){
   for(bool moved:{false,true}){
-   Controller c;QString document="thank y";int cursor=document.size(),backspaces=0;
+   Controller c;c.setBestEffortPredictionOnly(false);QString document="thank y";int cursor=document.size(),backspaces=0;
    c.configureInputMethod([&](QString text){document.insert(cursor,text);cursor+=text.size();return true;},
     [&](QString key,bool down){if(down&&key=="BACK"&&cursor>0){document.remove(--cursor,1);++backspaces;}return true;});
    c.inputContextChanged(true,false);c.setAddSpaceAfterCompletion(true);c.setRemoveCompletionSpaceBeforePunctuation(true);
