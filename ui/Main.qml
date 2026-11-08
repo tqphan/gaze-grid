@@ -1040,7 +1040,7 @@ Window {
         onActivated:controller.predictionMode=["context","frequency","off"][currentIndex]
         Accessible.name:"Prediction style"
        }
-       Desktop.CheckBox {
+       SettingsCheckBox {
         objectName:"bestEffortPredictionOnlyCheckBox";text:"Best-effort only"
         checked:controller.bestEffortPredictionOnly
         enabled:controller.predictionMode!=="off"
