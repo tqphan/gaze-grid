@@ -369,8 +369,11 @@ void Controller::invalidateInputContext(){
 }
 void Controller::updateDesktopTextContext(const DesktopTextContext &context){
  if(signInMode)return;
+ if(externalContextObserved&&externalContext==context){
+  if(externalContextPending)pendingExternalContext=context;
+  return;
+ }
  if(runner.busy()){pendingExternalContext=context;externalContextPending=true;return;}
- if(externalContextObserved&&externalContext==context)return;
  const bool changedField=!externalContextObserved||externalContext.identity!=context.identity;
  externalContextObserved=true;externalContext=context;
  if(context.available)predictionContext=context.before;

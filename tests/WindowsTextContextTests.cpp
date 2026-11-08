@@ -39,6 +39,19 @@ class WindowsTextContextTests:public QObject {
   return WindowsAutomationContext::readRange(caret.value,document.value,className,name);
  }
 private slots:
+ void emptyEditableControlHasValidCaret(){
+  Control control;QVERIFY(control.window);
+  const auto context=WindowsTextContext::readControl(control.window);
+  QVERIFY(context.supported);QVERIFY(context.available);QCOMPARE(context.cursor,0);
+  QVERIFY(context.before.isEmpty());QVERIFY(context.after.isEmpty());
+ }
+ void monitorRefreshesUnchangedSnapshots(){
+  WindowsTextContext monitor;monitor.setEnabled(false);
+  QSignalSpy snapshots(&monitor,&WindowsTextContext::contextChanged);monitor.start();
+  QTRY_VERIFY_WITH_TIMEOUT(snapshots.size()>=2,1500);
+  monitor.requestInterruption();QVERIFY(monitor.wait(1000));
+  for(const auto &snapshot:snapshots)QVERIFY(qvariant_cast<DesktopTextContext>(snapshot.front())==DesktopTextContext{});
+ }
  void automationSurroundingTextStaysInsideEditor(){
   const QString editor="thank y",prefix="outside ",suffix=". toolbar";
   for(int position:{-1,0,4,7,8}){
@@ -66,7 +79,9 @@ private slots:
    {"The editor is not accessible at this time.","The editor is not accessible at this time.","native-edit-context",false,false},
    {QString::fromUtf8("\xc3\x89" "diteur inaccessible"),QString::fromUtf8("\xc3\x89" "diteur inaccessible"),"native-edit-context",false,false},
    {"thank y","Editor content","native-edit-context",true,true},
-   {"","Editor content","Edit",true,false},
+   {"","Editor content","Edit",true,true},
+   {"","Message","ProseMirror ProseMirror-focused",true,true},
+   {"thank y","Message","ProseMirror ProseMirror-focused",true,true},
    {"Editor content","Editor content","Edit",true,true}
   };
   for(const auto &example:examples){

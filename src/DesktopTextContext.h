@@ -13,8 +13,12 @@ struct DesktopTextContext {
   if(cursor<0||anchor<0||cursor>text.size()||anchor>text.size()||cursor!=anchor||text.contains('\0'))return result;
   const auto before=QString::fromUtf8(text.left(cursor)),after=QString::fromUtf8(text.mid(cursor));
   if(before.toUtf8()!=text.left(cursor)||after.toUtf8()!=text.mid(cursor))return result;
-  QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,before+after);boundary.setPosition(before.size());
-  if(!boundary.isAtBoundary())return result;
+  // Qt reports no grapheme boundaries for an empty string, but its only
+  // position is a valid insertion point in an empty editor.
+  if(!text.isEmpty()){
+   QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,before+after);boundary.setPosition(before.size());
+   if(!boundary.isAtBoundary())return result;
+  }
   result.before=before.right(4096);result.after=after.left(4096);
   if(!result.before.isEmpty()&&result.before.front().isLowSurrogate())result.before.remove(0,1);
   if(!result.after.isEmpty()&&result.after.back().isHighSurrogate())result.after.chop(1);

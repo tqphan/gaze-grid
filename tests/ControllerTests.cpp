@@ -739,22 +739,60 @@ private slots:
  }
  void nativeEditorWithoutAccessibleTextPredictsFromTypedKeys(){
   Controller c;c.resetPreferences();c.setProperty("paused",false);
-  QString output;int nativeReplacements=0;
+  QString output;int nativeReplacements=0,contextReads=0;bool transientRead=true;
   c.configureInputMethod([&](QString text){output+=text;return true;},[](QString,bool){return true;});
   c.inputContextChanged(true,false);
   DesktopTextContext unavailable;unavailable.identity="uia:native-edit-context";
-  c.setDesktopContextProvider([&]{return unavailable;});
+  c.setDesktopContextProvider([&]{++contextReads;auto context=unavailable;if(transientRead)context.supported=true;return context;});
   c.setDesktopCompletionProvider([&](const DesktopTextContext &,const QString &,const QString &,bool){++nativeReplacements;return false;});
   c.updateDesktopTextContext(unavailable);
   for(auto ch:QString("thank y")){
-   QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",QString(ch)}}}));QTRY_VERIFY(!c.executingCommands());
+   QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text",QString(ch)}}}));
    c.updateDesktopTextContext(unavailable);
+   QTRY_VERIFY(!c.executingCommands());
   }
+  QCOMPARE(contextReads,0);transientRead=false;
   const auto index=c.displaySuggestions().indexOf("you");QVERIFY(index>=0);
   c.clickCommand(c.suggestionPrefix()+QString::number(index));QTRY_VERIFY(!c.executingCommands());
   QCOMPARE(output,QString("thank you "));QCOMPARE(nativeReplacements,0);
+  auto transient=unavailable;transient.supported=true;c.updateDesktopTextContext(transient);
+  QVERIFY(c.displaySuggestions().isEmpty());
+  c.updateDesktopTextContext(unavailable);QVERIFY(!c.displaySuggestions().isEmpty());
   unavailable.identity="uia:other-editor";c.updateDesktopTextContext(unavailable);
   QCOMPARE(c.displaySuggestions(),WordPrediction::suggest("",WordPrediction::dictionary("eng"),{},8,true,true,"fallback","eng"));
+ }
+ void emptyDesktopMessageBoxOffersSuggestions(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  auto context=DesktopTextContext::fromUtf8({},0,0);context.identity="uia:message-box";
+  c.updateDesktopTextContext(context);QVERIFY(!c.displaySuggestions().isEmpty());
+ }
+ void nonemptyDesktopMessageBoxRecoversAfterCaretFailure(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  QString document="thank y";
+  auto snapshot=[&]{auto bytes=document.toUtf8();auto context=DesktopTextContext::fromUtf8(bytes,bytes.size(),bytes.size());context.identity="uia:message-box";return context;};
+  c.setDesktopContextProvider(snapshot);
+  c.setDesktopCompletionProvider([&](const DesktopTextContext &expected,const QString &word,const QString &language,bool space){
+   if(snapshot()!=expected)return false;
+   const auto edit=PredictionLanguage::edit(expected.before,expected.after,word,language,space);if(!edit.valid)return false;
+   document.chop(edit.removeBefore);document+=edit.text;return true;
+  });
+  c.updateDesktopTextContext(snapshot());QVERIFY(c.displaySuggestions().contains("you"));
+  auto failed=snapshot();failed.available=false;failed.before.clear();c.updateDesktopTextContext(failed);
+  QVERIFY(c.displaySuggestions().isEmpty());
+  c.updateDesktopTextContext(snapshot());const int index=c.displaySuggestions().indexOf("you");QVERIFY(index>=0);
+  c.clickCommand(c.suggestionPrefix()+QString::number(index));QCOMPARE(document,QString("thank you "));
+ }
+ void latestDesktopContextWinsAfterQueuedEdits(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);
+  c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  DesktopTextContext original;original.supported=true;original.available=true;original.identity="field";original.before="thank ";
+  c.updateDesktopTextContext(original);const auto suggestions=c.displaySuggestions();QVERIFY(suggestions.contains("you"));
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Wait"},{"text","20"}}}));
+  auto moved=original;moved.before="hello ";c.updateDesktopTextContext(moved);c.updateDesktopTextContext(original);
+  QTRY_VERIFY(!c.executingCommands());QCoreApplication::processEvents();
+  QCOMPARE(c.displaySuggestions(),suggestions);
  }
  void desktopCompletionSpacingAtLineEnd(){
   for(bool nativeReplacement:{false,true})for(bool enabled:{false,true})for(const auto after:QStringList{"\n","\r\nnext"}){

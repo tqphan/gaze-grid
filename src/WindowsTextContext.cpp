@@ -35,7 +35,9 @@ DesktopTextContext WindowsTextContext::readControl(HWND control){
  DWORD verifyStart=0,verifyEnd=0;
  if(start>DWORD(text.size())||!text.isValidUtf16()||!message(control,EM_GETSEL,WPARAM(&verifyStart),LPARAM(&verifyEnd),value)
     ||start!=verifyStart||end!=verifyEnd)return result;
- QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,text);boundary.setPosition(int(start));if(!boundary.isAtBoundary())return result;
+ if(!text.isEmpty()){
+  QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,text);boundary.setPosition(int(start));if(!boundary.isAtBoundary())return result;
+ }
  result.before=text.left(int(start)).right(4096);result.after=text.mid(int(start),4096);
  if(!result.before.isEmpty()&&result.before.front().isLowSurrogate())result.before.remove(0,1);
  if(!result.after.isEmpty()&&result.after.back().isHighSurrogate())result.after.chop(1);
@@ -70,10 +72,11 @@ DesktopTextContext WindowsTextContext::current(){
  return result;
 }
 void WindowsTextContext::run(){
- DesktopTextContext previous;bool first=true;
  while(!isInterruptionRequested()){
   const auto context=enabled?current():DesktopTextContext{};
-  if(first||context!=previous){previous=context;first=false;emit contextChanged(context);}
+  // The controller also performs synchronous reads. Repeat stable snapshots so
+  // a transient result from one of those reads cannot leave it out of sync.
+  emit contextChanged(context);
   msleep(150);
  }
 }

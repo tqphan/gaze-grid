@@ -119,6 +119,8 @@ private slots:
 
 
  void nativeSurroundingTextOffsets(){
+  const auto empty=DesktopTextContext::fromUtf8({},0,0);
+  QVERIFY(empty.available);QCOMPARE(empty.cursor,0);QVERIFY(empty.before.isEmpty());QVERIFY(empty.after.isEmpty());
   const auto value=QString::fromUtf8("caf\xc3\xa9 \xf0\x9f\x98\x80 tail").toUtf8();
   const auto context=DesktopTextContext::fromUtf8(value,10,10);
   QVERIFY(context.available);QCOMPARE(context.before.toUtf8(),value.left(10));
