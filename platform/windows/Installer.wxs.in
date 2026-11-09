@@ -4,6 +4,7 @@
     <!-- Certificate trust is selected by default, including silent installs. Repairs retain the
          original choice; changing mode requires uninstall/reinstall or upgrade. -->
     <Property Id="GAZE_GRID_TRUST_CERTIFICATE" Value="1" Secure="yes" />
+    <Property Id="gaze_gridCertificateThumbprint" Value="@GAZE_GRID_CERTIFICATE_THUMBPRINT@" />
     <Property Id="GAZE_GRID_SAVED_MODE" Secure="yes">
       <RegistrySearch Id="SavedMode" Root="HKLM" Key="Software\gaze-grid\Installer" Name="TrustCertificate" Type="raw" Win64="yes" />
     </Property>
@@ -26,6 +27,7 @@
     <Condition Message="Starting before Windows sign-in requires accepting certificate trust.">NOT (GAZE_GRID_SIGN_IN = "1") OR GAZE_GRID_TRUST_CERTIFICATE = "1" OR REMOVE = "ALL"</Condition>
     <Binary Id="SignInActions" SourceFile="@CMAKE_BINARY_DIR@/Release/gaze-grid_sign_in_actions.dll" />
     <CustomAction Id="PrepareSignIn" BinaryKey="SignInActions" DllEntry="PrepareSignIn" Execute="immediate" Return="check" />
+    <CustomAction Id="CheckCertificateTrust" BinaryKey="SignInActions" DllEntry="CheckCertificateTrust" Execute="immediate" Return="check" />
     <CustomAction Id="RollbackSignIn" BinaryKey="SignInActions" DllEntry="RollbackSignIn" Execute="rollback" Impersonate="no" Return="check" />
     <CustomAction Id="ApplySignIn" BinaryKey="SignInActions" DllEntry="ApplySignIn" Execute="deferred" Impersonate="no" Return="check" />
     <!-- Launch from the successful Finish dialog in the client UI, after files
@@ -37,12 +39,16 @@
     <CustomAction Id="RemoveDesktopStartup" Directory="SystemFolder" ExeCommand='&quot;[SystemFolder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v gaze-grid /f' Execute="deferred" Impersonate="yes" Return="ignore" />
     <CustomAction Id="RemoveDesktopStartupApproval" Directory="SystemFolder" ExeCommand='&quot;[SystemFolder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run&quot; /v gaze-grid /f' Execute="deferred" Impersonate="yes" Return="ignore" />
     <InstallExecuteSequence>
+      <Custom Action="CheckCertificateTrust" Before="CostFinalize">1</Custom>
       <Custom Action="RemoveDesktopStartup" Before="RemoveRegistryValues">REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
       <Custom Action="RemoveDesktopStartupApproval" After="RemoveDesktopStartup">REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
       <Custom Action="PrepareSignIn" Before="InstallInitialize">1</Custom>
       <Custom Action="RollbackSignIn" After="WriteRegistryValues">1</Custom>
       <Custom Action="ApplySignIn" After="RollbackSignIn">1</Custom>
     </InstallExecuteSequence>
+    <InstallUISequence>
+      <Custom Action="CheckCertificateTrust" Before="CostFinalize">1</Custom>
+    </InstallUISequence>
     <Icon Id="gaze_grid.exe" SourceFile="@CMAKE_SOURCE_DIR@/resources/gaze-grid.ico" />
     <Binary Id="gaze_gridPublicCer" SourceFile="@CMAKE_BINARY_DIR@/gaze-grid.cer" />
     <DirectoryRef Id="INSTALL_ROOT">
@@ -88,12 +94,13 @@
         <RegistryValue Root="HKLM" Key="Software\gaze-grid\Installer" Name="SignIn" Value="[GAZE_GRID_SIGN_IN]" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\gaze-grid\Installer" Name="Startup" Value="[GAZE_GRID_STARTUP_CHOICE]" Type="string" />
       </Component>
-      <!-- Trust is deliberately persistent: never remove a root that may already
-           be trusted by an administrator or used by another gaze-grid release. -->
-      <Component Id="gaze_gridCertificate" Guid="*" Win64="yes" Permanent="yes">
-        <Condition>GAZE_GRID_TRUST_CERTIFICATE = "1"</Condition>
-        <RegistryValue Root="HKLM" Key="Software\gaze-grid\Certificates" Name="@GAZE_GRID_CERTIFICATE_THUMBPRINT@" Value="1" Type="integer" KeyPath="yes" />
-        <iis:Certificate Id="gaze_gridTrust" Name="GazeGrid" BinaryKey="gaze_gridPublicCer" StoreLocation="localMachine" StoreName="root" Request="no" Overwrite="no" />
+      <!-- Keep the legacy permanent component intact for upgrade compatibility.
+           A different key path gives new, installer-owned trust a removable component.
+           Do not adopt trust installed independently or by a legacy release. -->
+      <Component Id="gaze_gridCertificate" Guid="*" Win64="yes">
+        <Condition>GAZE_GRID_TRUST_CERTIFICATE = "1" AND NOT GAZE_GRID_CERTIFICATE_PREEXISTING</Condition>
+        <RegistryValue Root="HKLM" Key="Software\gaze-grid\Certificates\Managed\@GAZE_GRID_CERTIFICATE_THUMBPRINT@" Name="Installed" Value="1" Type="integer" KeyPath="yes" />
+        <iis:Certificate Id="gaze_gridTrust" Name="GazeGrid-@GAZE_GRID_CERTIFICATE_THUMBPRINT@" BinaryKey="gaze_gridPublicCer" StoreLocation="localMachine" StoreName="root" Request="no" Overwrite="no" />
       </Component>
     </DirectoryRef>
     <DirectoryRef Id="gaze_gridMenu">
@@ -143,7 +150,7 @@
           </RadioButtonGroup>
         </Control>
         <Control Id="Limitations" Type="Text" X="20" Y="242" Width="480" Height="34" Text="{\gaze_grid_Font_Normal}If you decline, gaze-grid cannot send input to higher-privilege windows and cannot stay on top of all windows. Normal desktop input remains available." />
-        <Control Id="Persistence" Type="Text" X="20" Y="282" Width="480" Height="34" Text="{\gaze_grid_Font_Normal}Certificate trust remains after uninstall. An administrator can remove it with certlm.msc under Trusted Root Certification Authorities / Certificates." />
+        <Control Id="Persistence" Type="Text" X="20" Y="282" Width="480" Height="34" Text="{\gaze_grid_Font_Normal}Uninstall removes certificate trust added by this installer. Trust already present before installation is preserved." />
         <Control Id="Next" Type="PushButton" X="310" Y="324" Width="90" Height="24" Default="yes" Text="{\gaze_grid_Font_Normal}Next">
           <Publish Property="GAZE_GRID_SIGN_IN" Value="{}" Order="1">GAZE_GRID_TRUST_CERTIFICATE &lt;&gt; "1"</Publish>
           <Publish Event="EndDialog" Value="Return" Order="2">1</Publish>

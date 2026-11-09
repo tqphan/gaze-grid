@@ -82,6 +82,8 @@ function Test-KeyboardInstanceLifecycle {
         Get-TestKeyboards | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     }
 }
+$testCertificate = "$env:RUNNER_TEMP/gaze-grid-preexisting-test.cer"
+Export-Certificate -Cert "Cert:\LocalMachine\Root\$CertificateThumbprint" -FilePath $testCertificate | Out-Null
 Remove-Item "Cert:\LocalMachine\Root\$CertificateThumbprint" -Force
 $accessibility = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Accessibility'
 $atName = 'gaze-grid_gaze-grid_v1'
@@ -93,9 +95,11 @@ function Test-DesktopStartup([bool]$Expected) {
     } elseif ($entry) { throw 'Desktop startup was enabled despite opting out.' }
 }
 $originalStartup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ -and $_.Trim() -ne $atName })
-foreach ($mode in @('decline', 'default', 'accept', 'sign-in', 'sign-in-off', 'decline-trusted', 'startup-off')) {
+foreach ($mode in @('decline', 'default', 'accept', 'sign-in', 'sign-in-off', 'decline-trusted', 'accept-trusted', 'startup-off')) {
 Write-Host "Checking installation mode: $mode"
-$expectedUIAccess = $mode -in @('default', 'accept', 'sign-in', 'sign-in-off')
+$preexistingTrust = $mode -in @('decline-trusted', 'accept-trusted')
+if ($preexistingTrust) { Import-Certificate -FilePath $testCertificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null }
+$expectedUIAccess = $mode -in @('default', 'accept', 'accept-trusted', 'sign-in', 'sign-in-off')
 $expectedSignIn = $expectedUIAccess -and $mode -ne 'sign-in-off'
 [string[]]$properties = if ($mode -eq 'default') { @() } elseif ($expectedUIAccess) { @('GAZE_GRID_TRUST_CERTIFICATE=1') } else { @('GAZE_GRID_TRUST_CERTIFICATE=0') }
 if ($mode -eq 'sign-in') { $properties += 'GAZE_GRID_SIGN_IN=1' }
@@ -109,8 +113,7 @@ try {
         Remove-ItemProperty -LiteralPath $desktopRun -Name 'gaze-grid'
     }
     $rootTrusted = Test-Path "Cert:\LocalMachine\Root\$CertificateThumbprint"
-    if ($mode -eq 'decline' -and $rootTrusted) { throw 'Declined installation unexpectedly trusted the certificate.' }
-    if ($mode -ne 'decline' -and !$rootTrusted) { throw 'Accepted certificate trust is missing.' }
+    if ($rootTrusted -ne ($expectedUIAccess -or $preexistingTrust)) { throw "Unexpected certificate trust in $mode installation." }
     $startup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
     if (($atName -in $startup) -ne $expectedSignIn) { throw 'Unexpected sign-in startup selection after installation.' }
     # A repair must also remove the legacy DWORD accommodation and the
@@ -122,6 +125,7 @@ try {
     }
     # A repair with no consent property must preserve the original mode.
     Run-Msi '/fomus'
+    if ((Test-Path "Cert:\LocalMachine\Root\$CertificateThumbprint") -ne ($expectedUIAccess -or $preexistingTrust)) { throw 'Repair changed certificate trust.' }
     Test-DesktopStartup ($mode -ne 'startup-off')
     $startup = @(((Get-ItemProperty $accessibility -Name Configuration -ErrorAction SilentlyContinue).Configuration -split ',') | Where-Object { $_ })
     if (($atName -in $startup) -ne $expectedSignIn) { throw 'Unexpected sign-in startup selection after repair.' }
@@ -213,6 +217,9 @@ Test-DesktopStartup $false
 if ($atName -in $remainingStartup) { throw 'Sign-in startup remained after uninstall.' }
 if (@(Compare-Object $originalStartup $remainingStartup).Count) { throw 'Uninstall changed another accessibility startup entry.' }
 if (Test-Path "$accessibility\ATs\$atName") { throw 'Sign-in registration remained after uninstall.' }
+if ((Test-Path "Cert:\LocalMachine\Root\$CertificateThumbprint") -ne $preexistingTrust) { throw 'Uninstall failed to remove installer-owned trust or removed pre-existing trust.' }
+if (Test-Path "HKLM:\Software\gaze-grid\Certificates\Managed\$CertificateThumbprint") { throw 'Certificate ownership remained after uninstall.' }
+if ($preexistingTrust) { Remove-Item "Cert:\LocalMachine\Root\$CertificateThumbprint" -Force }
 
 }
 

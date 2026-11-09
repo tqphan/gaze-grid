@@ -78,8 +78,10 @@ Write-Host @'
    Accept installs the public certificate for all users and the signed UIAccess
    app in Program Files. Decline installs an unsigned, limited-access app that
    cannot send input to higher-privilege windows or stay on top of all windows.
-   Trust remains after uninstall; administrators can revoke it with certlm.msc
-   under Trusted Root Certification Authorities > Certificates.
+   Accept is the default, including silent installs. Uninstall removes trust
+   added by the installer and preserves trust present before installation.
+   Administrators can revoke pre-existing trust with certlm.msc under
+   Trusted Root Certification Authorities > Certificates.
    Distribute only the MSI and public CER; keep the PFX/password private.
 
 To copy the encoded PFX later, run this command in PowerShell:

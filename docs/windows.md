@@ -136,10 +136,12 @@ install under `C:\Program Files\gaze-grid`. The MSI itself is always signed.
 Verify the certificate thumbprint before accepting. Trust applies to all users
 and other software signed by that identity; it does not establish public trust
 or SmartScreen reputation. Only the public certificate is embedded in the MSI.
-Trust remains after uninstall so existing trust and other signed applications
-are not disrupted. To revoke it, an administrator can use `certlm.msc`, open
-Trusted Root Certification Authorities / Certificates, verify the thumbprint,
-and remove that gaze-grid certificate.
+Uninstall removes trust added by this installer. Trust already present before
+installation is preserved, including trust left by older releases. To revoke
+pre-existing trust, an administrator can use `certlm.msc`, open Trusted Root
+Certification Authorities / Certificates, verify the thumbprint, and remove
+that gaze-grid certificate. Other software using the same signing identity may
+also depend on that trust.
 
 Unattended installation defaults to the signed UIAccess app and certificate
 trust. To decline explicitly:
@@ -284,8 +286,10 @@ renew and re-sign releases before the signing certificate expires.
 pull requests. Windows additionally packages a signed MSI with an ephemeral
 **test-only** gaze-grid identity, verifies installation and installed application
 startup from outside the build tree, confirms Windows actually granted the
-process a UIAccess token via `--diagnose`, and checks the default unsigned mode, repair, and declining with a previously
-trusted certificate, then uninstalls. The installed smoke test
+process a UIAccess token via `--diagnose`, and checks the default signed mode,
+repair, and accepting or declining with a previously trusted certificate.
+Uninstall checks verify removal of installer-owned trust and preservation of
+pre-existing trust. The installed smoke test
 removes Qt development search paths and launches through Windows ShellExecute,
 matching a normal Start menu launch. `--diagnose --diagnostic-output PATH` writes
 the JSON report to a file because UIAccess launches cannot redirect stdout. CI artifacts include MSI and public CER,
