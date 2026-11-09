@@ -28,20 +28,88 @@
   <KeyGroup Name="Mouse" />
   <KeyGroup Name="Gamepad" />
   <Content>
-    <!-- Row -->
     <DynamicKey>
-      <Symbol>SuggestionLeftIcon</Symbol>
-      <Action>PreviousSuggestions</Action>
+      <Symbol>MoonZzzIcon</Symbol>
+      <Action>Sleep</Action>
+      <KeyGroup>Others</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>suction</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label> index </Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label> thumb </Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>rotate</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label> slide </Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>shoulders</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey>
+      <Symbol>NoIcon</Symbol>
+      <Action>BackFromKeyboard</Action>
+      <KeyGroup>Exit</KeyGroup>
       <KeyGroup>Navigation</KeyGroup>
     </DynamicKey>
-    <SuggestionRow Width="12">
-      <KeyGroup>Suggestion</KeyGroup>
-      <KeyGroup>Predictions</KeyGroup>
-    </SuggestionRow>
+    <!-- Row 0 -->
     <DynamicKey>
-      <Symbol>SuggestionRightIcon</Symbol>
-      <Action>NextSuggestions</Action>
-      <KeyGroup>Navigation</KeyGroup>
+      <Symbol>PreviousSpeechProfileIcon</Symbol>
+      <Action>PreviousSpeechProfile</Action>
+      <KeyGroup>Others</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>headrest</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>button</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label> butt </Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>earbud</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>deflate</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey Width="2">
+      <Label>inflate</Label>
+      <Action>SpeakLabel</Action>
+      <KeyGroup>Conversations</KeyGroup>
+    </DynamicKey>
+    <DynamicKey>
+      <Symbol>NextSpeechProfileIcon</Symbol>
+      <Action>NextSpeechProfile</Action>
+      <KeyGroup>Exit</KeyGroup>
+      <KeyGroup>Others</KeyGroup>
     </DynamicKey>
     <!-- Row 1 -->
     <DynamicKey>
@@ -429,6 +497,21 @@
       <KeyGroup>Punctuation</KeyGroup>
       <KeyGroup>Punctuations</KeyGroup>
     </DynamicKey>
+    <!-- Row -->
+    <DynamicKey>
+      <Symbol>SuggestionLeftIcon</Symbol>
+      <Action>PreviousSuggestions</Action>
+      <KeyGroup>Navigation</KeyGroup>
+    </DynamicKey>
+    <SuggestionRow Width="12">
+      <KeyGroup>Suggestion</KeyGroup>
+      <KeyGroup>Predictions</KeyGroup>
+    </SuggestionRow>
+    <DynamicKey>
+      <Symbol>SuggestionRightIcon</Symbol>
+      <Action>NextSuggestions</Action>
+      <KeyGroup>Navigation</KeyGroup>
+    </DynamicKey>
     <!-- Row 0 -->
     <DynamicKey>
       <Symbol>EraserIcon</Symbol>
@@ -443,89 +526,6 @@
       <Action>Speak</Action>
       <KeyGroup>Modifier</KeyGroup>
       <KeyGroup>Modifiers</KeyGroup>
-    </DynamicKey>
-    <DynamicKey>
-      <Symbol>PreviousSpeechProfileIcon</Symbol>
-      <Action>PreviousSpeechProfile</Action>
-      <KeyGroup>Others</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>suction</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label> index </Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label> thumb </Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>rotate</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label> slide </Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>shoulders</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey>
-      <Symbol>NextSpeechProfileIcon</Symbol>
-      <Action>NextSpeechProfile</Action>
-      <KeyGroup>Exit</KeyGroup>
-      <KeyGroup>Others</KeyGroup>
-    </DynamicKey>
-    <!-- Row 0 -->
-    <DynamicKey>
-      <Symbol>MoonZzzIcon</Symbol>
-      <Action>Sleep</Action>
-      <KeyGroup>Others</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>headrest</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>button</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label> butt </Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>earbud</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>deflate</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey Width="2">
-      <Label>inflate</Label>
-      <Action>SpeakLabel</Action>
-      <KeyGroup>Conversations</KeyGroup>
-    </DynamicKey>
-    <DynamicKey>
-      <Symbol>NoIcon</Symbol>
-      <Action>BackFromKeyboard</Action>
-      <KeyGroup>Exit</KeyGroup>
-      <KeyGroup>Navigation</KeyGroup>
     </DynamicKey>
   </Content>
 </Keyboard>
