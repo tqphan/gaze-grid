@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(gaze-grid VERSION 0.5.6 LANGUAGES C CXX)
+project(gaze-grid VERSION 0.5.7 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)

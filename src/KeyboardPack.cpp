@@ -11,10 +11,14 @@
 #include <QSet>
 #include <algorithm>
 namespace {
+constexpr int maxXmlDepth=64;
+constexpr int maxXmlElements=50000;
 bool caching=false;
 struct CachedKeyboard { qint64 size; QDateTime modified; QVariantMap root; QByteArray source; };
 QHash<QString,CachedKeyboard> cache;
-QVariantMap node(QXmlStreamReader &xml) {
+QVariantMap node(QXmlStreamReader &xml,int depth,int &elements) {
+    if(depth>maxXmlDepth){xml.raiseError("Keyboard XML exceeds nesting limit");return {};}
+    if(++elements>maxXmlElements){xml.raiseError("Keyboard XML exceeds element limit");return {};}
     QVariantMap result, attrs; QVariantList children; QString text;
     result["tag"]=xml.name().toString();
     for (const auto &a:xml.attributes()) attrs[a.name().toString().toLower()]=a.value().toString();
@@ -22,7 +26,11 @@ QVariantMap node(QXmlStreamReader &xml) {
     while (!xml.atEnd()) {
         xml.readNext();
         if (xml.isEndElement()) break;
-        if (xml.isStartElement()) children.append(node(xml));
+        if (xml.isStartElement()) {
+            auto child=node(xml,depth+1,elements);
+            if(xml.hasError())return {};
+            children.append(child);
+        }
         else if (xml.isCharacters()) text+=xml.text();
         else if (xml.isDTD() || xml.isEntityReference()) xml.raiseError("DTD/entities are not supported");
     }
@@ -63,11 +71,11 @@ QVariantMap KeyboardPack::load(const QString &path,QByteArray *source) {
     QFile f(path); if(!f.open(QIODevice::ReadOnly)) return {{"error",f.errorString()}};
     if(f.size()>4*1024*1024) return {{"error","Keyboard exceeds 4 MiB limit"}};
     const auto bytes=f.readAll();
-    QXmlStreamReader xml(bytes); QVariantMap root;
+    QXmlStreamReader xml(bytes); QVariantMap root;int elements=0;
     while(!xml.atEnd()) {
         xml.readNext();
         if(xml.isDTD() || xml.isEntityReference()) {xml.raiseError("DTD/entities are not supported"); break;}
-        if(xml.isStartElement()) {root=node(xml); break;}
+        if(xml.isStartElement()) {root=node(xml,1,elements); break;}
     }
     while(!xml.atEnd()) xml.readNext();
     if(xml.hasError()) return {{"error",QString("%1:%2: %3").arg(path).arg(xml.lineNumber()).arg(xml.errorString())}};

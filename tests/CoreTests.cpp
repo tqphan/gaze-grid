@@ -1567,6 +1567,24 @@ private slots:
   auto r=KeyboardPack::load(f.fileName());auto key=r["children"].toList()[0].toMap();QCOMPARE(key["attributes"].toMap()["row"].toString(),QString("2"));
   auto children=key["children"].toList();QCOMPARE(children[1].toMap()["text"].toString(),QString("\t"));QCOMPARE(children[2].toMap()["tag"].toString(),QString("Wait"));
  }
+ void keyboardXmlResourceLimits_data(){
+  QTest::addColumn<int>("depth");QTest::addColumn<int>("children");QTest::addColumn<QString>("error");
+  QTest::newRow("depth-at-limit")<<64<<0<<QString();
+  QTest::newRow("depth-over-limit")<<65<<0<<QString("nesting limit");
+  QTest::newRow("extreme-depth")<<100000<<0<<QString("nesting limit");
+  QTest::newRow("elements-at-limit")<<1<<49999<<QString();
+  QTest::newRow("elements-over-limit")<<1<<50000<<QString("element limit");
+ }
+ void keyboardXmlResourceLimits(){
+  QFETCH(int,depth);QFETCH(int,children);QFETCH(QString,error);
+  QTemporaryDir dir;QVERIFY(dir.isValid());QFile file(dir.filePath("limits.xml"));
+  const QByteArray xml="<Keyboard>"+QByteArray("<n>").repeated(depth-1)+QByteArray("<n/>").repeated(children)
+      +QByteArray("</n>").repeated(depth-1)+"</Keyboard>";
+  QVERIFY(xml.size()<4*1024*1024);QVERIFY(file.open(QIODevice::WriteOnly));QCOMPARE(file.write(xml),qint64(xml.size()));file.close();
+  QByteArray source="previous source";const auto result=KeyboardPack::load(file.fileName(),&source);
+  if(error.isEmpty()){QVERIFY2(!result.contains("error"),qPrintable(result["error"].toString()));QCOMPARE(source,xml);}
+  else {QVERIFY(result["error"].toString().contains(error));QVERIFY(source.isEmpty());QVERIFY(!result.contains("children"));}
+ }
  void rejectsMalformedAndEntities(){
   QTemporaryDir dir;QFile f(dir.filePath("bad.xml"));QVERIFY(f.open(QIODevice::WriteOnly));f.write("<!DOCTYPE Keyboard [<!ENTITY x 'value'>]><Keyboard>&x;</Keyboard>");f.close();QVERIFY(KeyboardPack::load(f.fileName()).contains("error"));
  }

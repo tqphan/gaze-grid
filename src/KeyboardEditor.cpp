@@ -171,8 +171,10 @@ void KeyboardEditor::newDocument() {
     history.clear();historyIndex=-1;selected=0;path.clear();saved.clear();commit(document);
 }
 bool KeyboardEditor::openFile(const QString &filePath) {
-    QFile file(filePath);if(!file.open(QIODevice::ReadOnly)){QMessageBox::warning(this,"Cannot open",file.errorString());return false;}
-    QDomDocument next;auto parsed=next.setContent(file.readAll(),QDomDocument::ParseOption::PreserveSpacingOnlyNodes);if(!parsed){QMessageBox::warning(this,"Invalid XML",QString("Line %1: %2").arg(parsed.errorLine).arg(parsed.errorMessage));return false;}
+    // Apply resource limits before building or serializing a DOM tree.
+    QByteArray source;auto checked=KeyboardPack::load(filePath,&source);
+    if(checked.contains("error")){QMessageBox::warning(this,"Invalid keyboard",checked["error"].toString());return false;}
+    QDomDocument next;auto parsed=next.setContent(source,QDomDocument::ParseOption::PreserveSpacingOnlyNodes);if(!parsed){QMessageBox::warning(this,"Invalid XML",QString("Line %1: %2").arg(parsed.errorLine).arg(parsed.errorMessage));return false;}
     if(!validate(next))return false;
     history.clear();historyIndex=-1;selected=-1;path=filePath;saved=next.toString();return commit(next);
 }

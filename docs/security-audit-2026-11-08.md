@@ -44,6 +44,14 @@ Remediation: use a publicly trusted code-signing identity where feasible. Otherw
 
 ### 3. Medium — keyboard XML recursion has no depth limit
 
+Status: remediated in source. Parsing now limits nesting to 64 levels and total
+elements to 50,000, rejecting excessive input without returning a partial tree
+or source bytes. The editor checks the bounded loader before DOM parsing.
+Main keyboard failures remain silent and preserve the current layout. Freshly
+built tests passed for both limits and their accepted boundaries, a 100,000-level
+document, bundled keyboard loading, whitespace preservation, and entity rejection.
+The editor test suite also passed.
+
 Evidence: `src/KeyboardPack.cpp:17`, `:25`, `:64`; `src/Controller.cpp:192`.
 
 The loader caps file size at 4 MiB but recursively parses every nested element without bounding nesting depth or node count. A small, deeply nested XML document can exhaust the native stack or memory before layout validation rejects it. Startup inspects the XML files in the keyboard directory, and the editor can open supplied XML. An attacker must get a malicious keyboard opened or placed in that directory. The installed Program Files directory normally requires elevated write access; no remote delivery or privilege escalation was established.
