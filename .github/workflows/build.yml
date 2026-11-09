@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Install build and desktop dependencies
         run: pacman -Syu --noconfirm --needed git cmake ninja gcc pkgconf qt6-base qt6-declarative qt6-svg qt6-virtualkeyboard qt6-wayland layer-shell-qt libei speech-dispatcher kirigami qqc2-desktop-style dbus
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGAZE_GRID_WITH_TOBII=OFF
       - run: cmake --build build --parallel 2
       - run: dbus-run-session -- ctest --test-dir build --output-on-failure
@@ -22,8 +22,8 @@ jobs:
   windows:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
-      - uses: jurplel/install-qt-action@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           # Qt 6.11+ uses compiler-specific repositories unsupported by aqt 3.3.0.
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7'
@@ -55,7 +55,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: gaze-grid-Windows-x64-test-MSI
           path: |
@@ -64,7 +64,7 @@ jobs:
           if-no-files-found: error
       - name: Upload Windows diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-installer-diagnostics
           path: |

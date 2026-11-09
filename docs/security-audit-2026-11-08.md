@@ -6,6 +6,14 @@ Scope: static review of application input and text handling, keyboard XML loadin
 
 ### 1. Medium — mutable actions execute in the signing job
 
+Status: mutable action references remediated in source. Both workflows now pin
+all external actions to full commit hashes verified against their upstream refs.
+The pinned Qt action also pins its nested Python setup action. Signing identity
+cleanup now runs before release preparation and artifact uploads, including on
+failure. Builds and signing still share a runner; this change addresses mutable
+action references and does not provide a separate signing boundary. Workflow
+execution on GitHub remains necessary to validate the full release pipeline.
+
 Evidence: `.github/workflows/windows-release.yml:26`, `:35`, `:60`, `:90`.
 
 The packaging job runs actions referenced by mutable `@v4` tags and later imports the persistent signing key into the same runner's certificate store. A compromised upstream action could persist within that job, intercept signing secrets, or sign altered output. This requires an upstream supply-chain compromise; no compromise was observed. The separate release job's limited permissions do not isolate the private key from earlier packaging steps.
