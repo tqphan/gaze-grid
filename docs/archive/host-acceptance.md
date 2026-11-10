@@ -1,6 +1,6 @@
 # Host acceptance — recorded evidence
 
-Host: Arch Linux x86-64, KDE Wayland, Qt 6.12.0. Entries below are historical results from their recorded implementation stages, not current feature descriptions or a new validation run. Later entries supersede earlier limitations; current controls are in [README](../README.md) and outstanding work is in [the inventory](feature-inventory.md). Historical layout counts, defaults and UI descriptions are retained only as context for the recorded checks.
+Host: Arch Linux x86-64, KDE Wayland, Qt 6.12.0. Entries below are historical results from their recorded implementation stages, not current feature descriptions or a new validation run. Later entries supersede earlier limitations; current controls are in [README](../../README.md) and outstanding work is in [the roadmap](../roadmap.md). Historical layout counts, defaults and UI descriptions are retained only as context for the recorded checks.
 
 ## Initial prototype — 2026-10-18
 
@@ -44,7 +44,7 @@ Dwell recovery controls now remain usable while a macro waits. Display changes p
 
 The final automated run passed all three suites (47 test cases excluding setup/cleanup). All 22 layouts rendered offscreen without diagnostics; artifacts and per-layout coverage are in `runtime/render-audit/`. All 51 fixture action names now have implementation paths, but full behavioral parity remains unverified. No live Tobii probe or streaming test was performed.
 
-See [the inventory](feature-inventory.md) for remaining work.
+See [the roadmap](../roadmap.md) for remaining work.
 
 ## Native desktop follow-up — 2026-10-18
 

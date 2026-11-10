@@ -2,6 +2,13 @@
 
 Scope: static review of application input and text handling, keyboard XML loading, Windows secure-desktop integration, dynamic library loading, local persistence, installer, and CI/release scripts. No application source or release settings were changed. Severity reflects prerequisites as well as impact; this is not a penetration test or a complete dependency vulnerability scan.
 
+## Reading this report
+
+Each numbered finding preserves the original audit observation. The Status paragraph
+records subsequent source remediation and its verification limits; the original
+observation below it is historical. Finding 4 has no recorded remediation and remains
+open in this report. This document does not establish a new security validation.
+
 ## Findings
 
 ### 1. Medium — mutable actions execute in the signing job

@@ -41,7 +41,7 @@ The normal system text-input path does not need a RemoteDesktop portal session. 
 
 ## Remaining acceptance
 
-The backend, native commits, sensitive-field handling, input-panel integration, desktop-entry generation, startup recovery and top/bottom transitions are implemented. Usage and isolated test commands are in [README](../README.md#experimental-plasma-input-method); recorded results are in [host acceptance](host-acceptance.md).
+The backend, native commits, sensitive-field handling, input-panel integration, desktop-entry generation, startup recovery and top/bottom transitions are implemented. Usage and isolated test commands are in [development guide](../development.md#experimental-plasma-input-method); recorded results are in [host acceptance](host-acceptance.md).
 
 - Validate real-session discovery, startup, focus transitions, visibility and recovery with the current gaze-grid desktop entry.
 - Exercise native Qt/GTK, browsers, terminals and XWayland, including physical shortcuts and pointer control alongside native text entry.

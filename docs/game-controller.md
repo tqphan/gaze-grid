@@ -16,11 +16,11 @@ mode always releases buttons.
 Analog sticks and trigger axes retain their existing controls.
 
 Custom keys can use `<Action>CycleButtonMode</Action>`. The action is also available
-in Settings → Gaze & dwell. Button mode starts at Tap each launch.
+in Settings → Gaze & dwell. Saved preferences retain the selected button mode.
 Explicit Release actions and multi-command macros retain their original behavior.
 
 On Linux, output uses the [standard Linux gamepad mapping](https://kernel.org/doc/html/latest/input/gamepad.html)
-and appears as `gaze-grid Virtual Controller`. Games must support Linux controllers
+and appears as `Gaze Grid Virtual Controller`. Games must support Linux controllers
 (or use Steam Input).
 
 On Windows, output uses [ViGEmBus](https://github.com/nefarius/ViGEmBus) and appears
@@ -42,8 +42,8 @@ the report mapping and lifecycle are tested with injected output.
 The Linux `uinput` module must be loaded and the current user must have write
 access to `/dev/uinput`. Desktop portal authorization does not grant that access.
 Use your distribution's controller-device permissions package or ask your
-administrator for a session-scoped udev rule for uinput. Do not run OptiKey as root.
-An access failure is shown in OptiKey's action status. The device is created on
+administrator for a session-scoped udev rule for uinput. Do not run Gaze Grid as root.
+An access failure is shown in Gaze Grid's action status. The device is created on
 first non-neutral output; a game may take a moment to discover it.
 
 ## Actions

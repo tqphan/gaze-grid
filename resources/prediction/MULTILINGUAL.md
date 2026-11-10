@@ -76,9 +76,14 @@ the English training corpus and held-out split differ from this multilingual run
 These are in-domain tests. Tatoeba contains language-learning examples and similar
 sentence variants; exact deduplication does not remove all near-duplicate leakage.
 Some language corpora are small. Results do not establish general-domain quality.
-External edits and IME conversions still cannot be observed by desktop prediction.
+Best-effort desktop prediction cannot observe external edits or IME conversions;
+supported caret-context paths are described under External text fields.
 
-## Recorded results
+## Historical baseline results
+
+This baseline predates the later Chinese/Thai word segmentation and vocabulary
+updates described below. Current artifact hashes and metrics are in the manifests
+and `multilingual-evaluation.json`.
 
 The 17 non-English training runs used 2,319,586 sentences and produced
 11,345,317 bytes of compressed models. English adds 701,650 training sentences

@@ -73,7 +73,7 @@ The recorded [evaluation.json](evaluation.json) uses 500 held-out sentences,
 
 Warm p95 query latency was 3.47 ms in the local Debug build. Cold model/index
 initialization took 1.14 seconds and is performed during controller startup,
-before typing. The bundled compressed model is 3,068,246 bytes; decompressed
+before typing. The compressed model in that historical evaluation was 3,068,246 bytes; decompressed
 runtime memory use is larger. Timings depend on the machine.
 
 Context continuations use compact sorted arrays, with binary search for counts;
@@ -88,9 +88,10 @@ or application. Tatoeba is a language-learning corpus and contains translation
 patterns and similar sentence variants; the frequency prior adds subtitle-based
 spoken English. No handwritten evaluation examples are added to training.
 
-Context comes from text entered through gaze-grid's scratchpad. This change does
-not read arbitrary text around the caret in other applications; moving the caret
-or editing externally can therefore leave the predictor without the true context.
+Prediction uses committed scratchpad text before the caret. Supported Windows
+fields and Plasma input can supply caret context when best-effort-only prediction
+is disabled; unsupported targets use the keys Gaze Grid sends. External edits can
+leave that best-effort record out of sync. See [external text fields](MULTILINGUAL.md#external-text-fields).
 Private native input fields suppress prediction and learning.
 
 The format is a Qt-compatible qCompress stream (four-byte big-endian raw length,

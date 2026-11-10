@@ -32,8 +32,7 @@ Standard buttons, D-pad/hat axes, two sticks, analog triggers and trigger button
 are supported. C/Z, Button1–32, Throttle, Rudder and Wheel have no Xbox 360
 mapping and are rejected. Rumble feedback is not implemented.
 The shared action logic and Xbox report/lifecycle tests use injected output, so
-CI never needs to create a virtual device or install a kernel driver. Physical
-input currently retains the imported US keyboard semantics. Mixed-DPI displays,
+CI never needs to create a virtual device or install a kernel driver. Physical input follows the target application's supported system keyboard layout. Mixed-DPI displays,
 focus retention, elevated application input, real SAPI playback and eye-tracker
 hardware require Windows acceptance testing. UIAccess does not grant control of
 the secure desktop. Native Windows build and installer results must come from
@@ -95,8 +94,8 @@ integration example, not the vendor's API specification. Device creation passes
 pointer. API creation, device enumeration, gaze subscription, callback processing,
 and teardown use the same basic lifecycle.
 
-gaze-grid retains its interruptible polling, stale-sample rejection and input
-release behavior. The Linux build continues to use its selected Stream Engine 3
+Gaze Grid retains interruptible polling and input-release behavior. Invalid samples
+pause gaze selection; sample timestamps and gaps alone do not invalidate gaze. The Linux build continues to use its selected Stream Engine 3
 SDK and three-argument device creation. Windows still needs matching SDK headers
 at build time and a compatible x64 runtime at execution time; the public example
 does not replace those dependencies or establish hardware compatibility.
@@ -163,7 +162,7 @@ Microsoft documents the signature and secure-location requirements in
 `GAZE_GRID_STARTUP=0` for a silent installation, to disable desktop startup.
 
 After a successful interactive installation, the completion screen offers
-**Launch gaze-grid after setup**, selected by default. Uncheck it to finish
+**Launch Gaze Grid after setup**, selected by default. Uncheck it to finish
 without opening the app. Clicking **Finish** launches the installed executable
 through WiX's `WixShellExec` action, after files and certificate trust have
 committed. This uses Windows `ShellExecuteEx`, which supports UIAccess, in the
@@ -174,7 +173,7 @@ the app. This completion choice is separate from Windows sign-in startup below.
 ## Keyboard before Windows sign-in
 
 The trusted installation registers gaze-grid with Windows Ease of Access. Setup
-selects **Start gaze-grid before Windows sign-in** by default, including silent
+selects **Start Gaze Grid before Windows sign-in** by default, including silent
 installations. Uncheck it in setup or pass `GAZE_GRID_SIGN_IN=0` to disable it.
 Declining certificate trust automatically disables sign-in startup for the
 unsigned installation. Repairs preserve the selected choice, including an
@@ -340,7 +339,7 @@ to launch gaze-grid after signing in. Setup selects it by default; silent
 installations can opt out with `GAZE_GRID_STARTUP=0`. Repair retains the setup
 choice and restores a missing launch entry when startup was selected.
 This registers the app for the
-current user in Windows **Settings ? Apps ? Startup** and Task Manager. Changes
+current user in Windows **Settings > Apps > Startup** and Task Manager. Changes
 apply immediately without saving preferences. Windows startup controls can also
 disable it. Startup before sign-in remains a separate option. Uninstall removes
 the startup entry for the user running uninstall; other users can turn theirs off
