@@ -187,8 +187,8 @@ int main(int argc,char **argv){
  for(int i=1;i<argc;++i){QString arg=argv[i];diagnose|=arg=="--diagnose";audit|=arg=="--validate-keyboards";smoke|=arg=="--smoke";portalCheck|=arg=="--portal-check";inputCheck|=arg=="--input-check";inputTarget|=arg=="--input-target";pointerCheck|=arg=="--pointer-check";pointerTarget|=arg=="--pointer-target";}
  if(diagnose||audit)qputenv("QT_QPA_PLATFORM","offscreen");
  QQuickWindow::setDefaultAlphaBuffer(true);
- QApplication app(argc,argv);app.setOrganizationName("gaze-grid");app.setApplicationName("gaze-grid");app.setApplicationDisplayName("gaze-grid");app.setDesktopFileName("org.gaze_grid.gaze_grid");
- if(localTestBuild()){app.setApplicationName("gaze-grid-local-test");app.setApplicationDisplayName("gaze-grid Local Test");}
+ QApplication app(argc,argv);app.setOrganizationName("gaze-grid");app.setApplicationName("gaze-grid");app.setApplicationDisplayName("Gaze Grid");app.setDesktopFileName("org.gaze_grid.gaze_grid");
+ if(localTestBuild()){app.setApplicationName("gaze-grid-local-test");app.setApplicationDisplayName("Gaze Grid Local Test");}
 #ifdef _WIN32
  app.setStyle("Fusion"); // QWidget menus/editor must honor the same system palette as QML.
  WindowsTheme windowsTheme;
@@ -459,7 +459,7 @@ int main(int argc,char **argv){
  auto openEditor=trayMenu.addAction("Keyboard editor…");
  QObject::connect(openEditor,&QAction::triggered,&app,[]{QProcess::startDetached(QCoreApplication::applicationFilePath(),{"--editor"});});
  trayMenu.addSeparator();
- auto quitAction=trayMenu.addAction(QIcon::fromTheme("application-exit"),"Quit gaze-grid");
+ auto quitAction=trayMenu.addAction(QIcon::fromTheme("application-exit"),"Quit Gaze Grid");
  QObject::connect(quitAction,&QAction::triggered,&app,&QApplication::quit);
  tray.setContextMenu(&trayMenu);
  QObject::connect(&tray,&QSystemTrayIcon::activated,&controller,[&](QSystemTrayIcon::ActivationReason reason){

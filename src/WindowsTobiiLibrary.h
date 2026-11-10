@@ -36,7 +36,7 @@ public:
    const auto loadError=GetLastError();
    failures<<QString("%1 (Windows error %2)").arg(candidate).arg(loadError);
   }
-  error="Install or repair the Tobii Experience driver package and app for your tracker from https://gaming.tobii.com/getstarted/, then restart gaze-grid. A compatible 64-bit Tobii Stream Engine DLL is required. Mouse dwell remains available.";
+  error="Install or repair the Tobii Experience driver package and app for your tracker from https://gaming.tobii.com/getstarted/, then restart Gaze Grid. A compatible 64-bit Tobii Stream Engine DLL is required. Mouse dwell remains available.";
   if(!failures.isEmpty())error+=" Could not load: "+failures.join("; ");
   return false;
  }

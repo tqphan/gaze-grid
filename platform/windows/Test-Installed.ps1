@@ -185,7 +185,7 @@ try {
     if (!$diagnostics.portal.tokenQuerySucceeded -or [bool]$diagnostics.portal.uiAccess -ne $expectedUIAccess) { throw "Unexpected UIAccess token in $mode installation." }
     # Launch the real Start menu entry. Advertised MSI shortcuts can invoke
     # installer repair instead of opening the application.
-    $shortcutPath = Join-Path ([Environment]::GetFolderPath('Programs')) 'gaze-grid/Gaze Grid.lnk'
+    $shortcutPath = Join-Path ([Environment]::GetFolderPath('Programs')) 'Gaze Grid/Gaze Grid.lnk'
     if (!(Test-Path -LiteralPath $shortcutPath)) { throw 'Start menu shortcut is missing.' }
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $null

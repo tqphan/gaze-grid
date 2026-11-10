@@ -48,7 +48,7 @@ bool GameController::connectDevice(){
     if(ioctl(fd,UI_SET_EVBIT,EV_KEY)<0||ioctl(fd,UI_SET_EVBIT,EV_ABS)<0)return fail();
     for(int code:buttonCodes())if(ioctl(fd,UI_SET_KEYBIT,code)<0)return fail();
     for(int code:axisCodes){if(ioctl(fd,UI_SET_ABSBIT,code)<0)return fail();uinput_abs_setup a{};a.code=code;a.absinfo.minimum=trigger(code)?0:hat(code)?-1:-32767;a.absinfo.maximum=hat(code)?1:32767;if(ioctl(fd,UI_ABS_SETUP,&a)<0)return fail();}
-    uinput_setup setup{};strcpy(setup.name,"gaze-grid Virtual Controller");setup.id.bustype=BUS_VIRTUAL;setup.id.vendor=0x1209;setup.id.product=0x0001;setup.id.version=1;
+    uinput_setup setup{};strcpy(setup.name,"Gaze Grid Virtual Controller");setup.id.bustype=BUS_VIRTUAL;setup.id.vendor=0x1209;setup.id.product=0x0001;setup.id.version=1;
     if(ioctl(fd,UI_DEV_SETUP,&setup)<0||ioctl(fd,UI_DEV_CREATE)<0)return fail();message.clear();return true;
 #endif
 }

@@ -33,7 +33,7 @@ struct Api {
   // Do not call newer incompatible exports merely because their names match.
   tobii_version_t version{};
   if(tobii_get_api_version(&version)!=TOBII_ERROR_NO_ERROR||version.major!=4){
-   error="The installed Tobii Gaming Stream Engine is incompatible with this build (requires API major 4). Install a compatible gaze-grid build; mouse dwell remains available.";
+   error="The installed Tobii Gaming Stream Engine is incompatible with this build (requires API major 4). Install a compatible Gaze Grid build; mouse dwell remains available.";
    return false;
   }
 #endif

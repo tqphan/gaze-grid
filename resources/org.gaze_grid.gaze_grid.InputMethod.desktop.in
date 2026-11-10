@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=gaze-grid
+Name=Gaze Grid
 Comment=Gaze-controlled keyboard and native text input
 Exec=@GAZE_GRID_EXECUTABLE@ --input-method
 Type=Application

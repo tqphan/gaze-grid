@@ -1532,7 +1532,7 @@ void Controller::syncSignInPreferences(){
  if(localTestBuild())return;
  if(signInMode||!desktopActive)return;
 #ifdef _WIN32
- profileStatus=WindowsSignIn::configure(true,signInPreferences(),true)?"Current preferences copied to login and secure desktop. Prediction is disabled there.":"Could not sync preferences. Install the trusted version of gaze-grid and accept the administrator prompt.";
+ profileStatus=WindowsSignIn::configure(true,signInPreferences(),true)?"Current preferences copied to login and secure desktop. Prediction is disabled there.":"Could not sync preferences. Install the trusted version of Gaze Grid and accept the administrator prompt.";
  emit changed();
 #endif
 }
@@ -1541,7 +1541,7 @@ void Controller::configureSignIn(bool enabled){
  if(signInMode||!desktopActive)return;
 #ifdef _WIN32
  const auto values=signInPreferences();
- profileStatus=WindowsSignIn::configure(enabled,values)?(enabled?"This keyboard will start before Windows sign-in. Prediction is disabled there.":"Windows sign-in startup is disabled."):"Could not change sign-in startup. Install the trusted version of gaze-grid and accept the administrator prompt.";
+ profileStatus=WindowsSignIn::configure(enabled,values)?(enabled?"This keyboard will start before Windows sign-in. Prediction is disabled there.":"Windows sign-in startup is disabled."):"Could not change sign-in startup. Install the trusted version of Gaze Grid and accept the administrator prompt.";
  emit changed();
 #endif
 }

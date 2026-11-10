@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=gaze-grid
+Name=Gaze Grid
 Comment=Gaze-controlled keyboard and pointer
 Exec=@GAZE_GRID_EXECUTABLE@
 Icon=@GAZE_GRID_ICON@

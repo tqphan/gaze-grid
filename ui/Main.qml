@@ -725,7 +725,7 @@ Window {
        Text {visible:text.length>0;text:controller.heldKeys.length?"Held: "+controller.heldKeys.join(", "):"";color:Kirigami.Theme.neutralTextColor}
        Text {visible:text.length>0;text:controller.heldPointerButtons.length?"Mouse held: "+controller.heldPointerButtons.join(", "):"";color:Kirigami.Theme.neutralTextColor}
        Tool {id:recover;text:"Home / recover";command:"Recover"}
-       SettingsButton {text:"Quit gaze-grid";icon.name:"application-exit";onClicked:Qt.quit()}
+       SettingsButton {text:"Quit Gaze Grid";icon.name:"application-exit";onClicked:Qt.quit()}
       }
      }
      SettingsCard {
