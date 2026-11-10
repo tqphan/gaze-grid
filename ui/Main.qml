@@ -703,10 +703,6 @@ Window {
       Kirigami.Heading {text:settings.categoryNames[settingsCategory.currentIndex];level:1;font.weight:Font.DemiBold}
       Desktop.Label {visible:text.length>0;text:settings.categoryDescriptions[settingsCategory.currentIndex];opacity:0.6;wrapMode:Text.Wrap;Layout.fillWidth:true}
      }
-     Rectangle {
-      implicitWidth:inputStatus.implicitWidth+28;implicitHeight:30;radius:15;color:controller.paused?Qt.rgba(0.8,0.6,0.2,0.12):Qt.rgba(0.2,0.75,0.5,0.12)
-      Desktop.Label {id:inputStatus;anchors.centerIn:parent;text:controller.paused?"Input paused":"Input active";font.pixelSize:12;color:controller.paused?"#d2a552":"#43b98a"}
-     }
     }
    Desktop.ScrollView {
     id:settingsScroll;Layout.fillWidth:true;Layout.fillHeight:true;Layout.rightMargin:-28;contentWidth:availableWidth;clip:true;ScrollBar.horizontal.policy:ScrollBar.AlwaysOff
@@ -716,6 +712,7 @@ Window {
       title:settings.categoryNames[0];visible:settingsCategory.currentIndex==0;Layout.fillWidth:true
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
+       Desktop.Label {text:controller.paused?"Input paused":"Input active";Layout.fillWidth:true;wrapMode:Text.Wrap}
        Desktop.Label {objectName:"inputModeStatus";text:!root.gazeEnabled?"Gaze off":root.usingGaze?"Gaze dwell active":"Mouse dwell active — eye tracker disconnected";Layout.fillWidth:true;wrapMode:Text.Wrap}
        Desktop.Label {text:"Desktop control: "+controller.portalStatus;Layout.fillWidth:true;wrapMode:Text.Wrap}
        Desktop.Label {text:"Eye tracker: "+controller.tobiiStatus;Layout.fillWidth:true;wrapMode:Text.Wrap}
