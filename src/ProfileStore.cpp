@@ -126,7 +126,7 @@ bool ProfileStore::valid(const QJsonObject &v){
         &&(!v.contains("targetProgressSize")||(v["targetProgressSize"].isDouble()&&v["targetProgressSize"].toDouble()==v["targetProgressSize"].toInt()&&v["targetProgressSize"].toInt()>=24&&v["targetProgressSize"].toInt()<=160))
         &&(!v.contains("targetProgressThickness")||(v["targetProgressThickness"].isDouble()&&v["targetProgressThickness"].toDouble()==v["targetProgressThickness"].toInt()&&v["targetProgressThickness"].toInt()>=1&&v["targetProgressThickness"].toInt()<=12))
         &&(!v.contains("targetProgressOpacity")||(v["targetProgressOpacity"].isDouble()&&v["targetProgressOpacity"].toDouble()==v["targetProgressOpacity"].toInt()&&v["targetProgressOpacity"].toInt()>=5&&v["targetProgressOpacity"].toInt()<=100))
-        &&(!v.contains("targetProgressStyle")||(v["targetProgressStyle"].isString()&&QStringList{"ring","pie","shrink"}.contains(v["targetProgressStyle"].toString())))
+        &&(!v.contains("targetProgressStyle")||(v["targetProgressStyle"].isString()&&QStringList{"ring","pie","shrink","expand"}.contains(v["targetProgressStyle"].toString())))
         &&(!v.contains("targetProgressColor")||(v["targetProgressColor"].isString()&&QRegularExpression("^#[0-9a-fA-F]{6}$").match(v["targetProgressColor"].toString()).hasMatch()))
         &&(!v.contains("targetDwellRadius")||(v["targetDwellRadius"].isDouble()&&v["targetDwellRadius"].toDouble()==v["targetDwellRadius"].toInt()&&v["targetDwellRadius"].toInt()>=10&&v["targetDwellRadius"].toInt()<=100))
         &&(!v.contains("zoomDurationMs")||(v["zoomDurationMs"].isDouble()&&v["zoomDurationMs"].toDouble()==v["zoomDurationMs"].toInt()&&v["zoomDurationMs"].toInt()>=0&&v["zoomDurationMs"].toInt()<=5000))

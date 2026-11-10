@@ -1649,7 +1649,7 @@ private slots:
   QVERIFY(store.save(ProfileStore::defaults(),error,true));
  }
  void targetProgressPreferences(){
-  const QVariantMap custom{{"targetProgressStyle","pie"},{"targetProgressSize",90},{"targetProgressThickness",8},{"targetProgressOpacity",65},{"targetProgressColor","#ff1234"}};
+  const QVariantMap custom{{"targetProgressStyle","expand"},{"targetProgressSize",90},{"targetProgressThickness",8},{"targetProgressOpacity",65},{"targetProgressColor","#ff1234"}};
   const auto defaults=ProfileStore::defaults();
   {Controller c;for(auto i=custom.begin();i!=custom.end();++i)c.setProperty(i.key().toUtf8().constData(),i.value());QVERIFY(c.savePreferences());}
   {Controller c;for(auto i=custom.begin();i!=custom.end();++i)QCOMPARE(c.property(i.key().toUtf8().constData()),i.value());

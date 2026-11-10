@@ -28,6 +28,10 @@ Canvas {
    ctx.moveTo(width/2,height/2)
    ctx.arc(width/2,height/2,radius,-Math.PI/2,-Math.PI/2+2*Math.PI*amount)
    ctx.closePath();ctx.fill()
+  } else if(style==="expand") {
+   if(amount>0) {
+    ctx.arc(width/2,height/2,radius*amount,0,2*Math.PI);ctx.stroke()
+   }
   } else if(style==="shrink") {
    if(amount<1) {
     ctx.arc(width/2,height/2,radius*(1-amount),0,2*Math.PI);ctx.stroke()

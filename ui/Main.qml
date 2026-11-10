@@ -981,9 +981,9 @@ Window {
        SettingSlider {label:"Target dwell movement tolerance";displayValue:controller.targetDwellRadius+" px";from:10;to:100;stepSize:5;value:controller.targetDwellRadius;enabled:controller.targetDwellEnabled;onMoved:controller.targetDwellRadius=value}
        Desktop.Label {text:"Progress style"}
        SettingsComboBox {
-        objectName:"targetProgressStyleSelector";Layout.fillWidth:true;model:["Ring Progress","Pie Progress","Ring Shrink"]
-        currentIndex:["ring","pie","shrink"].indexOf(controller.targetProgressStyle)
-        onActivated:controller.targetProgressStyle=["ring","pie","shrink"][currentIndex]
+        objectName:"targetProgressStyleSelector";Layout.fillWidth:true;model:["Ring Progress","Pie Progress","Ring Shrink","Ring Expand"]
+        currentIndex:["ring","pie","shrink","expand"].indexOf(controller.targetProgressStyle)
+        onActivated:controller.targetProgressStyle=["ring","pie","shrink","expand"][currentIndex]
         Accessible.name:"Progress style"
        }
        SettingSlider {label:"Size";displayValue:controller.targetProgressSize+" px";from:24;to:160;stepSize:1;value:controller.targetProgressSize;onMoved:controller.targetProgressSize=value}
