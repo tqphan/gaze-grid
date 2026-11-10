@@ -191,3 +191,5 @@ Save preferences to retain the choice. Next-word predictions are unchanged.
 Prediction languages are selected under Settings > Typing & speech > Word prediction > Prediction language. See [multilingual prediction models](../resources/prediction/MULTILINGUAL.md) for the 18 languages, training data, and evaluation. Chinese and Thai use offline lexicon-segmented word models; Japanese retains character prediction alongside local IME conversion. Scratchpad prediction follows the caret and returns after composition ends.
 
 **Settings > Typing & speech > Word prediction > Use best-effort prediction only** uses Gaze Grid's typed-key history for desktop prediction and completion, even when the target exposes text and caret context. It defaults to on. Private fields remain excluded; scratchpad prediction is unchanged. Save preferences to retain the choice.
+
+**Settings > Typing & speech > Word prediction > Underline best-effort prediction typed text** underlines the matching typed portion of best-effort predictions. It defaults to off and does not apply to caret-aware predictions, scratchpad predictions, or IME candidates. Save preferences to retain the choice.

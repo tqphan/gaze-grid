@@ -181,6 +181,12 @@ private slots:
    context.before+="external";c.updateDesktopTextContext(context);
   }
   const int index=c.displaySuggestions().indexOf("you");QVERIFY(index>=0);
+  QCOMPARE(c.formattedSuggestions().at(index),QString("you"));
+  c.setProperty("underlineTypedText",true);
+  QCOMPARE(c.formattedSuggestions().at(index),QString("<u>y</u>ou"));
+  QVERIFY(c.savePreferences());
+  {Controller restored;QVERIFY(restored.property("underlineTypedText").toBool());}
+
   c.clickCommand(c.suggestionPrefix()+QString::number(index));QTRY_VERIFY(!c.executingCommands());
   QCOMPARE(output,QString("thank you "));QCOMPARE(replacements,0);
   context.available=false;context.supported=true;c.updateDesktopTextContext(context);
@@ -189,6 +195,16 @@ private slots:
   c.resetPreferences();QVERIFY(c.bestEffortPredictionOnly());QVERIFY(c.savePreferences());
   auto values=ProfileStore::defaults();values.remove("bestEffortPredictionOnly");QVERIFY(ProfileStore::valid(values));
   values["bestEffortPredictionOnly"]="true";QVERIFY(!ProfileStore::valid(values));
+ }
+ void predictionUnderlineRequiresBestEffort(){
+  Controller c;c.resetPreferences();c.setProperty("underlineTypedText",true);
+  c.setBestEffortPredictionOnly(false);
+  c.updateDesktopTextContext(DesktopTextContext::fromUtf8("hel",3,3));
+  c.setProperty("suggestions",QStringList{"hello","<hello>&"});
+  QCOMPARE(c.formattedSuggestions(),(QStringList{"hello","&lt;hello&gt;&amp;"}));
+  c.resetPreferences();QVERIFY(!c.property("underlineTypedText").toBool());QVERIFY(c.savePreferences());
+  auto values=ProfileStore::defaults();values.remove("underlineTypedText");QVERIFY(ProfileStore::valid(values));
+  values["underlineTypedText"]="true";QVERIFY(!ProfileStore::valid(values));
  }
  void predictionUnicodeModePersists(){
   Controller c;c.resetPreferences();QCOMPARE(c.predictionUnicodeMode(),QString("nonAscii"));

@@ -119,6 +119,7 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  typedWordMode=profile.values["typedWordSuggestionMode"].toString("fallback");
  predictionModeValue=profile.values["predictionMode"].toString("context");
  bestEffortPredictionOnlyValue=profile.values["bestEffortPredictionOnly"].toBool(true);
+ underlineTypedText=profile.values["underlineTypedText"].toBool(false);
  predictionUnicodeModeValue=profile.values["predictionUnicodeMode"].toString("nonAscii");
  nextWordEnabled=profile.values["predictNextWord"].toBool(true);
  completionSpaceEnabled=profile.values["addSpaceAfterCompletion"].toBool(true);
@@ -441,6 +442,7 @@ bool Controller::savePreferences(){
  values["localImeLocale"]=wantedImeLocale;
  values["predictionLanguage"]=predictionLanguageValue;
  values["bestEffortPredictionOnly"]=bestEffortPredictionOnlyValue;
+ values["underlineTypedText"]=underlineTypedText;
  values["predictionUnicodeMode"]=predictionUnicodeModeValue;
  values["groupDwellTimes"]=QJsonObject::fromVariantMap(groupDwellValues);
  values["speechProfiles"]=QJsonArray::fromVariantList(speechProfiles);
@@ -484,6 +486,7 @@ void Controller::resetPreferences(){
  groupDwellValues.clear();
  setPredictionLanguage("eng");
  setBestEffortPredictionOnly(true);
+ underlineTypedText=false;
  predictionUnicodeModeValue="nonAscii";
  dwellMs=values["dwellMs"].toInt();literal=false;learning=false;predictionModeValue="context";typedWordMode="fallback";nextWordEnabled=true;completionSpaceEnabled=true;sentenceStartersEnabled=true;backStack.clear();
  repeatIntervalMs=750;
@@ -1237,6 +1240,26 @@ QString Controller::predictionText()const{
  return typingContext();
 }
 QStringList Controller::displaySuggestions()const{return showingImeCandidates()?imeCandidateSnapshot.mid(imeCandidateOffset,suggestionPageSize()):suggestions;}
+QStringList Controller::formattedSuggestions()const{
+ QString prefix;
+ if(underlineTypedText&&!hasScratchpad()&&!showingImeCandidates()&&!sensitiveInput
+    &&predictionModeValue!="off"&&!externalContext.available&&!externalContext.supported&&!externalContext.privateField)
+  prefix=PredictionLanguage::lower(PredictionLanguage::normalize(PredictionLanguage::rawPrefix(predictionText(),predictionLanguageValue)),predictionLanguageValue);
+ QStringList result;
+ for(const auto &suggestion:displaySuggestions()){
+  int matched=0;
+  if(!prefix.isEmpty()){
+   QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,suggestion);
+   for(int end=boundary.toNextBoundary();end>=0;end=boundary.toNextBoundary()){
+    const auto start=PredictionLanguage::lower(PredictionLanguage::normalize(suggestion.left(end)),predictionLanguageValue);
+    if(start==prefix){matched=end;break;}
+    if(start.size()>prefix.size())break;
+   }
+  }
+  result.append(matched?"<u>"+suggestion.left(matched).toHtmlEscaped()+"</u>"+suggestion.mid(matched).toHtmlEscaped():suggestion.toHtmlEscaped());
+ }
+ return result;
+}
 QString Controller::suggestionPrefix()const{
  if(showingImeCandidates())return QString("ime:%1:").arg(imeRevision);
  return (scratchpadEditable()&&localInput.attached())||(!hasScratchpad()&&externalContextObserved)?QString("suggest:%1:").arg(predictionRevision):QString("suggest:");

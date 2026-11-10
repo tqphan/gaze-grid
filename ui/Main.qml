@@ -450,7 +450,7 @@ Window {
       onHasPredictionChanged:if(!hasPrediction&&root.hovered===command)root.hovered=""
       width:key.predictionWidth;height:key.height;color:"transparent";border.color:root.keyboardBorder
       Rectangle {anchors.fill:parent;color:root.dwellColor;opacity:predictionSlot.active?0.18:0}
-      Text {anchors.fill:parent;anchors.margins:4;text:predictionSlot.predictionText;textFormat:Text.PlainText;opacity:key.foregroundOpacity;color:key.foreground;font.pixelSize:Math.min(24,key.height*.28)*controller.predictionTextScale/100;fontSizeMode:Text.Fit;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
+      Text {anchors.fill:parent;anchors.margins:4;text:index<controller.formattedSuggestions.length?controller.formattedSuggestions[index]:"";textFormat:Text.StyledText;opacity:key.foregroundOpacity;color:key.foreground;font.pixelSize:Math.min(24,key.height*.28)*controller.predictionTextScale/100;fontSizeMode:Text.Fit;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
       MouseArea {objectName:"predictionMouseArea:"+index;anchors.fill:parent;hoverEnabled:true;enabled:predictionSlot.hasPrediction;onEntered:root.hovered=predictionSlot.command;onPositionChanged:root.hovered=predictionSlot.command;onExited:if(root.hovered===predictionSlot.command)root.hovered="";onClicked:controller.clickCommand(predictionSlot.command)}
       DwellIndicator {objectName:"predictionProgress:"+index;anchors.left:parent.left;anchors.bottom:parent.bottom;width:progress>0?parent.width:0;height:parent.height;progress:predictionSlot.active?root.progress:root.pausedAmount(predictionSlot.command);style:controller.dwellIndicatorStyle;color:root.dwellColor}
      }
@@ -1060,6 +1060,7 @@ Window {
         onActivated:controller.typedWordSuggestionMode=["always","fallback","never"][currentIndex]
         Accessible.name:"Show the word I'm typing"
        }
+       SettingsCheckBox {objectName:"underlineTypedTextCheckBox";text:"Underline best-effort prediction typed text";enabled:controller.predictionMode!=="off";checked:controller.underlineTypedText;onToggled:controller.underlineTypedText=checked}
        SettingsCheckBox {objectName:"suggestSentenceStartersToggle";text:"Suggest sentence starters when text is empty";enabled:controller.predictionMode!=="off";checked:controller.suggestSentenceStarters;onToggled:controller.suggestSentenceStarters=checked}
        SettingsCheckBox {objectName:"addSpaceAfterCompletionToggle";text:"Add a space after word completion";enabled:controller.predictionMode!=="off";checked:controller.addSpaceAfterCompletion;onToggled:controller.addSpaceAfterCompletion=checked}
        SettingsCheckBox {text:"Remove completion space before punctuation";enabled:controller.predictionMode!=="off"&&controller.addSpaceAfterCompletion;checked:controller.removeCompletionSpaceBeforePunctuation;onToggled:controller.removeCompletionSpaceBeforePunctuation=checked}

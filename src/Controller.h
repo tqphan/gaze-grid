@@ -98,6 +98,8 @@ class Controller:public QObject{
  Q_PROPERTY(QStringList localImeLocales READ localImeLocales NOTIFY changed)
  Q_PROPERTY(QString localImeLocale READ localImeLocale WRITE setLocalImeLocale NOTIFY changed)
  Q_PROPERTY(QStringList displaySuggestions READ displaySuggestions NOTIFY changed)
+ Q_PROPERTY(QStringList formattedSuggestions READ formattedSuggestions NOTIFY changed)
+ Q_PROPERTY(bool underlineTypedText MEMBER underlineTypedText NOTIFY changed)
  Q_PROPERTY(QString suggestionPrefix READ suggestionPrefix NOTIFY changed)
  Q_PROPERTY(QStringList suggestions MEMBER suggestions NOTIFY changed)
  Q_PROPERTY(bool learning READ learningEnabled WRITE setLearning NOTIFY changed)
@@ -299,6 +301,7 @@ public:
  QString localImeLocale()const{return wantedImeLocale.isEmpty()?localInput.locale():wantedImeLocale;}
  void setLocalImeLocale(const QString &locale);
  QStringList displaySuggestions()const;
+ QStringList formattedSuggestions()const;
  QString suggestionPrefix()const;
 signals:
  void keyboardLabelsChanged();
@@ -454,6 +457,7 @@ private:
  int suggestionOffset=0;
  QString typedWordMode="fallback";
  bool bestEffortPredictionOnlyValue=true;
+ bool underlineTypedText=false;
  QString predictionUnicodeModeValue="nonAscii";
  QString predictionLanguageValue="eng";
  QString predictionModeValue="context";bool nextWordEnabled=true;bool completionSpaceEnabled=true;bool sentenceStartersEnabled=true;
