@@ -1140,8 +1140,8 @@ void Controller::receiveMagnifierFrame(QImage image){
   clearCapture();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();actionStatus="Capture does not match the target display; target selection cancelled";emit changed();return;
  }
  capturedImage=image;captureSize=image.size();capturePending=false;magnifierReady=true;
- activeZoom=qBound(2,magnifierZoom,8);activeZoomDurationMs=qBound(500,zoomDurationMs,5000);
- zoomAnimating=progressiveZoom;zoomClock.start();
+ activeZoom=qBound(2,magnifierZoom,8);activeZoomDurationMs=qBound(1,zoomDurationMs,5000);
+ zoomAnimating=progressiveZoom&&zoomDurationMs>0;zoomClock.start();
  updateMagnifierZoom();
  if(zoomAnimating)zoomTimer.start();
  emit changed();
