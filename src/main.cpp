@@ -11,6 +11,7 @@
 #include <QScreen>
 #include <QJsonDocument>
 #include <QSaveFile>
+#include <QSettings>
 #include <QTextStream>
 #include <QTimer>
 #include <QProcess>
@@ -447,6 +448,48 @@ int main(int argc,char **argv){
  auto settings=window->findChild<QQuickWindow*>("settingsWindow");
  if(!settings)return 1;
  settings->setTransientParent(nullptr);
+ // Keep window placement separate from the explicit Save preferences action.
+ QSettings settingsPlacement(QDir(appConfigDirectory()).filePath("windows.ini"),QSettings::IniFormat);
+ auto settingsBounds=settingsPlacement.value("settings/geometry").toRect();
+ if(settingsBounds.isValid()){
+  QScreen *placementScreen=nullptr;
+  int largestArea=0;
+  for(auto screen:QGuiApplication::screens()){
+   const auto overlap=screen->availableGeometry().intersected(settingsBounds);
+   const int area=overlap.width()*overlap.height();
+   if(area>largestArea){largestArea=area;placementScreen=screen;}
+  }
+  if(!placementScreen)placementScreen=QGuiApplication::primaryScreen();
+  if(placementScreen){
+   const auto available=placementScreen->availableGeometry();
+   settingsBounds.setSize(settingsBounds.size().expandedTo(settings->minimumSize()).boundedTo(available.size()));
+   settingsBounds.moveLeft(qBound(available.left(),settingsBounds.left(),available.right()-settingsBounds.width()+1));
+   settingsBounds.moveTop(qBound(available.top(),settingsBounds.top(),available.bottom()-settingsBounds.height()+1));
+   settings->setScreen(placementScreen);
+   settings->setGeometry(settingsBounds);
+  }
+ }
+ QTimer settingsPlacementTimer;
+ settingsPlacementTimer.setSingleShot(true);
+ settingsPlacementTimer.setInterval(250);
+ auto saveSettingsPlacement=[&]{
+  if(!settingsBounds.isValid())return;
+  settingsPlacement.setValue("settings/geometry",settingsBounds);
+  settingsPlacement.sync();
+ };
+ auto trackSettingsPlacement=[&]{
+  // Minimized and maximized bounds must not replace the normal window size.
+  if(!settings->isVisible()||settings->windowState()!=Qt::WindowNoState)return;
+  settingsBounds=settings->geometry();
+  settingsPlacementTimer.start();
+ };
+ QObject::connect(settings,&QWindow::xChanged,&app,trackSettingsPlacement);
+ QObject::connect(settings,&QWindow::yChanged,&app,trackSettingsPlacement);
+ QObject::connect(settings,&QWindow::widthChanged,&app,trackSettingsPlacement);
+ QObject::connect(settings,&QWindow::heightChanged,&app,trackSettingsPlacement);
+ QObject::connect(settings,&QWindow::visibleChanged,&app,trackSettingsPlacement);
+ QObject::connect(&settingsPlacementTimer,&QTimer::timeout,&app,saveSettingsPlacement);
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&app,saveSettingsPlacement);
 #ifdef _WIN32
  windowsTheme.preserveWindowTitle(settings);
 #endif
