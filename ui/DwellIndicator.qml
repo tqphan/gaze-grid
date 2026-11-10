@@ -20,14 +20,15 @@ Item {
   border.width: Math.min(4,width/2,height/2)
  }
  Rectangle {
-  visible: indicator.style === "bar" || indicator.style === "top-bar" || indicator.style === "dual-bar" || indicator.style === "opposing-bars"
-  x: indicator.style === "opposing-bars" ? parent.width-width : 0
+  visible: indicator.style === "bar" || indicator.style === "top-bar" || indicator.style === "dual-bar" || indicator.style === "opposing-bars" || indicator.style === "center-bars"
+  x: indicator.style === "center-bars" ? (parent.width-width)/2 : indicator.style === "opposing-bars" ? parent.width-width : 0
   y: indicator.style === "top-bar" ? 0 : parent.height-height
   width: parent.width*indicator.amount; height: Math.min(5,parent.height)
   color: indicator.color
  }
  Rectangle {
-  visible: indicator.style === "dual-bar" || indicator.style === "opposing-bars"
+  visible: indicator.style === "dual-bar" || indicator.style === "opposing-bars" || indicator.style === "center-bars"
+  x: indicator.style === "center-bars" ? (parent.width-width)/2 : 0
   width: parent.width*indicator.amount; height: Math.min(5,parent.height)
   color: indicator.color
  }
