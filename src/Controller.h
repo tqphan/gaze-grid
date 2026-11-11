@@ -435,6 +435,8 @@ private:
  QVariantMap groupDwellValues;
  int dwellMs=750;
  int processPriorityValue=0;
+ void rememberKeyboardGeometry();
+ QJsonObject keyboardGeometry;
  int scalePercent=100;
  int keyboardWidthScaleValue=100;
  int keyboardHorizontalOffsetValue=0;

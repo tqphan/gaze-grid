@@ -283,6 +283,11 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  if(!signInMode&&start!=startupLayout&&!menuLayoutNames.contains(start)){
   start=startupLayout;profileStatus="Saved startup keyboard is hidden. Opened the default keyboard.";
  }
+ keyboardGeometry=profile.values.value("keyboardGeometry").toObject();
+ // Migrate global geometry once, without applying it to unrelated keyboards.
+ if(!profile.values.contains("keyboardGeometry")){
+  keyboardGeometry[start]=QJsonObject{{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue}};
+ }
  openLayout(start,false);
 }
 Controller::~Controller(){desktopActive=false;stopTracker();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();portal.releaseAll();portal.close();
@@ -439,6 +444,7 @@ void Controller::refreshKeyboardLabels(){
 bool Controller::savePreferences(){
  if(signInMode)return false;
  QJsonObject values{{"cacheKeyboards",cacheKeyboards()},{"transitionDurationMs",transitionDurationMs},{"keyboardTransition",keyboardTransition},{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
+ values["keyboardGeometry"]=keyboardGeometry;
  values["keyMode"]=keyModeValue;
  values["buttonMode"]=buttonModeValue;
  values["systemKeyboard"]=systemKeyboard();
@@ -509,6 +515,7 @@ void Controller::resetPreferences(){
  setGazeFilterGain(values["gazeFilterGain"].toDouble(0.2));
  setGazeSaccadeDistance(values["gazeSaccadeDistance"].toDouble(0.1));
  setGazeSmoothingLevel(values["gazeSmoothingLevel"].toInt());setSmoothWhenChangingGazeTarget(false);gazeSmoothing.reset();
+ keyboardGeometry={};
  openLayout(values["startLayout"].toString(),false);
  profileStatus="Preferences reset. Input remains paused.";emit changed();
 }
@@ -537,21 +544,25 @@ void Controller::setRestoreHeight(int height){
  height=qBound(40,height,128);if(height==recoveryHeight)return;
  recoveryHeight=height;dwell.reset();emit geometryPreferencesChanged();
 }
+void Controller::rememberKeyboardGeometry(){
+ if(layoutName.isEmpty())return;
+ keyboardGeometry[layoutName]=QJsonObject{{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue}};
+}
 void Controller::setKeyboardScale(int scale){
  scale=qBound(50,scale,150);if(scale==scalePercent)return;
- runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();scalePercent=scale;emit geometryPreferencesChanged();emit changed();
+ runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();scalePercent=scale;rememberKeyboardGeometry();emit geometryPreferencesChanged();emit changed();
 }
 void Controller::setKeyboardWidthScale(int value){
  value=qBound(50,value,150);if(value==keyboardWidthScaleValue)return;
- runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();keyboardWidthScaleValue=value;emit geometryPreferencesChanged();emit changed();
+ runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();keyboardWidthScaleValue=value;rememberKeyboardGeometry();emit geometryPreferencesChanged();emit changed();
 }
 void Controller::setKeyboardHorizontalOffset(int value){
  value=qBound(-100,value,100);if(value==keyboardHorizontalOffsetValue)return;
- runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();keyboardHorizontalOffsetValue=value;emit geometryPreferencesChanged();emit changed();
+ runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();keyboardHorizontalOffsetValue=value;rememberKeyboardGeometry();emit geometryPreferencesChanged();emit changed();
 }
 void Controller::setKeyboardVerticalOffset(int value){
  value=qBound(-100,value,100);if(value==keyboardVerticalOffsetValue)return;
- runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();keyboardVerticalOffsetValue=value;emit geometryPreferencesChanged();emit changed();
+ runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();keyboardVerticalOffsetValue=value;rememberKeyboardGeometry();emit geometryPreferencesChanged();emit changed();
 }
 QString Controller::mappingJson()const{return QString::fromUtf8(QJsonDocument(mappingProfile).toJson(QJsonDocument::Indented));}
 bool Controller::saveMappings(QString json){
@@ -1022,7 +1033,13 @@ void Controller::openLayout(QString name,bool backReturnsHere){
  // The built-in default is allowed even though its XML hides it from the menu.
  if(menuLayoutNames.contains(name)||name==ProfileStore::defaults()["startLayout"].toString())startupLayout=name;
  layoutTransitionDirection=backReturnsHere?1:-1;
- resetCanvasPlacement();canvasEditMode.clear();sizeMoveMode=false;layout=compiled;layoutName=name;applySpeechProfile();updateSuggestions();emit layoutChanged();emit changed();
+ resetCanvasPlacement();canvasEditMode.clear();sizeMoveMode=false;layout=compiled;layoutName=name;
+ const auto geometry=keyboardGeometry.value(name).toObject();
+ scalePercent=geometry["keyboardScale"].toInt(100);
+ keyboardWidthScaleValue=geometry["keyboardWidthScale"].toInt(100);
+ keyboardHorizontalOffsetValue=geometry["keyboardHorizontalOffset"].toInt(0);
+ keyboardVerticalOffsetValue=geometry["keyboardVerticalOffset"].toInt(0);
+ emit geometryPreferencesChanged();applySpeechProfile();updateSuggestions();emit layoutChanged();emit changed();
 }
 void Controller::recover(){if(!desktopActive)return;paused=false;backStack.clear();openLayout("main-14x1-bottom",false);}
 void Controller::joystick(int index,double x,double y,bool active){
@@ -1547,7 +1564,7 @@ bool Controller::isSignInEnabled()const{
 #endif
 }
 QJsonObject Controller::signInPreferences() const{
- QJsonObject values{{"groupDwellTimes",QJsonObject::fromVariantMap(groupDwellValues)},{"startLayout",layoutName},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"gazeEnabled",gazeEnabled},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale}};
+ QJsonObject values{{"keyboardGeometry",keyboardGeometry},{"groupDwellTimes",QJsonObject::fromVariantMap(groupDwellValues)},{"startLayout",layoutName},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"gazeEnabled",gazeEnabled},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale}};
  values["invalidGazeToleranceMs"]=gazeToleranceMs;
  values["dwellGraceMs"]=dwellGraceValue;
  values["showPausedDwellProgress"]=showPausedDwellProgress;

@@ -1200,6 +1200,15 @@ private slots:
   QVERIFY(file.open(QIODevice::WriteOnly));file.write("broken again");file.close();
   QCOMPARE(store.load().values,ProfileStore::defaults());
  }
+ void perKeyboardGeometryValidation(){
+  QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
+  auto values=ProfileStore::defaults();
+  values["keyboardGeometry"]=QJsonObject{{"keyboard-a",QJsonObject{{"keyboardScale",125},{"keyboardWidthScale",75},{"keyboardHorizontalOffset",-20},{"keyboardVerticalOffset",10}}}};
+  QVERIFY(store.save(values,error));QCOMPARE(store.load().values["keyboardGeometry"],values["keyboardGeometry"]);
+  for(const QJsonValue &invalid:QList<QJsonValue>{42,QJsonObject{{"keyboard-a",false}},QJsonObject{{"keyboard-a",QJsonObject{{"keyboardWidthScale",49}}}},QJsonObject{{"keyboard-a",QJsonObject{{"keyboardHorizontalOffset",101}}}},QJsonObject{{"keyboard-a",QJsonObject{{"keyboardVerticalOffset",0.5}}}},QJsonObject{{"keyboard-a",QJsonObject{{"keyboardScale","125"}}}},QJsonObject{{"keyboard-a",QJsonObject{{"unknown",1}}}}}){
+   values["keyboardGeometry"]=invalid;QVERIFY(!store.save(values,error));
+  }
+ }
  void invalidKeyboardGeometryPreferencesAreRejected(){
   QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
   const auto defaults=ProfileStore::defaults();QVERIFY(store.save(defaults,error));
@@ -1209,7 +1218,7 @@ private slots:
  void invalidPreferencesAreRejected(){
   QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
   const auto defaults=ProfileStore::defaults();QVERIFY(store.save(defaults,error));
-  const QList<QPair<QString,QJsonValue>> invalid{{"predictionTextScale",49},{"predictionTextScale",301},{"predictionTextScale",100.5},{"predictionTextScale","100"},{"scratchpadTextScale",49},{"scratchpadTextScale",301},{"scratchpadTextScale",100.5},{"scratchpadTextScale","100"},{"version",2},{"dwellMs",249},{"dwellMs",3001},{"dwellMs",750.5},{"dwellMs","750"},{"literal",1},{"learning","false"},{"keyboardScale",49},{"keyboardScale",151},{"keyboardScale",100.5},{"keyboardTheme","unknown"},{"keyboardTheme",42},{"highContrast","yes"},{"enlargeShortLabels","yes"},{"shortLabelScale",49},{"shortLabelScale",201},{"shortLabelScale",100.5},{"shortLabelScale","100"},{"liveZoom","true"},{"progressiveZoom","true"},{"targetDwellEnabled","true"},{"targetStartDwellMs",249},{"targetStartDwellMs",3001},{"targetStartDwellMs",750.5},{"targetStartDwellMs","750"},{"targetConfirmDwellMs",249},{"targetConfirmDwellMs",3001},{"targetDwellRadius",9},{"targetDwellRadius",101},{"targetDwellRadius",40.5},{"targetDwellRadius","40"},{"zoomDurationMs",499},{"zoomDurationMs",5001},{"zoomDurationMs",1500.5},{"zoomDurationMs","1500"},{"magnifierZoom",1},{"magnifierZoom",9},{"magnifierZoom",4.5},{"magnifierZoom","4"},{"longLabelScale",49},{"longLabelScale",201},{"longLabelScale",100.5},{"longLabelScale","100"},{"rememberDesktop","yes"},{"startLayout","../other"},{"startLayout",""}};
+  const QList<QPair<QString,QJsonValue>> invalid{{"predictionTextScale",49},{"predictionTextScale",301},{"predictionTextScale",100.5},{"predictionTextScale","100"},{"scratchpadTextScale",49},{"scratchpadTextScale",301},{"scratchpadTextScale",100.5},{"scratchpadTextScale","100"},{"version",2},{"dwellMs",249},{"dwellMs",3001},{"dwellMs",750.5},{"dwellMs","750"},{"literal",1},{"learning","false"},{"keyboardScale",49},{"keyboardScale",151},{"keyboardScale",100.5},{"keyboardTheme","unknown"},{"keyboardTheme",42},{"highContrast","yes"},{"enlargeShortLabels","yes"},{"shortLabelScale",49},{"shortLabelScale",201},{"shortLabelScale",100.5},{"shortLabelScale","100"},{"liveZoom","true"},{"progressiveZoom","true"},{"targetDwellEnabled","true"},{"targetStartDwellMs",249},{"targetStartDwellMs",3001},{"targetStartDwellMs",750.5},{"targetStartDwellMs","750"},{"targetConfirmDwellMs",249},{"targetConfirmDwellMs",3001},{"targetDwellRadius",9},{"targetDwellRadius",101},{"targetDwellRadius",40.5},{"targetDwellRadius","40"},{"zoomDurationMs",-1},{"zoomDurationMs",5001},{"zoomDurationMs",1500.5},{"zoomDurationMs","1500"},{"magnifierZoom",1},{"magnifierZoom",9},{"magnifierZoom",4.5},{"magnifierZoom","4"},{"longLabelScale",49},{"longLabelScale",201},{"longLabelScale",100.5},{"longLabelScale","100"},{"rememberDesktop","yes"},{"startLayout","../other"},{"startLayout",""}};
   for(const auto &entry:invalid){auto values=defaults;values[entry.first]=entry.second;QVERIFY2(!store.save(values,error),qPrintable(entry.first));QVERIFY(!error.isEmpty());QCOMPARE(store.load().values,defaults);}
  }
  void newerPreferencesArePreservedUntilReset(){

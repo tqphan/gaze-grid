@@ -1480,6 +1480,29 @@ private slots:
 #endif
   QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),QByteArray("{broken"));file.close();QVERIFY(file.remove());
  }
+ void keyboardGeometryPersistsPerKeyboard(){
+  const QString first="keyboard-alphabet-14x4-bottom",second="main-14x1-bottom";
+  {Controller controller;controller.resetPreferences();controller.openLayout(first,false);
+   controller.setKeyboardScale(125);controller.setKeyboardWidthScale(75);controller.setKeyboardHorizontalOffset(-10);controller.setKeyboardVerticalOffset(-15);
+   controller.openLayout(second,false);
+   QCOMPARE(controller.keyboardScale(),100);QCOMPARE(controller.keyboardWidthScale(),100);QCOMPARE(controller.keyboardHorizontalOffset(),0);QCOMPARE(controller.keyboardVerticalOffset(),0);
+   controller.setKeyboardScale(80);controller.setKeyboardWidthScale(60);controller.setKeyboardHorizontalOffset(5);controller.setKeyboardVerticalOffset(-20);
+   controller.openLayout(first,false);
+   QCOMPARE(controller.keyboardScale(),125);QCOMPARE(controller.keyboardWidthScale(),75);QCOMPARE(controller.keyboardHorizontalOffset(),-10);QCOMPARE(controller.keyboardVerticalOffset(),-15);
+   QVERIFY(controller.savePreferences());}
+  {Controller controller;controller.openLayout(second,false);
+   QCOMPARE(controller.keyboardScale(),80);QCOMPARE(controller.keyboardWidthScale(),60);QCOMPARE(controller.keyboardHorizontalOffset(),5);QCOMPARE(controller.keyboardVerticalOffset(),-20);
+   controller.openLayout(first,false);QCOMPARE(controller.keyboardScale(),125);QCOMPARE(controller.keyboardWidthScale(),75);
+   controller.resetPreferences();controller.openLayout(second,false);
+   QCOMPARE(controller.keyboardScale(),100);QCOMPARE(controller.keyboardWidthScale(),100);QCOMPARE(controller.keyboardHorizontalOffset(),0);QCOMPARE(controller.keyboardVerticalOffset(),0);}
+ }
+ void legacyKeyboardGeometryMigratesToStartupKeyboard(){
+  auto values=ProfileStore::defaults();values["keyboardScale"]=125;values["keyboardWidthScale"]=75;values["keyboardHorizontalOffset"]=-10;values["keyboardVerticalOffset"]=-15;
+  ProfileStore store(QDir(appConfigDirectory()).filePath("profile.json"));QString error;QVERIFY(store.save(values,error));
+  Controller controller;QCOMPARE(controller.keyboardScale(),125);QCOMPARE(controller.keyboardWidthScale(),75);QCOMPARE(controller.keyboardHorizontalOffset(),-10);QCOMPARE(controller.keyboardVerticalOffset(),-15);
+  controller.openLayout("main-14x1-bottom",false);QCOMPARE(controller.keyboardScale(),100);QCOMPARE(controller.keyboardWidthScale(),100);
+  QVERIFY(controller.savePreferences());controller.resetPreferences();
+ }
  void keyboardGeometryPreferencesClamp(){
   Controller controller;
   QSignalSpy changed(&controller,&Controller::geometryPreferencesChanged);

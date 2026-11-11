@@ -32,6 +32,20 @@ QJsonObject ProfileStore::defaults(){
             {"systemKeyboard",true},{"startLayout","keyboard-alphabet-14x4-bottom"},{"keyboardScale",100},{"keyboardWidthScale",100},{"keyboardHorizontalOffset",0},{"keyboardVerticalOffset",0},{"keyboardTheme","system"},{"shortLabelScale",150},{"longLabelScale",100},{"magnifierRefreshHz",30},{"magnifierZoom",4},{"magnifierEnabled",false},{"progressiveZoom",false},{"zoomDurationMs",1500},{"targetDwellEnabled",true},{"targetStartDwellMs",750},{"targetConfirmDwellMs",1000},{"targetProgressStyle","ring"},{"targetProgressSize",56},{"targetProgressThickness",5},{"targetProgressOpacity",100},{"targetProgressColor","#00bfff"},{"targetDwellRadius",40},{"rememberDesktop",false}};
 }
 bool ProfileStore::valid(const QJsonObject &v){
+    if(v.contains("keyboardGeometry")){
+        if(!v["keyboardGeometry"].isObject())return false;
+        const auto keyboards=v["keyboardGeometry"].toObject();
+        for(auto it=keyboards.begin();it!=keyboards.end();++it){
+            if(it.key().isEmpty()||!it.value().isObject())return false;
+            const auto geometry=it.value().toObject();
+            for(auto field=geometry.begin();field!=geometry.end();++field){
+                const bool scale=field.key()=="keyboardScale"||field.key()=="keyboardWidthScale";
+                if(!scale&&field.key()!="keyboardHorizontalOffset"&&field.key()!="keyboardVerticalOffset")return false;
+                const auto value=field.value();
+                if(!value.isDouble()||value.toDouble()!=value.toInt()||value.toInt()<(scale?50:-100)||value.toInt()>(scale?150:100))return false;
+            }
+        }
+    }
     if(v.contains("cacheKeyboards")&&!v["cacheKeyboards"].isBool())return false;
     if(v.contains("groupDwellTimes")){
         if(!v["groupDwellTimes"].isObject())return false;
