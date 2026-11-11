@@ -65,6 +65,9 @@ class Controller:public QObject{
  Q_PROPERTY(int restoreWidth READ restoreWidth WRITE setRestoreWidth NOTIFY geometryPreferencesChanged)
  Q_PROPERTY(int restoreHeight READ restoreHeight WRITE setRestoreHeight NOTIFY geometryPreferencesChanged)
  Q_PROPERTY(int keyboardScale READ keyboardScale WRITE setKeyboardScale NOTIFY geometryPreferencesChanged)
+ Q_PROPERTY(int keyboardWidthScale READ keyboardWidthScale WRITE setKeyboardWidthScale NOTIFY geometryPreferencesChanged)
+ Q_PROPERTY(int keyboardHorizontalOffset READ keyboardHorizontalOffset WRITE setKeyboardHorizontalOffset NOTIFY geometryPreferencesChanged)
+ Q_PROPERTY(int keyboardVerticalOffset READ keyboardVerticalOffset WRITE setKeyboardVerticalOffset NOTIFY geometryPreferencesChanged)
  Q_PROPERTY(QString keyboardTheme MEMBER keyboardTheme NOTIFY changed)
  Q_PROPERTY(QString keyboardTransition MEMBER keyboardTransition NOTIFY changed)
  Q_PROPERTY(int transitionDurationMs MEMBER transitionDurationMs NOTIFY changed)
@@ -185,6 +188,12 @@ public:
  void invalidateInputContext();
  int keyboardScale()const{return scalePercent;}
  void setKeyboardScale(int scale);
+ int keyboardWidthScale()const{return keyboardWidthScaleValue;}
+ void setKeyboardWidthScale(int value);
+ int keyboardHorizontalOffset()const{return keyboardHorizontalOffsetValue;}
+ void setKeyboardHorizontalOffset(int value);
+ int keyboardVerticalOffset()const{return keyboardVerticalOffsetValue;}
+ void setKeyboardVerticalOffset(int value);
  int restoreCorner()const{return recoveryCorner;}
  int restoreWidth()const{return recoveryWidth;}
  int restoreHeight()const{return recoveryHeight;}
@@ -427,6 +436,9 @@ private:
  int dwellMs=750;
  int processPriorityValue=0;
  int scalePercent=100;
+ int keyboardWidthScaleValue=100;
+ int keyboardHorizontalOffsetValue=0;
+ int keyboardVerticalOffsetValue=0;
  int restoreOpacity=100;
  int recoveryCorner=2,recoveryWidth=64,recoveryHeight=64;
  QString keyboardTheme="system";

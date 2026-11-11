@@ -827,6 +827,9 @@ Window {
         }
        }
        SettingSlider {label:"Keyboard height";displayValue:controller.keyboardScale+"%";from:50;to:150;stepSize:5;value:controller.keyboardScale;onMoved:controller.keyboardScale=value}
+       SettingSlider {label:"Keyboard width";displayValue:controller.keyboardWidthScale+"%";from:50;to:150;stepSize:5;value:controller.keyboardWidthScale;onMoved:controller.keyboardWidthScale=value}
+       SettingSlider {label:"Horizontal offset";displayValue:controller.keyboardHorizontalOffset+"%";from:-100;to:100;stepSize:1;value:controller.keyboardHorizontalOffset;onMoved:controller.keyboardHorizontalOffset=value}
+       SettingSlider {label:"Vertical offset";displayValue:controller.keyboardVerticalOffset+"%";from:-100;to:100;stepSize:1;value:controller.keyboardVerticalOffset;onMoved:controller.keyboardVerticalOffset=value}
        SettingSlider {label:"Short key labels";displayValue:controller.shortLabelScale+"%";from:50;to:200;stepSize:5;value:controller.shortLabelScale;onMoved:controller.shortLabelScale=value}
        SettingSlider {label:"Long key labels";displayValue:controller.longLabelScale+"%";from:50;to:200;stepSize:5;value:controller.longLabelScale;onMoved:controller.longLabelScale=value}
        SettingSlider {label:"Click duration";displayValue:controller.clickDurationMs+" ms";from:0;to:250;stepSize:25;value:controller.clickDurationMs;onMoved:controller.clickDurationMs=Math.round(value/25)*25}

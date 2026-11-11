@@ -1480,13 +1480,25 @@ private slots:
 #endif
   QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),QByteArray("{broken"));file.close();QVERIFY(file.remove());
  }
+ void keyboardGeometryPreferencesClamp(){
+  Controller controller;
+  QSignalSpy changed(&controller,&Controller::geometryPreferencesChanged);
+  controller.setKeyboardWidthScale(0);QCOMPARE(controller.keyboardWidthScale(),50);
+  controller.setKeyboardWidthScale(200);QCOMPARE(controller.keyboardWidthScale(),150);
+  controller.setKeyboardHorizontalOffset(-200);QCOMPARE(controller.keyboardHorizontalOffset(),-100);
+  controller.setKeyboardHorizontalOffset(200);QCOMPARE(controller.keyboardHorizontalOffset(),100);
+  controller.setKeyboardVerticalOffset(-200);QCOMPARE(controller.keyboardVerticalOffset(),-100);
+  controller.setKeyboardVerticalOffset(200);QCOMPARE(controller.keyboardVerticalOffset(),100);
+  QCOMPARE(changed.count(),6);
+  controller.setKeyboardVerticalOffset(200);QCOMPARE(changed.count(),6);
+ }
  void visualPreferencesPersistAndReset(){
   ProfileStore store(QDir(appConfigDirectory()).filePath("profile.json"));QString error;
   auto legacy=ProfileStore::defaults();legacy.remove("scratchpadTextScale");legacy.remove("predictionTextScale");QVERIFY(store.save(legacy,error));
   {Controller controller;QCOMPARE(controller.property("scratchpadTextScale").toInt(),100);QCOMPARE(controller.property("predictionTextScale").toInt(),100);}
-  {Controller controller;controller.setProperty("keyboardTheme","ocean");controller.setProperty("keyboardScale",125);controller.setProperty("shortLabelScale",125);controller.setProperty("longLabelScale",150);controller.setProperty("scratchpadTextScale",175);controller.setProperty("predictionTextScale",200);QVERIFY(controller.savePreferences());}
-  {Controller controller;QCOMPARE(controller.property("keyboardTheme").toString(),QString("ocean"));QCOMPARE(controller.keyboardScale(),125);QCOMPARE(controller.property("shortLabelScale").toInt(),125);QCOMPARE(controller.property("longLabelScale").toInt(),150);QCOMPARE(controller.property("scratchpadTextScale").toInt(),175);QCOMPARE(controller.property("predictionTextScale").toInt(),200);
-   controller.resetPreferences();QCOMPARE(controller.property("keyboardTheme").toString(),QString("system"));QCOMPARE(controller.keyboardScale(),100);QCOMPARE(controller.property("shortLabelScale").toInt(),150);QCOMPARE(controller.property("longLabelScale").toInt(),100);QCOMPARE(controller.property("scratchpadTextScale").toInt(),100);QCOMPARE(controller.property("predictionTextScale").toInt(),100);}
+  {Controller controller;controller.setProperty("keyboardTheme","ocean");controller.setProperty("keyboardScale",125);controller.setKeyboardWidthScale(75);controller.setKeyboardHorizontalOffset(-10);controller.setKeyboardVerticalOffset(15);controller.setProperty("shortLabelScale",125);controller.setProperty("longLabelScale",150);controller.setProperty("scratchpadTextScale",175);controller.setProperty("predictionTextScale",200);QVERIFY(controller.savePreferences());}
+  {Controller controller;QCOMPARE(controller.property("keyboardTheme").toString(),QString("ocean"));QCOMPARE(controller.keyboardScale(),125);QCOMPARE(controller.keyboardWidthScale(),75);QCOMPARE(controller.keyboardHorizontalOffset(),-10);QCOMPARE(controller.keyboardVerticalOffset(),15);QCOMPARE(controller.property("shortLabelScale").toInt(),125);QCOMPARE(controller.property("longLabelScale").toInt(),150);QCOMPARE(controller.property("scratchpadTextScale").toInt(),175);QCOMPARE(controller.property("predictionTextScale").toInt(),200);
+   controller.resetPreferences();QCOMPARE(controller.property("keyboardTheme").toString(),QString("system"));QCOMPARE(controller.keyboardScale(),100);QCOMPARE(controller.keyboardWidthScale(),100);QCOMPARE(controller.keyboardHorizontalOffset(),0);QCOMPARE(controller.keyboardVerticalOffset(),0);QCOMPARE(controller.property("shortLabelScale").toInt(),150);QCOMPARE(controller.property("longLabelScale").toInt(),100);QCOMPARE(controller.property("scratchpadTextScale").toInt(),100);QCOMPARE(controller.property("predictionTextScale").toInt(),100);}
  }
  void legacyHighContrastMigratesToTheme(){
   const auto path=QDir(appConfigDirectory()).filePath("profile.json");

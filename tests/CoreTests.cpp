@@ -1200,11 +1200,17 @@ private slots:
   QVERIFY(file.open(QIODevice::WriteOnly));file.write("broken again");file.close();
   QCOMPARE(store.load().values,ProfileStore::defaults());
  }
+ void invalidKeyboardGeometryPreferencesAreRejected(){
+  QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
+  const auto defaults=ProfileStore::defaults();QVERIFY(store.save(defaults,error));
+  const QList<QPair<QString,QJsonValue>> invalid{{"keyboardWidthScale",49},{"keyboardWidthScale",151},{"keyboardWidthScale",0.5},{"keyboardWidthScale","100"},{"keyboardHorizontalOffset",-101},{"keyboardHorizontalOffset",101},{"keyboardHorizontalOffset",0.5},{"keyboardHorizontalOffset","100"},{"keyboardVerticalOffset",-101},{"keyboardVerticalOffset",101},{"keyboardVerticalOffset",0.5},{"keyboardVerticalOffset","100"}};
+  for(const auto &entry:invalid){auto values=defaults;values[entry.first]=entry.second;QVERIFY2(!store.save(values,error),qPrintable(entry.first));QCOMPARE(store.load().values,defaults);}
+ }
  void invalidPreferencesAreRejected(){
   QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
   const auto defaults=ProfileStore::defaults();QVERIFY(store.save(defaults,error));
   const QList<QPair<QString,QJsonValue>> invalid{{"predictionTextScale",49},{"predictionTextScale",301},{"predictionTextScale",100.5},{"predictionTextScale","100"},{"scratchpadTextScale",49},{"scratchpadTextScale",301},{"scratchpadTextScale",100.5},{"scratchpadTextScale","100"},{"version",2},{"dwellMs",249},{"dwellMs",3001},{"dwellMs",750.5},{"dwellMs","750"},{"literal",1},{"learning","false"},{"keyboardScale",49},{"keyboardScale",151},{"keyboardScale",100.5},{"keyboardTheme","unknown"},{"keyboardTheme",42},{"highContrast","yes"},{"enlargeShortLabels","yes"},{"shortLabelScale",49},{"shortLabelScale",201},{"shortLabelScale",100.5},{"shortLabelScale","100"},{"liveZoom","true"},{"progressiveZoom","true"},{"targetDwellEnabled","true"},{"targetStartDwellMs",249},{"targetStartDwellMs",3001},{"targetStartDwellMs",750.5},{"targetStartDwellMs","750"},{"targetConfirmDwellMs",249},{"targetConfirmDwellMs",3001},{"targetDwellRadius",9},{"targetDwellRadius",101},{"targetDwellRadius",40.5},{"targetDwellRadius","40"},{"zoomDurationMs",499},{"zoomDurationMs",5001},{"zoomDurationMs",1500.5},{"zoomDurationMs","1500"},{"magnifierZoom",1},{"magnifierZoom",9},{"magnifierZoom",4.5},{"magnifierZoom","4"},{"longLabelScale",49},{"longLabelScale",201},{"longLabelScale",100.5},{"longLabelScale","100"},{"rememberDesktop","yes"},{"startLayout","../other"},{"startLayout",""}};
-  for(const auto &entry:invalid){auto values=defaults;values[entry.first]=entry.second;QVERIFY(!store.save(values,error));QVERIFY(!error.isEmpty());QCOMPARE(store.load().values,defaults);}
+  for(const auto &entry:invalid){auto values=defaults;values[entry.first]=entry.second;QVERIFY2(!store.save(values,error),qPrintable(entry.first));QVERIFY(!error.isEmpty());QCOMPARE(store.load().values,defaults);}
  }
  void newerPreferencesArePreservedUntilReset(){
   QTemporaryDir dir;QString path=dir.filePath("profile.json"),error;ProfileStore store(path);

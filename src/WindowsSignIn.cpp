@@ -18,7 +18,7 @@ QJsonObject WindowsSignIn::validatedProfile(const QJsonObject &source){
  // Only keyboard presentation, gaze and magnifier preferences cross the desktop boundary.
  for(const auto &name:{"magnifierRefreshHz","magnifierEnabled","magnifierZoom","progressiveZoom","zoomDurationMs","targetDwellEnabled","targetStartDwellMs","targetConfirmDwellMs","targetDwellRadius"})
   if(source.contains(name))result[name]=source[name];
- for(const auto &name:{"startLayout","keyboardScale","keyboardTheme","groupDwellTimes","dwellMs","dwellIndicatorStyle","latchStyle","lockStyle","gazeEnabled","clampGazeForKeyboard","clampGazeForPointSelection","invalidGazeToleranceMs","gazeFilterType","gazeFilterGain","gazeSaccadeDistance","gazeSmoothingLevel","smoothWhenChangingGazeTarget","shortLabelScale","longLabelScale","scratchpadTextScale"})
+ for(const auto &name:{"startLayout","keyboardScale","keyboardWidthScale","keyboardHorizontalOffset","keyboardVerticalOffset","keyboardTheme","groupDwellTimes","dwellMs","dwellIndicatorStyle","latchStyle","lockStyle","gazeEnabled","clampGazeForKeyboard","clampGazeForPointSelection","invalidGazeToleranceMs","gazeFilterType","gazeFilterGain","gazeSaccadeDistance","gazeSmoothingLevel","smoothWhenChangingGazeTarget","shortLabelScale","longLabelScale","scratchpadTextScale"})
   if(source.contains(name))result[name]=source[name];
  result["predictionMode"]="off";result["learning"]=false;
  if(!ProfileStore::valid(result))return {};

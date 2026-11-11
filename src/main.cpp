@@ -577,8 +577,17 @@ int main(int argc,char **argv){
   bool top=layout["position"].toString()=="Top";
   int offset=int(dimension(layout.value("verticaloffset","0").toString(),size.height()));
   const bool minimized=controller.property("layoutName").toString().startsWith("minimized-off-screen-");
+  if(!fullScreen&&!minimized){
+   width=qBound(1,int(width*controller.keyboardWidthScale()/100.0),size.width());
+   offset+=qRound(size.height()*controller.keyboardVerticalOffset()/100.0);
+  }
   int x=(size.width()-width)/2+int(dimension(layout.value("horizontaloffset","0").toString(),size.width()));
+  if(!fullScreen&&!minimized)x+=qRound(size.width()*controller.keyboardHorizontalOffset()/100.0);
   int y=(top?0:size.height()-height)+offset;
+  if(!fullScreen&&!minimized){
+   x=qBound(0,x,qMax(0,size.width()-width));
+   y=qBound(0,y,qMax(0,size.height()-height));
+  }
   if(fullScreen){width=size.width();height=size.height();x=0;y=0;offset=0;}
   // Linux needs an on-screen recovery surface; Windows uses the XML offsets.
 #ifdef GAZE_GRID_LINUX
@@ -598,11 +607,12 @@ int main(int argc,char **argv){
   window->setProperty("screenWidth",size.width());window->setProperty("screenHeight",size.height());window->setProperty("logicalX",x);window->setProperty("logicalY",y);
 #ifdef GAZE_GRID_LINUX
   if(QGuiApplication::platformName().startsWith("wayland")){
-   if(inputMethod&&!inputMethod->attachPanel(window,top||fullScreen)){QTextStream(stderr)<<"Unable to assign keyboard surface role\n";app.exit(2);return;}
+   const bool useLayer=top||fullScreen||(!minimized&&(controller.keyboardHorizontalOffset()!=0||controller.keyboardVerticalOffset()!=0));
+   if(inputMethod&&!inputMethod->attachPanel(window,useLayer)){QTextStream(stderr)<<"Unable to assign keyboard surface role\n";app.exit(2);return;}
    // Keep every keyboard layout above fullscreen clients without taking focus.
-   if(!inputMethod||top||fullScreen){auto layer=LayerShellQt::Window::get(window);layer->setScope("gaze-grid-keyboard");layer->setScreen(screen);layer->setLayer(LayerShellQt::Window::LayerOverlay);
-   layer->setAnchors(minimized?LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop)|LayerShellQt::Window::AnchorLeft:LayerShellQt::Window::Anchors(top?LayerShellQt::Window::AnchorTop:LayerShellQt::Window::AnchorBottom));
-   layer->setMargins(minimized?QMargins(x,y,0,0):top?QMargins(0,offset,0,0):QMargins(0,0,0,-offset));layer->setDesiredSize(QSize(width,height));
+   if(!inputMethod||useLayer){auto layer=LayerShellQt::Window::get(window);layer->setScope("gaze-grid-keyboard");layer->setScreen(screen);layer->setLayer(LayerShellQt::Window::LayerOverlay);
+   layer->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop)|LayerShellQt::Window::AnchorLeft);
+   layer->setMargins(QMargins(x,y,0,0));layer->setDesiredSize(QSize(width,height));
    layer->setKeyboardInteractivity(controller.scratchpadEditable()?LayerShellQt::Window::KeyboardInteractivityOnDemand:LayerShellQt::Window::KeyboardInteractivityNone);layer->setActivateOnShow(false);layer->setExclusiveZone(inputMethod||minimized||fullScreen?-1:0);
    }
    if(target){target->setScreen(screen);target->resize(size);auto overlay=LayerShellQt::Window::get(target);overlay->setScope("gaze-grid-target");overlay->setScreen(screen);overlay->setLayer(LayerShellQt::Window::LayerOverlay);overlay->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop)|LayerShellQt::Window::AnchorLeft);overlay->setDesiredSize(size);overlay->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);overlay->setExclusiveZone(-1);}
