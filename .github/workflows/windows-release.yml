@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      checks: read
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -46,15 +46,7 @@ jobs:
           if os.environ['GITHUB_REF_TYPE'] == 'tag' and os.environ['GITHUB_REF_NAME'] != 'v' + version:
               raise SystemExit('Tag must match the project version.')
           PY
-          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" > checks.json
-          python - <<'PY'
-          import json
-          checks = json.load(open('checks.json'))['check_runs']
-          for name in ('linux', 'windows'):
-              matches = [c for c in checks if c['name'] == name and c['app']['slug'] == 'github-actions']
-              if not matches or any(c['conclusion'] != 'success' for c in matches):
-                  raise SystemExit(f'Required CI check is not successful: {name}')
-          PY
+          python platform/windows/Validate-ReleaseCi.py
   build:
     needs: validate
     runs-on: windows-2022

@@ -5,6 +5,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. "$PSScriptRoot/Clear-SigningIdentity.ps1"
 # This script runs on a fresh hosted runner. Never build, install dependencies,
 # load artifact scripts, package, or execute the signed input on this runner.
 $root = (Resolve-Path "$PSScriptRoot/../..").Path
@@ -31,9 +32,8 @@ try {
     $signature = Get-AuthenticodeSignature -LiteralPath $path
     # Self-signed publisher trust is deliberately not installed on this runner.
     if ($signature.SignerCertificate.Thumbprint -ne $identity.thumbprint -or $signature.Status -notin @('Valid', 'UnknownError', 'NotTrusted')) { throw 'Unexpected signature.' }
-    "signed_hash=$((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
+    $signedHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
 } finally {
-    Remove-Item -LiteralPath $pfx -Force -ErrorAction SilentlyContinue
-    if ($cert) { Remove-Item "Cert:\CurrentUser\My\$($cert.Thumbprint)" -Force -ErrorAction SilentlyContinue }
-    Remove-Item Env:PFX_BASE64, Env:PFX_PASSWORD -ErrorAction SilentlyContinue
+    Clear-GazeGridSigningIdentity -Certificate $cert -PfxPath $pfx
 }
+"signed_hash=$signedHash" | Out-File $env:GITHUB_OUTPUT -Append
