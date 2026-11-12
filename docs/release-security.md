@@ -17,6 +17,18 @@ Release jobs use separate GitHub-hosted runners:
 5. Verify and install the signed MSI on another runner without a private key.
 6. Prepare checksums and attach verified assets to a draft release.
 
+The build job uses `windows-build`, whose only secret is
+`GAZEGRID_TOBII_HEADERS_BASE64`. Only the two signing jobs use `windows-release`,
+which contains `GAZEGRID_SIGNING_PFX_BASE64` and `GAZEGRID_SIGNING_PFX_PASSWORD`.
+Both environments require owner approval and allow only `main` and version tags.
+Keep signing credentials out of repository and organization secrets too: those
+would also be available to build jobs. Never approve a rerun of a historical
+workflow that gives its build job access to the signing environment.
+
+Secret isolation requires separate environments. Omitting a secret from a step's
+`env` block or deferring PFX import does not isolate the environment's secrets
+from a compromised job runner.
+
 Signing inputs have fixed filenames and must match SHA-256 outputs from their
 producing jobs in the same workflow run. Artifact uploads are immutable within
 the run. Verification checks the pinned publisher identity, and upgrade testing
