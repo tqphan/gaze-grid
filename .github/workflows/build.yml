@@ -31,7 +31,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.14.0'
+          python-version: '3.14.10'
+      - name: Test publishing boundary
+        run: python tests/ReleaseAssetsTests.py
       - name: Install Qt with locked installer dependencies
         shell: pwsh
         run: ./platform/windows/Install-Qt.ps1

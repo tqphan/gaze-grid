@@ -22,6 +22,10 @@ producing jobs in the same workflow run. Artifact uploads are immutable within
 the run. Verification checks the pinned publisher identity, and upgrade testing
 checks the pinned baseline hash and signature before installing it. Public
 certificate and baseline pins are in `platform/windows/release-trust.json`.
+The publisher independently checks the final MSI against the signing job's
+digest, restricts asset filenames, checks the pinned public certificate and
+checksum manifest, and regenerates release notes from source. Installer tests
+cannot replace a release asset by rewriting its checksum file.
 Private keys must never be committed.
 
 The Qt installer source is pinned by commit and archive hash. Its Python runtime,
