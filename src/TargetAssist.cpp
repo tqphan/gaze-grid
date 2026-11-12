@@ -7,6 +7,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <objbase.h>
 #include <uiautomationclient.h>
 namespace {
 template<class T> struct Com {
