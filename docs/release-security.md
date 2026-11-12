@@ -2,6 +2,8 @@
 
 The Windows release workflow accepts `main` or an exact version tag on a commit
 reachable from `main`. Both Linux and Windows CI must have passed for that commit.
+Publishing requires a version tag created by an administrator. A manual run on
+`main` with `create_release=false` tests the full pipeline without publishing.
 Checkout does not retain credentials, and tokens default to read access. Only the
 draft publisher can write repository contents.
 

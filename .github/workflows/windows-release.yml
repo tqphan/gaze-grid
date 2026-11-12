@@ -28,11 +28,15 @@ jobs:
       - name: Require approved source and successful CI
         env:
           GH_TOKEN: ${{ github.token }}
+          CREATE_RELEASE: ${{ github.event_name == 'push' || inputs.create_release }}
         shell: bash
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" != refs/heads/main && "$GITHUB_REF" != refs/tags/v* ]]; then
             echo 'Releases require main or a version tag.'; exit 1
+          fi
+          if [[ "$CREATE_RELEASE" == true && "$GITHUB_REF_TYPE" != tag ]]; then
+            echo 'Create and push the version tag before publishing a release.'; exit 1
           fi
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
           python - <<'PY'
