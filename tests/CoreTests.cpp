@@ -987,6 +987,67 @@ private slots:
   QVERIFY(p.start("MouseMoveAndLeftClick"));p.select({.5,.5});p.trackingLost();
   QVERIFY(!p.busy()); // Other pointer actions still cancel immediately.
  }
+ void targetAssistResolvesNearbyControls(){
+  QRectF selected;
+  const QRectF button(100,100,20,20);
+  QCOMPARE(TargetAssist::resolve({20,20},{button},selected),QPointF(20,20));
+  QVERIFY(selected.isNull());
+  auto point=TargetAssist::resolve({95,110},{button},selected);
+  QVERIFY(point.x()>95);QVERIFY(point.x()<110);QCOMPARE(selected,button);
+  selected={};
+  point=TargetAssist::resolve({100,110},{QRectF(100,100,600,20)},selected);
+  QVERIFY(point.x()<=124);
+  // A deliberate move away releases the previous target immediately.
+  QCOMPARE(TargetAssist::resolve({200,110},{button},selected),QPointF(200,110));
+  QVERIFY(selected.isNull());
+  // Equally plausible adjacent controls must not pull in either direction.
+  QCOMPARE(TargetAssist::resolve({125,110},{button,QRectF(130,100,20,20)},selected),QPointF(125,110));
+  QVERIFY(selected.isNull());
+  // Retain the current control through small boundary jitter.
+  selected=button;
+  TargetAssist::resolve({125,110},{button,QRectF(130,100,20,20)},selected);
+  QCOMPARE(selected,button);
+ }
+ void targetAssistSettingsChangeMovement(){
+  const QList<QRectF> controls{QRectF(100,100,20,20)};
+  QRectF selected;
+  const QPointF gaze(95,110);
+  QCOMPARE(TargetAssist::resolve(gaze,controls,selected,0),gaze);
+  selected={};const auto weak=TargetAssist::resolve(gaze,controls,selected,20);
+  selected={};const auto strong=TargetAssist::resolve(gaze,controls,selected,100);
+  QVERIFY(strong.x()>weak.x());
+  selected={};QCOMPARE(TargetAssist::resolve({75,110},controls,selected,65,10),QPointF(75,110));
+  selected={};QVERIFY(TargetAssist::resolve({75,110},controls,selected,65,80).x()>75);
+  const QList<QRectF> adjacent{controls[0],QRectF(130,100,20,20)};
+  selected=controls[0];TargetAssist::resolve({125,110},adjacent,selected,65,40,0);QVERIFY(selected.isNull());
+  selected=controls[0];TargetAssist::resolve({125,110},adjacent,selected,65,40,8);QCOMPARE(selected,controls[0]);
+ }
+ void targetAssistSettingsPersistAndValidate(){
+  auto profile=ProfileStore::defaults();
+  const QStringList keys{"targetAssistStrength","targetAssistRange","targetAssistRetention"};
+  const QList<int> defaults{65,40,8},minimum{0,10,0},maximum{100,200,40};
+  for(int i=0;i<keys.size();++i){
+   const auto key=keys[i];QCOMPARE(profile[key].toInt(),defaults[i]);
+   for(const auto invalid: {QJsonValue(minimum[i]-1),QJsonValue(maximum[i]+1),QJsonValue(1.5),QJsonValue("bad"),QJsonValue(true)}){
+    auto changed=profile;changed[key]=invalid;QVERIFY(!ProfileStore::valid(changed));
+   }
+   auto changed=profile;changed[key]=minimum[i];QVERIFY(ProfileStore::valid(changed));
+   changed[key]=maximum[i];QVERIFY(ProfileStore::valid(changed));
+  }
+  profile["targetAssistStrength"]=90;profile["targetAssistRange"]=80;profile["targetAssistRetention"]=12;
+  QTemporaryDir dir;ProfileStore store(dir.filePath("profile.json"));QString error;
+  QVERIFY(store.save(profile,error));const auto saved=store.load().values;
+  for(const auto &key:keys)QCOMPARE(saved[key],profile[key]);
+  for(const auto &key:keys)profile.remove(key);
+  QVERIFY(ProfileStore::valid(profile));
+ }
+ void targetAssistPreferenceValidation(){
+  auto profile=ProfileStore::defaults();
+  QVERIFY(!profile["magneticTargetAssist"].toBool());
+  profile["magneticTargetAssist"]=true;QVERIFY(ProfileStore::valid(profile));
+  profile["magneticTargetAssist"]="yes";QVERIFY(!ProfileStore::valid(profile));
+  profile.remove("magneticTargetAssist");QVERIFY(ProfileStore::valid(profile));
+ }
  void magneticCursorTracksOnlyWhenEnabledAndIdle(){
   PointerActions p;QList<QPointF> moves;p.move=[&](double x,double y){moves<<QPointF(x,y);return true;};
   QVERIFY(!p.follow({.2,.3}));QSignalSpy done(&p,&PointerActions::completed);

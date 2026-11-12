@@ -124,6 +124,10 @@ class Controller:public QObject{
  Q_PROPERTY(bool magneticCursor READ magneticCursor NOTIFY changed)
  Q_PROPERTY(int clickDurationMs MEMBER clickDurationMs NOTIFY changed)
  Q_PROPERTY(bool magneticMouseRelative MEMBER magneticMouseRelative NOTIFY changed)
+ Q_PROPERTY(bool magneticTargetAssist MEMBER magneticTargetAssist NOTIFY changed)
+ Q_PROPERTY(int targetAssistStrength MEMBER targetAssistStrength NOTIFY changed)
+ Q_PROPERTY(int targetAssistRange MEMBER targetAssistRange NOTIFY changed)
+ Q_PROPERTY(int targetAssistRetention MEMBER targetAssistRetention NOTIFY changed)
  Q_PROPERTY(int scrollSpeed MEMBER scrollSpeed NOTIFY changed)
  Q_PROPERTY(int scrollDeadzone MEMBER scrollDeadzone NOTIFY changed)
  Q_PROPERTY(int scrollAxis MEMBER scrollAxis NOTIFY changed)
@@ -410,6 +414,8 @@ private:
  int magnifierRevision=0;
  int clickDurationMs=0;
  bool magneticMouseRelative=false;
+ bool magneticTargetAssist=false;
+ int targetAssistStrength=65,targetAssistRange=40,targetAssistRetention=8;
  int scrollSpeed=100,scrollDeadzone=50,scrollAxis=0;
  bool clampScrollGaze=true,cancelScrollOffscreen=false;
  bool showScrollZones=false;

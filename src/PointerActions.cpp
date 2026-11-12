@@ -66,7 +66,7 @@ void PointerActions::execute(){
         }
         finish(true);return;
     }
-    if(a=="MouseMagneticCursor"){following=!following;if(following)lookScroll.stop();finish(true);return;}
+    if(a=="MouseMagneticCursor"){assist.reset();following=!following;if(following)lookScroll.stop();finish(true);return;}
     if(a=="MouseDrag"){
         if(!moveTo(current.source)||!setButton(272,true)){finish(false);return;}
         phase=1;dragStep=0;timer.start(100);return;
@@ -123,6 +123,7 @@ void PointerActions::cancel(){
 }
 void PointerActions::reset(bool preserveMagnetic){
     scrollTrackingPaused=false;
+    assist.reset();
     timer.stop();active=false;choosing=false;phase=0;sourceChosen=false;last={};following=preserveMagnetic&&following;
     lookScroll.stop();
     if(releaseAll)releaseAll();held.clear();instruction.clear();emit changed();
@@ -155,10 +156,12 @@ bool PointerActions::follow(QPointF point,bool overDesktop){
         if(!delta.isNull()&&(!scrollAxes||!scrollAxes(delta.x(),delta.y()))){cancel();return false;}
     }
     if(following){
+        if(assistEnabled&&held.isEmpty())point=assist.adjust(point);
+        else assist.reset();
         if(relativeMagnetic){
             if(!moveRelativeTo||!moveRelativeTo(point.x(),point.y())){cancel();return false;}
         }else if(!moveTo(point)){cancel();return false;}
     }
     return true;
 }
-void PointerActions::setDisplaySize(QSizeF size){if(size!=displaySize){cancel();displaySize=size;}}
+void PointerActions::setDisplaySize(QSizeF size){if(size!=displaySize){assist.reset();cancel();displaySize=size;}}

@@ -6,6 +6,7 @@
 #include <QElapsedTimer>
 #include <QSizeF>
 #include "LookScroll.h"
+#include "TargetAssist.h"
 #include <functional>
 
 class PointerActions:public QObject {
@@ -27,6 +28,8 @@ public:
     void configureScroll(int speed,int deadzone,int axis){lookScroll.configure(speed,deadzone,axis);}
     void setScrollGazePolicy(bool clamp,bool cancelOffscreen){clampScrollGaze=clamp;cancelScrollOffscreen=cancelOffscreen;}
     void setMagneticRelative(bool relative){relativeMagnetic=relative;}
+    void setTargetAssist(bool enabled){if(assistEnabled!=enabled){assistEnabled=enabled;assist.reset();}}
+    void configureTargetAssist(int strength,int range,int retention){assist.configure(strength,range,retention);}
     bool follow(QPointF point,bool overDesktop=true);
     void setDisplaySize(QSizeF size);
     bool magnetic()const{return following;}
@@ -55,6 +58,8 @@ public:
     bool scrollTrackingPaused=false;
     QSet<int> held;
     QPointF position{.5,.5};
+    TargetAssist assist;
+    bool assistEnabled=false;
     bool relativeMagnetic=false;
     bool clampScrollGaze=true,cancelScrollOffscreen=false;
     bool active=false,choosing=false,sourceChosen=false,following=false;

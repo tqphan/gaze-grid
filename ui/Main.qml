@@ -589,7 +589,7 @@ Window {
   }
  }
  Window {
-  id:settings;onActiveChanged:if(active)controller.refreshWindowsStartup();objectName:"settingsWindow";visible:false;width:Math.min(1100,root.screenWidth);height:Math.min(800,root.screenHeight-60);title:"Gaze Grid - Settings";color:Kirigami.Theme.backgroundColor
+  id:settings;onActiveChanged:if(active)controller.refreshWindowsStartup();objectName:"settingsWindow";visible:false;width:Math.min(1100,root.screenWidth);height:Math.min(800,root.screenHeight-60);title:"Settings";color:Kirigami.Theme.backgroundColor
   minimumWidth:Math.min(760,root.screenWidth);minimumHeight:Math.min(500,root.screenHeight-60)
   ColorDialog {
    id:gazeColorDialog
@@ -1162,6 +1162,15 @@ Window {
          onActivated:controller.magneticMouseRelative=currentIndex===1
         }
        }
+       SettingsCheckBox {
+        objectName:"magneticTargetAssistCheckBox"
+        text:"Enable target assist where available"
+        checked:controller.magneticTargetAssist
+        onToggled:controller.magneticTargetAssist=checked
+       }
+       SettingSlider {label:"Strength";displayValue:controller.targetAssistStrength+"%";from:0;to:100;stepSize:5;value:controller.targetAssistStrength;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistStrength=value}
+       SettingSlider {label:"Range";displayValue:controller.targetAssistRange+" px";from:10;to:200;stepSize:5;value:controller.targetAssistRange;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistRange=value}
+       SettingSlider {label:"Target retention";displayValue:controller.targetAssistRetention+" px";from:0;to:40;stepSize:1;value:controller.targetAssistRetention;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistRetention=value}
        Desktop.Label {text:controller.magneticMouseRelative?"Moves the cursor toward your gaze point using relative movement and cursor-position feedback.":"Moves the cursor directly to where you look.";wrapMode:Text.Wrap;Layout.fillWidth:true}
        Desktop.Label {text:Qt.platform.os==="windows"?"Applies immediately. Save preferences to keep this setting after restarting.":"Relative movement requires global cursor-position feedback, which is unavailable through the Linux desktop portal.";wrapMode:Text.Wrap;Layout.fillWidth:true;opacity:0.6}
       }

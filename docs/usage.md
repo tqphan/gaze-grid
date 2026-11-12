@@ -193,3 +193,7 @@ Prediction languages are selected under Settings > Typing & speech > Word predic
 **Settings > Typing & speech > Word prediction > Use best-effort prediction only** uses Gaze Grid's typed-key history for desktop prediction and completion, even when the target exposes text and caret context. It defaults to on. Private fields remain excluded; scratchpad prediction is unchanged. Save preferences to retain the choice.
 
 **Settings > Typing & speech > Word prediction > Underline best-effort prediction typed text** underlines the matching typed portion of best-effort predictions. It defaults to off and does not apply to caret-aware predictions, scratchpad predictions, or IME candidates. Save preferences to retain the choice.
+
+Magnetic mouse offers **Enable target assist where available** (off by default). On Windows, nearby accessible controls gently attract the cursor in either movement mode. Unsupported controls and other platforms retain normal gaze movement. Assistance is suspended while a mouse button is held. Save preferences keeps the setting after restart.
+
+Target assist settings: **Strength** (0?100%, default 65%), **Range** (10?200 pixels, default 40), and **Target retention** (0?40 pixels, default 8). Retention adds a preference for the current target when nearby controls compete; zero removes that preference. These settings apply immediately and are retained by Save preferences.

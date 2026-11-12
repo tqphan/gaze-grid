@@ -1083,6 +1083,30 @@ private slots:
    values[key]="true";QVERIFY(!ProfileStore::valid(values));
   }
  }
+ void targetAssistSettingsPersistAndReset(){
+  {Controller c;
+   QVERIFY(!c.property("magneticTargetAssist").toBool());
+   c.setProperty("magneticTargetAssist",true);c.setProperty("targetAssistStrength",90);
+   c.setProperty("targetAssistRange",80);c.setProperty("targetAssistRetention",12);
+   QVERIFY(c.savePreferences());
+  }
+  {Controller c;
+   QVERIFY(c.property("magneticTargetAssist").toBool());
+   QCOMPARE(c.property("targetAssistStrength").toInt(),90);
+   QCOMPARE(c.property("targetAssistRange").toInt(),80);
+   QCOMPARE(c.property("targetAssistRetention").toInt(),12);
+   c.resetPreferences();
+   QVERIFY(!c.property("magneticTargetAssist").toBool());
+   QCOMPARE(c.property("targetAssistStrength").toInt(),65);
+   QCOMPARE(c.property("targetAssistRange").toInt(),40);
+   QCOMPARE(c.property("targetAssistRetention").toInt(),8);
+  }
+  {Controller c;
+   QCOMPARE(c.property("targetAssistStrength").toInt(),65);
+   QCOMPARE(c.property("targetAssistRange").toInt(),40);
+   QCOMPARE(c.property("targetAssistRetention").toInt(),8);
+  }
+ }
  void scrollSettingsPersistAndReset(){
   {Controller c;c.setProperty("scrollSpeed",170);c.setProperty("scrollDeadzone",90);c.setProperty("scrollAxis",1);QVERIFY(c.savePreferences());}
   {Controller c;QCOMPARE(c.property("scrollSpeed").toInt(),170);QCOMPARE(c.property("scrollDeadzone").toInt(),90);QCOMPARE(c.property("scrollAxis").toInt(),1);c.resetPreferences();}
