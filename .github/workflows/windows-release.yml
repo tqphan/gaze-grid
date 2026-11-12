@@ -58,8 +58,8 @@ jobs:
   build:
     needs: validate
     runs-on: windows-2022
-    # Only the pinned SDK header secret is referenced here; never the signing key.
-    environment: windows-release
+    # This environment contains only SDK headers, never signing secrets.
+    environment: windows-build
     timeout-minutes: 45
     outputs:
       exe_hash: ${{ steps.build.outputs.exe_hash }}
