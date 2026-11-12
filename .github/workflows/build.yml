@@ -44,12 +44,26 @@ jobs:
           $cert = Get-PfxCertificate "$env:RUNNER_TEMP/signing/gaze-grid.cer"
           Import-Certificate -FilePath "$env:RUNNER_TEMP/signing/gaze-grid.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
           "SIGNING_THUMBPRINT=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Build, test, sign and package (ephemeral CI identity)
+      - name: Build, test and stage release inputs (public CI certificate only)
         shell: pwsh
-        run: ./platform/windows/Build-Release.ps1 -CertificateThumbprint $env:SIGNING_THUMBPRINT
+        run: ./platform/windows/Build-Release.ps1 -PrepareOnly -PublicCertificate "$env:RUNNER_TEMP/signing/gaze-grid.cer"
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
+      - name: Exercise release packaging with the ephemeral CI identity
+        shell: pwsh
+        run: |
+          $signTool = (Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+          & $signTool sign /sha1 $env:SIGNING_THUMBPRINT /fd SHA256 build/windows/Release/gaze-grid.exe
+          if ($LASTEXITCODE -ne 0) { throw 'CI executable signing failed.' }
+          cpack --config platform/windows/CPack-Release.cmake -G WIX -C Release
+          if ($LASTEXITCODE -ne 0) { throw 'Staged packaging failed.' }
+          $msi = @(Get-ChildItem build/windows/*.msi)
+          if ($msi.Count -ne 1) { throw 'Expected one CI MSI.' }
+          & $signTool sign /sha1 $env:SIGNING_THUMBPRINT /fd SHA256 $msi[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'CI MSI signing failed.' }
+          & $signTool verify /pa $msi[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'CI MSI signature verification failed.' }
       - name: Verify MSI installation, signed application launch and uninstall
         shell: pwsh
         run: |
