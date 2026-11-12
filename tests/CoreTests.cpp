@@ -16,6 +16,7 @@
 #include "PointerActions.h"
 #include "RelativePointer.h"
 #include "GazeSmoothing.h"
+#include "MillMouseSmoothing.h"
 #include <limits>
 #include "MagnifierGeometry.h"
 #include "WordPrediction.h"
@@ -1007,6 +1008,74 @@ private slots:
   selected=button;
   TargetAssist::resolve({125,110},{button,QRectF(130,100,20,20)},selected);
   QCOMPARE(selected,button);
+ }
+ void targetAssistEdgesAndCombinedMode(){
+  const QRectF button(100,100,20,20);QRectF selected;
+  auto edge=[&](QPointF point){return TargetAssist::resolve(point,{button},selected,65,40,8,1,2,1);};
+  QCOMPARE(edge({105,110}),QPointF(105,110));
+  QCOMPARE(edge({99,110}),QPointF(101,110));
+  QCOMPARE(edge({121,110}),QPointF(119,110));
+  QCOMPARE(edge({110,99}),QPointF(110,101));
+  QCOMPARE(edge({110,121}),QPointF(110,119));
+  QCOMPARE(edge({99,99}),QPointF(101,101));
+  QCOMPARE(edge({97,110}),QPointF(97,110));QVERIFY(selected.isNull());
+  selected=button;
+  QCOMPARE(TargetAssist::resolve({99,110},{},selected,65,40,8,1),QPointF(99,110));QVERIFY(selected.isNull());
+  const QRectF neighbour(120,100,20,20);selected=button;
+  QCOMPARE(TargetAssist::resolve({121,110},{button,neighbour},selected,65,40,8,1),QPointF(119,110));
+  QCOMPARE(selected,button);
+  QCOMPARE(TargetAssist::resolve({125,110},{button,neighbour},selected,65,40,8,1),QPointF(125,110));QCOMPARE(selected,neighbour);
+  selected={};
+  QCOMPARE(TargetAssist::resolve({99,110},{button},selected,65,40,8,2),QPointF(101,110));
+  const auto pulled=TargetAssist::resolve({105,110},{button},selected,65,40,8,2);
+  QVERIFY(pulled.x()>105);QCOMPARE(pulled.y(),110.);
+  selected={};
+  QCOMPARE(TargetAssist::resolve({100,110},{QRectF(100,100,2,20)},selected,65,40,8,1,2,10),QPointF(101,110));
+ }
+ void millMouseSmoothingFormulaAndAdaptation(){
+  MillMouseSmoothing filter;MillMouseSmoothing::Settings settings;
+  settings.snap=false;settings.cursorFeedback=false;filter.configure(settings);
+  QCOMPARE(filter.update({100,100},{1000,1000}),QPointF(100,100));
+  // Standard Speed 0 -> effective step 3 -> denominator 27.5.
+  QCOMPARE(filter.update({127.5,155},{1000,1000}),QPointF(101,102));
+  settings.speed=5;filter.configure(settings);filter.update({100,100},{1000,1000});
+  // A small movement switches to step 0 -> denominator 50.
+  QCOMPARE(filter.update({102,101},{1000,1000}),QPointF(100.04,100.02));
+  settings.adaptive=false;filter.configure(settings);filter.update({100,100},{1000,1000});
+  QCOMPARE(filter.update({103,106},{1000,1000}),QPointF(101,102));
+  settings.response=1;filter.configure(settings);filter.update({100,100},{1000,1000});
+  QCOMPARE(filter.update({118,136},{1000,1000}),QPointF(101,102));
+  settings.adaptive=true;settings.jitterRadius=10;filter.configure(settings);filter.update({100,100},{1000,1000});
+  QCOMPARE(filter.update({105,105},{1000,1000}),QPointF(100.1,100.1));
+ }
+ void millMouseSmoothingFeedbackSnapAndRecovery(){
+  MillMouseSmoothing filter;MillMouseSmoothing::Settings settings;settings.speed=5;settings.adaptive=false;
+  filter.configure(settings);
+  // Cursor feedback includes a correction applied after the previous filter update.
+  QCOMPARE(filter.update({109,110},{1000,1000},QPointF(100,101)),QPointF(103,104));
+  QCOMPARE(filter.update({112,113},{1000,1000},QPointF(103,104)),QPointF(106,107));
+  QCOMPARE(filter.update({900,900},{1000,1000}),QPointF(900,900));
+  filter.reset();QCOMPARE(filter.update({200,200},{1000,1000}),QPointF(200,200));
+  const auto invalid=filter.update({qQNaN(),200},{1000,1000});QVERIFY(std::isnan(invalid.x()));
+  QCOMPARE(filter.update({300,300},{1000,1000}),QPointF(300,300));
+  settings.cursorFeedback=false;filter.configure(settings);
+  QCOMPARE(filter.update({400,400},{1000,1000},QPointF(0,0)),QPointF(400,400));
+  settings.snapDistance=10;filter.configure(settings);filter.update({100,100},{1000,1000});
+  QCOMPARE(filter.update({201,100},{1000,1000}),QPointF(201,100));
+ }
+ void millMouseAndEdgeSettingsValidation(){
+  const auto defaults=ProfileStore::defaults();QVERIFY(ProfileStore::valid(defaults));
+  const QMap<QString,QPair<double,double>> ranges{{"millMouseSpeed",{-5,5}},{"millMouseResponse",{0,1}},{"millMouseJitterRadius",{0,40}},{"millMouseSnapDistance",{1,100}},{"targetAssistMode",{0,2}},{"targetAssistEdgeRange",{0,40}},{"targetAssistEdgeInset",{0,10}}};
+  for(auto it=ranges.begin();it!=ranges.end();++it){
+   for(const auto invalid:{QJsonValue(it.value().first-1),QJsonValue(it.value().second+1),QJsonValue("bad"),QJsonValue(true)}){
+    auto values=defaults;values[it.key()]=invalid;QVERIFY2(!ProfileStore::valid(values),qPrintable(it.key()));
+   }
+   auto values=defaults;values[it.key()]=it.value().first;QVERIFY(ProfileStore::valid(values));
+   values[it.key()]=it.value().second;QVERIFY(ProfileStore::valid(values));
+   values.remove(it.key());QVERIFY(ProfileStore::valid(values));
+  }
+  auto values=defaults;values["gazeFilterType"]=2;QVERIFY(ProfileStore::valid(values));
+  values["gazeFilterType"]=3;QVERIFY(!ProfileStore::valid(values));
  }
  void targetAssistSettingsChangeMovement(){
   const QList<QRectF> controls{QRectF(100,100,20,20)};

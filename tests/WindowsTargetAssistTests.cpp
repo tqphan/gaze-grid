@@ -56,14 +56,22 @@ private slots:
  }
  void magneticAssistToggle_data(){
   QTest::addColumn<bool>("relative");
-  QTest::newRow("absolute")<<false;
-  QTest::newRow("relative")<<true;
+  QTest::addColumn<int>("mode");
+  QTest::newRow("absolute-center")<<false<<0;
+  QTest::newRow("relative-center")<<true<<0;
+  QTest::newRow("absolute-edges")<<false<<1;
+  QTest::newRow("relative-edges")<<true<<1;
+  QTest::newRow("absolute-combined")<<false<<2;
+  QTest::newRow("relative-combined")<<true<<2;
  }
  void magneticAssistToggle(){
   QFETCH(bool,relative);
+  QFETCH(int,mode);
   Controls controls;QVERIFY(controls.window);QVERIFY(controls.button);controls.show();
   struct Pointer:PointerActions {~Pointer(){QTest::qWait(1000);}} pointer;
-  QPointF moved;const auto gaze=controls.gaze();
+  QPointF moved;auto gaze=controls.gaze();
+  if(mode==1)gaze.rx()+=4./(GetSystemMetrics(SM_CXSCREEN)-1);
+  pointer.configureTargetAssist(65,40,8,mode,2,1);
   pointer.move=pointer.moveRelativeTo=[&](double x,double y){moved={x,y};return true;};
   pointer.button=[](int,bool){return true;};
   pointer.setMagneticRelative(relative);

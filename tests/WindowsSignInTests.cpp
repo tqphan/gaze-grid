@@ -72,12 +72,16 @@ private slots:
   auto values=ProfileStore::defaults();values["learning"]=true;values["predictionMode"]="context";values["magnifierEnabled"]=true;values["magnifierRefreshHz"]=0;
   values["scratchpadTextScale"]=175;values["keyboardScale"]=120;values["startLayout"]="main-14x1-top";values["invalidGazeToleranceMs"]=250;
   values["clampGazeForKeyboard"]=false;values["clampGazeForPointSelection"]=false;
+  values["gazeFilterType"]=2;values["millMouseSpeed"]=4;values["millMouseResponse"]=1;
+  values["millMouseAdaptive"]=false;values["millMouseJitterRadius"]=7.5;values["millMouseSnap"]=false;
+  values["millMouseSnapDistance"]=25.;values["millMouseCursorFeedback"]=false;
   auto result=WindowsSignIn::validatedProfile(values);
   QCOMPARE(result["startLayout"].toString(),QString("main-14x1-top"));QCOMPARE(result["keyboardScale"].toInt(),120);
   QCOMPARE(result["predictionMode"].toString(),QString("off"));QVERIFY(!result["learning"].toBool());QVERIFY(result["magnifierEnabled"].toBool());
   QCOMPARE(result["magnifierRefreshHz"].toInt(-1),0);
   QCOMPARE(result["invalidGazeToleranceMs"].toInt(),250);QCOMPARE(result["scratchpadTextScale"].toInt(),175);
   QVERIFY(!result["clampGazeForKeyboard"].toBool());QVERIFY(!result["clampGazeForPointSelection"].toBool());
+  for(const auto &key:{"gazeFilterType","millMouseSpeed","millMouseResponse","millMouseAdaptive","millMouseJitterRadius","millMouseSnap","millMouseSnapDistance","millMouseCursorFeedback"})QCOMPARE(result[key],values[key]);
   values["startLayout"]="../user-keyboard";QVERIFY(WindowsSignIn::validatedProfile(values).isEmpty());
   values["startLayout"]="minimized-off-screen-bottom";QVERIFY(WindowsSignIn::validatedProfile(values).isEmpty());
   values["startLayout"]="main-14x1-bottom";values["dwellMs"]=-1;QVERIFY(WindowsSignIn::validatedProfile(values).isEmpty());

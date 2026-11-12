@@ -8,6 +8,7 @@
 #include "LookScroll.h"
 #include "TargetAssist.h"
 #include <functional>
+#include <optional>
 
 class PointerActions:public QObject {
     Q_OBJECT
@@ -31,7 +32,8 @@ public:
     void setScrollGazePolicy(bool clamp,bool cancelOffscreen){clampScrollGaze=clamp;cancelScrollOffscreen=cancelOffscreen;}
     void setMagneticRelative(bool relative){relativeMagnetic=relative;}
     void setTargetAssist(bool enabled){if(assistEnabled!=enabled){assistEnabled=enabled;assist.reset();}}
-    void configureTargetAssist(int strength,int range,int retention){assist.configure(strength,range,retention);}
+    void configureTargetAssist(int strength,int range,int retention,int mode=0,double edgeRange=2,double edgeInset=1){assist.configure(strength,range,retention,mode,edgeRange,edgeInset);}
+    std::optional<QPointF> magneticPosition()const{return following&&followPositionValid?std::optional<QPointF>(position):std::nullopt;}
     bool follow(QPointF point,bool overDesktop=true);
     void setDisplaySize(QSizeF size);
     bool magnetic()const{return following;}
@@ -60,6 +62,7 @@ public:
     bool scrollTrackingPaused=false;
     QSet<int> held;
     QPointF position{.5,.5};
+    bool followPositionValid=false;
     TargetAssist assist;
     bool assistEnabled=false;
     bool relativeMagnetic=false;

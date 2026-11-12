@@ -9,6 +9,7 @@
 #include "Dwell.h"
 #include "PointDwell.h"
 #include "GazeSmoothing.h"
+#include "MillMouseSmoothing.h"
 #include "ActionRunner.h"
 #include "PointerActions.h"
 #include "GameController.h"
@@ -44,6 +45,16 @@ class Controller:public QObject{
  Q_PROPERTY(double gazeFilterGain READ gazeFilterGain WRITE setGazeFilterGain NOTIFY changed)
  Q_PROPERTY(double gazeSaccadeDistance READ gazeSaccadeDistance WRITE setGazeSaccadeDistance NOTIFY changed)
  Q_PROPERTY(int gazeSmoothingLevel READ gazeSmoothingLevel WRITE setGazeSmoothingLevel NOTIFY changed)
+ Q_PROPERTY(int millMouseSpeed MEMBER millMouseSpeed NOTIFY changed)
+ Q_PROPERTY(int millMouseResponse MEMBER millMouseResponse NOTIFY changed)
+ Q_PROPERTY(bool millMouseAdaptive MEMBER millMouseAdaptive NOTIFY changed)
+ Q_PROPERTY(double millMouseJitterRadius MEMBER millMouseJitterRadius NOTIFY changed)
+ Q_PROPERTY(bool millMouseSnap MEMBER millMouseSnap NOTIFY changed)
+ Q_PROPERTY(double millMouseSnapDistance MEMBER millMouseSnapDistance NOTIFY changed)
+ Q_PROPERTY(bool millMouseCursorFeedback MEMBER millMouseCursorFeedback NOTIFY changed)
+ Q_PROPERTY(int targetAssistMode MEMBER targetAssistMode NOTIFY changed)
+ Q_PROPERTY(double targetAssistEdgeRange MEMBER targetAssistEdgeRange NOTIFY changed)
+ Q_PROPERTY(double targetAssistEdgeInset MEMBER targetAssistEdgeInset NOTIFY changed)
  Q_PROPERTY(bool smoothWhenChangingGazeTarget READ smoothWhenChangingGazeTarget WRITE setSmoothWhenChangingGazeTarget NOTIFY changed)
  Q_PROPERTY(int gazeIndicatorSize MEMBER gazeIndicatorSize NOTIFY changed)
  Q_PROPERTY(int gazeIndicatorOpacity MEMBER gazeIndicatorOpacity NOTIFY changed)
@@ -366,6 +377,7 @@ private:
  Q_SLOT void receiveGaze(double x,double y,bool valid,qint64 sampledAt);
  Q_SLOT void setTrackerConnected(bool connected);
  GazeSmoothing gazeSmoothing;
+ MillMouseSmoothing millMouseSmoothing;
  QSizeF gazeDisplaySize{1,1};
  int gazeIndicatorSize=18,gazeIndicatorOpacity=100;
  QString gazeIndicatorColor="#00bfff";
@@ -387,6 +399,16 @@ private:
  bool cycleModifiersOnHover=false;
  bool hideKeyboardDuringMouseActions=false;
  bool gazeIndicatorMorph=false;
+ int millMouseSpeed=0;
+ int millMouseResponse=0;
+ bool millMouseAdaptive=true;
+ double millMouseJitterRadius=0;
+ bool millMouseSnap=true;
+ double millMouseSnapDistance=50;
+ bool millMouseCursorFeedback=true;
+ int targetAssistMode=0;
+ double targetAssistEdgeRange=2;
+ double targetAssistEdgeInset=1;
  int filterType=0;
  double filterGain=0.2;
  double saccadeDistance=0.1;

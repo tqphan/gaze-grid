@@ -1287,6 +1287,31 @@ private slots:
    QVERIFY(points.last()[2].toBool());
   }
  }
+ void millMousePipelineAndPreferences(){
+  {
+   Controller controller;controller.resetPreferences();controller.setDisplaySize(1000,1000);controller.setGazeFilterType(2);
+   controller.setProperty("millMouseSnap",false);controller.setProperty("millMouseSpeed",5);controller.setProperty("millMouseAdaptive",false);
+   QSignalSpy points(&controller,&Controller::gazePoint);
+   const auto sample=[&](double x,double y,bool valid=true){QVERIFY(QMetaObject::invokeMethod(&controller,"receiveGaze",Qt::DirectConnection,Q_ARG(double,x),Q_ARG(double,y),Q_ARG(bool,valid),Q_ARG(qint64,GazeClock::now())));};
+   sample(.1,.1);QCOMPARE(points.last()[0].toDouble(),.1);
+   sample(.103,.106);QCOMPARE(points.last()[0].toDouble(),.101);QCOMPARE(points.last()[1].toDouble(),.102);
+   sample(0,0,false);sample(.7,.7);QCOMPARE(points.last()[0].toDouble(),.7);
+   controller.setProperty("millMouseResponse",1);controller.setProperty("millMouseJitterRadius",4.5);
+   controller.setProperty("millMouseSnapDistance",35.);controller.setProperty("millMouseCursorFeedback",false);
+   controller.setProperty("targetAssistMode",2);controller.setProperty("targetAssistEdgeRange",3.5);controller.setProperty("targetAssistEdgeInset",2.);
+   QVERIFY(controller.savePreferences());
+  }
+  {
+   Controller controller;QCOMPARE(controller.gazeFilterType(),2);
+   QCOMPARE(controller.property("millMouseSpeed").toInt(),5);QCOMPARE(controller.property("millMouseResponse").toInt(),1);
+   QVERIFY(!controller.property("millMouseAdaptive").toBool());QVERIFY(!controller.property("millMouseSnap").toBool());
+   QCOMPARE(controller.property("millMouseJitterRadius").toDouble(),4.5);QCOMPARE(controller.property("millMouseSnapDistance").toDouble(),35.);
+   QVERIFY(!controller.property("millMouseCursorFeedback").toBool());QCOMPARE(controller.property("targetAssistMode").toInt(),2);
+   QCOMPARE(controller.property("targetAssistEdgeRange").toDouble(),3.5);QCOMPARE(controller.property("targetAssistEdgeInset").toDouble(),2.);
+   controller.resetPreferences();QCOMPARE(controller.gazeFilterType(),0);QCOMPARE(controller.property("millMouseSpeed").toInt(),0);
+   QCOMPARE(controller.property("targetAssistMode").toInt(),0);QCOMPARE(controller.property("targetAssistEdgeRange").toDouble(),2.);
+  }
+ }
  void gazeSmoothingPipelineAndRecovery(){
   Controller controller;controller.setDisplaySize(1000,1000);controller.setGazeSmoothingLevel(2);controller.setSmoothWhenChangingGazeTarget(false);
   QSignalSpy points(&controller,&Controller::gazePoint);

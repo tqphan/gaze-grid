@@ -91,26 +91,40 @@ QList<QRectF> discover(QPointF gaze,int range){
 }
 #endif
 
-void TargetAssist::configure(int strength,int range,int retention){
+void TargetAssist::configure(int strength,int range,int retention,int mode,double edgeRange,double edgeInset){
+ if(!std::isfinite(edgeRange)||!std::isfinite(edgeInset))return;
  strength=qBound(0,strength,100);range=qBound(10,range,200);retention=qBound(0,retention,40);
- if(strength==strengthValue&&range==rangeValue&&retention==retentionValue)return;
- strengthValue=strength;rangeValue=range;retentionValue=retention;reset();
+ mode=qBound(0,mode,2);edgeRange=qBound(0.,edgeRange,40.);edgeInset=qBound(0.,edgeInset,10.);
+ if(strength==strengthValue&&range==rangeValue&&retention==retentionValue&&mode==modeValue&&edgeRange==edgeRangeValue&&edgeInset==edgeInsetValue)return;
+ strengthValue=strength;rangeValue=range;retentionValue=retention;modeValue=mode;edgeRangeValue=edgeRange;edgeInsetValue=edgeInset;reset();
 }
 
-QPointF TargetAssist::resolve(QPointF gaze,const QList<QRectF> &controls,QRectF &selected,int strength,int range,int retention){
+QPointF TargetAssist::resolve(QPointF gaze,const QList<QRectF> &controls,QRectF &selected,int strength,int range,int retention,int mode,double edgeRange,double edgeInset){
+ if(!std::isfinite(gaze.x())||!std::isfinite(gaze.y())||!std::isfinite(edgeRange)||!std::isfinite(edgeInset)){selected={};return gaze;}
  strength=qBound(0,strength,100);range=qBound(10,range,200);retention=qBound(0,retention,40);
+ mode=qBound(0,mode,2);edgeRange=qBound(0.,edgeRange,40.);edgeInset=qBound(0.,edgeInset,10.);
+ const auto previous=selected;
  QRectF best;double score=std::numeric_limits<double>::infinity(),runner=score;
  for(const auto &rect:controls){
   if(!rect.isValid())continue;
   QPointF nearest(qBound(rect.left(),gaze.x(),rect.right()),qBound(rect.top(),gaze.y(),rect.bottom()));
   const double distance=std::hypot(gaze.x()-nearest.x(),gaze.y()-nearest.y());
-  if(distance>range)continue;
+  if(distance>(mode==1?edgeRange:range))continue;
   double candidate=distance+0.12*std::hypot(gaze.x()-rect.center().x(),gaze.y()-rect.center().y());
   if(rect==selected)candidate-=retention;
   if(candidate<score){runner=score;score=candidate;best=rect;}else runner=qMin(runner,candidate);
  }
- if(!best.isValid()||runner-score<4){selected={};return gaze;}
+ // Retain an acquired edge through a small crossing, including adjacent targets.
+ // Only a previously discovered, still-present control can retain the pointer.
+ if(mode!=0&&controls.contains(previous)&&previous.isValid()&&previous.adjusted(-edgeRange,-edgeRange,edgeRange,edgeRange).contains(gaze))best=previous;
+ else if(!best.isValid()||runner-score<4){selected={};return gaze;}
  selected=best;
+ if(mode!=0){
+  const double insetX=qMin(edgeInset,best.width()/2),insetY=qMin(edgeInset,best.height()/2);
+  const QPointF inside(qBound(best.left()+insetX,gaze.x(),best.right()-insetX),qBound(best.top()+insetY,gaze.y(),best.bottom()-insetY));
+  const bool withinEdges=best.adjusted(-edgeRange,-edgeRange,edgeRange,edgeRange).contains(gaze);
+  if(mode==1||(withinEdges&&inside!=gaze))return inside;
+ }
  const QPointF nearest(qBound(best.left(),gaze.x(),best.right()),qBound(best.top(),gaze.y(),best.bottom()));
  const double distance=std::hypot(gaze.x()-nearest.x(),gaze.y()-nearest.y());
  const double pullStrength=(strength/100.)*(1-distance/range);
@@ -137,7 +151,7 @@ QPointF TargetAssist::adjust(QPointF normalized){
   },Qt::QueuedConnection);
  }
  if(now-received>resultLifetimeMs){selected={};return normalized;}
- const QPointF target=resolve(gaze,bounds,selected,strengthValue,rangeValue,retentionValue);
+ const QPointF target=resolve(gaze,bounds,selected,strengthValue,rangeValue,retentionValue,modeValue,edgeRangeValue,edgeInsetValue);
  return {qBound(0.,target.x()/screen.width(),1.),qBound(0.,target.y()/screen.height(),1.)};
 #else
  return normalized;

@@ -188,6 +188,16 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  cycleModifiersOnHover=profile.values["cycleModifiersOnHover"].toBool();
  hideKeyboardDuringMouseActions=profile.values["hideKeyboardDuringMouseActions"].toBool();
  gazeIndicatorMorph=profile.values["gazeIndicatorMorph"].toBool();
+ millMouseSpeed=profile.values["millMouseSpeed"].toInt(0);
+ millMouseResponse=profile.values["millMouseResponse"].toInt(0);
+ millMouseAdaptive=profile.values["millMouseAdaptive"].toBool(true);
+ millMouseJitterRadius=profile.values["millMouseJitterRadius"].toDouble(0);
+ millMouseSnap=profile.values["millMouseSnap"].toBool(true);
+ millMouseSnapDistance=profile.values["millMouseSnapDistance"].toDouble(50);
+ millMouseCursorFeedback=profile.values["millMouseCursorFeedback"].toBool(true);
+ targetAssistMode=profile.values["targetAssistMode"].toInt(0);
+ targetAssistEdgeRange=profile.values["targetAssistEdgeRange"].toDouble(2);
+ targetAssistEdgeInset=profile.values["targetAssistEdgeInset"].toDouble(1);
  filterType=profile.values["gazeFilterType"].toInt(0);
  filterGain=profile.values["gazeFilterGain"].toDouble(0.2);
  saccadeDistance=profile.values["gazeSaccadeDistance"].toDouble(0.1);
@@ -336,7 +346,7 @@ void Controller::stopTracker(){
  disconnect(&tobii,nullptr,this,nullptr);
  if(tobii.isRunning())tobii.requestInterruption();
  tobii.wait();
- gazeAge.invalidate();gazeSmoothing.reset();gazeLossStarted=0;
+ gazeAge.invalidate();gazeSmoothing.reset();millMouseSmoothing.reset();gazeLossStarted=0;
  if(trackerConnected){trackerConnected=false;emit trackerConnectionChanged();}
  emit gazePoint(0,0,false);
 }
@@ -452,7 +462,7 @@ void Controller::refreshKeyboardLabels(){
 }
 bool Controller::savePreferences(){
  if(signInMode)return false;
- QJsonObject values{{"cacheKeyboards",cacheKeyboards()},{"transitionDurationMs",transitionDurationMs},{"keyboardTransition",keyboardTransition},{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"magneticTargetAssist",magneticTargetAssist},{"targetAssistStrength",targetAssistStrength},{"targetAssistRange",targetAssistRange},{"targetAssistRetention",targetAssistRetention},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
+ QJsonObject values{{"cacheKeyboards",cacheKeyboards()},{"transitionDurationMs",transitionDurationMs},{"keyboardTransition",keyboardTransition},{"clickDurationMs",clickDurationMs},{"clampScrollGaze",clampScrollGaze},{"cancelScrollOffscreen",cancelScrollOffscreen},{"showScrollZones",showScrollZones},{"scrollZoneOpacity",scrollZoneOpacity},{"scrollZoneColor",scrollZoneColor},{"keyCycleModes",QJsonArray::fromStringList(keyCycleModesValue)},{"magneticMouseRelative",magneticMouseRelative},{"magneticTargetAssist",magneticTargetAssist},{"targetAssistMode",targetAssistMode},{"targetAssistEdgeRange",targetAssistEdgeRange},{"targetAssistEdgeInset",targetAssistEdgeInset},{"targetAssistStrength",targetAssistStrength},{"targetAssistRange",targetAssistRange},{"targetAssistRetention",targetAssistRetention},{"scrollSpeed",scrollSpeed},{"scrollDeadzone",scrollDeadzone},{"scrollAxis",scrollAxis},{"gazeEnabled",gazeEnabled},{"repeatIntervalMs",repeatIntervalMs},{"preserveTogglesBetweenLayouts",preserveTogglesBetweenLayouts},{"cycleModifiersOnHover",cycleModifiersOnHover},{"hideKeyboardDuringMouseActions",hideKeyboardDuringMouseActions},{"gazeIndicatorSize",gazeIndicatorSize},{"gazeIndicatorOpacity",gazeIndicatorOpacity},{"gazeIndicatorColor",gazeIndicatorColor},{"gazeIndicatorMorph",gazeIndicatorMorph},{"version",1},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"literal",literal},{"learning",learning},{"typedWordSuggestionMode",typedWordMode},{"predictionMode",predictionModeValue},{"predictNextWord",nextWordEnabled},{"addSpaceAfterCompletion",completionSpaceEnabled},{"suggestSentenceStarters",sentenceStartersEnabled},{"startLayout",startupLayout},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale},{"magnifierRefreshHz",magnifierRefreshHz},{"magnifierZoom",magnifierZoom},{"magnifierEnabled",magnifierEnabled},{"progressiveZoom",progressiveZoom},{"zoomDurationMs",zoomDurationMs},{"targetDwellEnabled",targetDwellEnabled},{"targetStartDwellMs",targetStartDwellMs},{"targetConfirmDwellMs",targetConfirmDwellMs},{"targetProgressStyle",targetProgressStyle},{"targetProgressSize",targetProgressSize},{"targetProgressThickness",targetProgressThickness},{"targetProgressOpacity",targetProgressOpacity},{"targetProgressColor",targetProgressColor},{"targetDwellRadius",targetDwellRadius},{"rememberDesktop",rememberDesktop},{"millMouseSpeed",millMouseSpeed},{"millMouseResponse",millMouseResponse},{"millMouseAdaptive",millMouseAdaptive},{"millMouseJitterRadius",millMouseJitterRadius},{"millMouseSnap",millMouseSnap},{"millMouseSnapDistance",millMouseSnapDistance},{"millMouseCursorFeedback",millMouseCursorFeedback},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"restoreCorner",recoveryCorner},{"restoreWidth",recoveryWidth},{"restoreHeight",recoveryHeight},{"restoreOpacity",restoreOpacity}};
  values["keyboardGeometry"]=keyboardGeometry;
  values["keyMode"]=keyModeValue;
  values["buttonMode"]=buttonModeValue;
@@ -514,6 +524,7 @@ void Controller::resetPreferences(){
  preserveTogglesBetweenLayouts=false;
  cycleModifiersOnHover=false;
  hideKeyboardDuringMouseActions=false;
+ millMouseSpeed=0;millMouseResponse=0;millMouseAdaptive=true;millMouseJitterRadius=0;millMouseSnap=true;millMouseSnapDistance=50;millMouseCursorFeedback=true;targetAssistMode=0;targetAssistEdgeRange=2;targetAssistEdgeInset=1;
  clickDurationMs=0;magneticMouseRelative=false;magneticTargetAssist=false;targetAssistStrength=65;targetAssistRange=40;targetAssistRetention=8;
  scrollSpeed=100;scrollDeadzone=50;scrollAxis=0;clampScrollGaze=true;cancelScrollOffscreen=false;
  showScrollZones=false;scrollZoneOpacity=30;scrollZoneColor="#00bfff";
@@ -523,7 +534,7 @@ void Controller::resetPreferences(){
  setGazeFilterType(values["gazeFilterType"].toInt(0));
  setGazeFilterGain(values["gazeFilterGain"].toDouble(0.2));
  setGazeSaccadeDistance(values["gazeSaccadeDistance"].toDouble(0.1));
- setGazeSmoothingLevel(values["gazeSmoothingLevel"].toInt());setSmoothWhenChangingGazeTarget(false);gazeSmoothing.reset();
+ setGazeSmoothingLevel(values["gazeSmoothingLevel"].toInt());setSmoothWhenChangingGazeTarget(false);gazeSmoothing.reset();millMouseSmoothing.reset();
  keyboardGeometry={};
  openLayout(values["startLayout"].toString(),false);
  profileStatus="Preferences reset. Input remains paused.";emit changed();
@@ -607,15 +618,29 @@ void Controller::receiveGaze(double x,double y,bool valid,qint64 /*sampledAt*/){
   // selected use; otherwise preserve valid off-screen coordinates.
   const bool clamp=targeting?clampGazeForPointSelection:clampGazeForKeyboard;
   // Do not carry an off-screen smoothing estimate into a clamped context.
-  if(clamp!=lastGazeClamped){gazeSmoothing.reset();lastGazeClamped=clamp;}
+  if(clamp!=lastGazeClamped){gazeSmoothing.reset();millMouseSmoothing.reset();lastGazeClamped=clamp;}
   if(clamp){
    x=qBound(0.,x,1.);y=qBound(0.,y,1.);
   }
-  if(!gazeAge.isValid())gazeSmoothing.reset();
+  if(!gazeAge.isValid()){gazeSmoothing.reset();millMouseSmoothing.reset();}
   gazeAge.restart();
   if(filterType==1){
    const auto point=gazeSmoothing.updateExponential({x,y},filterGain,saccadeDistance);
    x=point.x();y=point.y();
+  }else if(filterType==2){
+   millMouseSmoothing.configure({millMouseSpeed,millMouseResponse,millMouseAdaptive,millMouseSnap,millMouseCursorFeedback,millMouseJitterRadius,millMouseSnapDistance});
+   std::optional<QPointF> feedback;
+   if(millMouseCursorFeedback&&pointer.magnetic()&&!pointer.busy()){
+    feedback=pointer.magneticPosition();
+#if defined(_WIN32) && !defined(GAZE_GRID_LOCAL_TEST)
+    POINT cursor{};
+    const double width=GetSystemMetrics(SM_CXSCREEN)-1,height=GetSystemMetrics(SM_CYSCREEN)-1;
+    if(width>0&&height>0&&GetCursorPos(&cursor))feedback=QPointF(cursor.x/width,cursor.y/height);
+#endif
+    if(feedback)feedback=QPointF(feedback->x()*gazeDisplaySize.width(),feedback->y()*gazeDisplaySize.height());
+   }
+   const auto point=millMouseSmoothing.update({x*gazeDisplaySize.width(),y*gazeDisplaySize.height()},gazeDisplaySize,feedback);
+   x=point.x()/gazeDisplaySize.width();y=point.y()/gazeDisplaySize.height();
   }else{
   const auto point=gazeSmoothing.update({x*gazeDisplaySize.width(),y*gazeDisplaySize.height()},smoothingLevel,smoothTargetChanges);
   x=point.x()/gazeDisplaySize.width();y=point.y()/gazeDisplaySize.height();
@@ -637,7 +662,7 @@ void Controller::receiveGaze(double x,double y,bool valid,qint64 /*sampledAt*/){
   }
   // Cancel gaze work once on tracking loss. Further invalid samples must not
   // continually reset mouse dwell or cancel actions started by the fallback.
-  const bool wasValid=gazeAge.isValid();gazeAge.invalidate();gazeSmoothing.reset();
+  const bool wasValid=gazeAge.isValid();gazeAge.invalidate();gazeSmoothing.reset();millMouseSmoothing.reset();
   const bool wasPaused=gazeLossStarted>0;gazeLossStarted=0;
   if(wasValid){dwell.reset();pointDwell.reset();canvasDwell.reset();runner.cancel(true);endButtonHold();gameController.reset();activeJoystick=-1;portal.releaseButtons();pointer.trackingLost();}
   if(wasPaused)emit changed();
@@ -646,7 +671,7 @@ void Controller::receiveGaze(double x,double y,bool valid,qint64 /*sampledAt*/){
 }
 void Controller::setDisplaySize(double width,double height){
  if(!std::isfinite(width)||!std::isfinite(height)||width<=0||height<=0)return;
- const QSizeF size(width,height);if(size!=gazeDisplaySize){gazeDisplaySize=size;gazeSmoothing.reset();}
+ const QSizeF size(width,height);if(size!=gazeDisplaySize){gazeDisplaySize=size;gazeSmoothing.reset();millMouseSmoothing.reset();}
  pointer.setDisplaySize(size);
 }
 void Controller::pauseGazeDwell(){
@@ -667,16 +692,16 @@ void Controller::setInvalidGazeToleranceMs(int value){
 }
 void Controller::setGazeSmoothingLevel(int level){
  level=qBound(0,level,4);if(level==smoothingLevel)return;
- smoothingLevel=level;gazeSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
+ smoothingLevel=level;gazeSmoothing.reset();millMouseSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
 }
 void Controller::setSmoothWhenChangingGazeTarget(bool enabled){
  if(enabled==smoothTargetChanges)return;
- smoothTargetChanges=enabled;gazeSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
+ smoothTargetChanges=enabled;gazeSmoothing.reset();millMouseSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
 }
 void Controller::togglePause(){if(!desktopActive)return;localInput.cancelComposition();paused=!paused;dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;portal.releaseAll();pointer.cancel();emit changed();}
 void Controller::setGazeEnabled(bool enabled){
  const bool preferenceChanged=gazeEnabled!=enabled;
- gazeEnabled=enabled;dwell.reset();gazeSmoothing.reset();
+ gazeEnabled=enabled;dwell.reset();gazeSmoothing.reset();millMouseSmoothing.reset();
  if(!enabled&&gazeLossStarted)receiveGaze(0,0,false,0);
  if(preferenceChanged&&!signInMode){
   ProfileStore store(configFile("profile.json"));auto saved=store.load().values;
@@ -692,14 +717,14 @@ void Controller::trackGaze(double x,double y,bool overDesktop){
  if(!desktopActive)return;
  pointer.setMagneticRelative(magneticMouseRelative);
  pointer.setTargetAssist(magneticTargetAssist);
- pointer.configureTargetAssist(targetAssistStrength,targetAssistRange,targetAssistRetention);
+ pointer.configureTargetAssist(targetAssistStrength,targetAssistRange,targetAssistRetention,targetAssistMode,targetAssistEdgeRange,targetAssistEdgeInset);
  pointer.configureScroll(scrollSpeed,scrollDeadzone,scrollAxis);
  pointer.setScrollGazePolicy(clampScrollGaze,cancelScrollOffscreen);
  if(gazeEnabled&&!paused&&ready()&&gazeAge.isValid())pointer.follow({x,y},overDesktop);
 }
 void Controller::displayChanged(){
  if(!paused)togglePause();else{runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();dwell.reset();}
- gazeAge.invalidate();gazeSmoothing.reset();emit gazePoint(0,0,false);
+ gazeAge.invalidate();gazeSmoothing.reset();millMouseSmoothing.reset();emit gazePoint(0,0,false);
  actionStatus="Display configuration changed. Check tracker calibration and resume when ready.";emit changed();
 }
 bool Controller::isSleepKey(const QString &key) const{
@@ -1575,7 +1600,7 @@ bool Controller::isSignInEnabled()const{
 #endif
 }
 QJsonObject Controller::signInPreferences() const{
- QJsonObject values{{"keyboardGeometry",keyboardGeometry},{"groupDwellTimes",QJsonObject::fromVariantMap(groupDwellValues)},{"startLayout",layoutName},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"gazeEnabled",gazeEnabled},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale}};
+ QJsonObject values{{"keyboardGeometry",keyboardGeometry},{"groupDwellTimes",QJsonObject::fromVariantMap(groupDwellValues)},{"startLayout",layoutName},{"keyboardScale",scalePercent},{"keyboardWidthScale",keyboardWidthScaleValue},{"keyboardHorizontalOffset",keyboardHorizontalOffsetValue},{"keyboardVerticalOffset",keyboardVerticalOffsetValue},{"keyboardTheme",keyboardTheme},{"dwellMs",dwellMs},{"latchStyle",latchStyle},{"lockStyle",lockStyle},{"dwellIndicatorStyle",dwellIndicatorStyle},{"gazeEnabled",gazeEnabled},{"millMouseSpeed",millMouseSpeed},{"millMouseResponse",millMouseResponse},{"millMouseAdaptive",millMouseAdaptive},{"millMouseJitterRadius",millMouseJitterRadius},{"millMouseSnap",millMouseSnap},{"millMouseSnapDistance",millMouseSnapDistance},{"millMouseCursorFeedback",millMouseCursorFeedback},{"gazeFilterType",filterType},{"gazeFilterGain",filterGain},{"gazeSaccadeDistance",saccadeDistance},{"gazeSmoothingLevel",smoothingLevel},{"smoothWhenChangingGazeTarget",smoothTargetChanges},{"shortLabelScale",shortLabelScale},{"longLabelScale",longLabelScale}};
  values["invalidGazeToleranceMs"]=gazeToleranceMs;
  values["dwellGraceMs"]=dwellGraceValue;
  values["showPausedDwellProgress"]=showPausedDwellProgress;
@@ -1613,20 +1638,20 @@ void Controller::configureSignIn(bool enabled){
 }
 
 void Controller::setGazeFilterType(int value){
- value=qBound(0,value,1);if(value==filterType)return;
- filterType=value;gazeSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
+ value=qBound(0,value,2);if(value==filterType)return;
+ filterType=value;gazeSmoothing.reset();millMouseSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
 }
 
 void Controller::setGazeFilterGain(double value){
  if(!std::isfinite(value))return;
  value=qBound(0.01,value,1.0);if(value==filterGain)return;
- filterGain=value;gazeSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
+ filterGain=value;gazeSmoothing.reset();millMouseSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
 }
 
 void Controller::setGazeSaccadeDistance(double value){
  if(!std::isfinite(value))return;
  value=qBound(0.01,value,1.0);if(value==saccadeDistance)return;
- saccadeDistance=value;gazeSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
+ saccadeDistance=value;gazeSmoothing.reset();millMouseSmoothing.reset();dwell.reset();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();emit changed();
 }
 
 void Controller::setTypedWordSuggestionMode(const QString &mode){

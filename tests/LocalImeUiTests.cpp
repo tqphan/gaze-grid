@@ -110,6 +110,22 @@ class LocalImeUiTests:public QObject {
   void stop(){window->setProperty("gazeValid",false);controller.hover("");}
  };
 private slots:
+ void smoothingAndAssistChoicesReachController(){
+  View view;QVERIFY(view.window);
+  auto settings=view.window->findChild<QObject*>("settingsWindow");QVERIFY(settings);
+  settings->setProperty("visible",true);
+  auto category=settings->findChild<QObject*>("settingsCategory");QVERIFY(category);category->setProperty("currentIndex",2);
+  auto filter=settings->findChild<QObject*>("gazeFilterSelector");QVERIFY(filter);
+  auto assist=settings->findChild<QObject*>("targetAssistModeSelector");QVERIFY(assist);
+  view.controller.setProperty("magneticTargetAssist",true);
+  for(int value:{2,1,0}){
+   filter->setProperty("currentIndex",value);QVERIFY(QMetaObject::invokeMethod(filter,"activated",Q_ARG(int,value)));
+   QCOMPARE(view.controller.gazeFilterType(),value);
+   assist->setProperty("currentIndex",value);QVERIFY(QMetaObject::invokeMethod(assist,"activated",Q_ARG(int,value)));
+   QCOMPARE(view.controller.property("targetAssistMode").toInt(),value);
+  }
+  QVERIFY(view.bindingWarnings.isEmpty());
+ }
  void signInScratchpadAcceptsLocalKeysWithoutIme(){
   View view(false,true);QVERIFY(view.window);QVERIFY(view.editor);
   QVERIFY(view.controller.scratchpadEditable());

@@ -12,8 +12,8 @@ public:
  ~TargetAssist(){thread.quit();thread.wait();}
  QPointF adjust(QPointF normalized);
  void reset(){bounds.clear();selected={};++generation;}
- void configure(int strength,int range,int retention);
- static QPointF resolve(QPointF gaze,const QList<QRectF> &controls,QRectF &selected,int strength=65,int range=40,int retention=8);
+ void configure(int strength,int range,int retention,int mode=0,double edgeRange=2,double edgeInset=1);
+ static QPointF resolve(QPointF gaze,const QList<QRectF> &controls,QRectF &selected,int strength=65,int range=40,int retention=8,int mode=0,double edgeRange=2,double edgeInset=1);
 private:
  QThread thread;
  QObject *worker=nullptr;
@@ -23,6 +23,8 @@ private:
  qint64 requested=-1000,received=-1000;
  quintptr sourceWindow=0;
  int strengthValue=65,rangeValue=40,retentionValue=8;
+ int modeValue=0;
+ double edgeRangeValue=2,edgeInsetValue=1;
  int generation=0;
  bool pending=false;
 };

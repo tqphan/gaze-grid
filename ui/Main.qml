@@ -891,7 +891,18 @@ Window {
       title:"Gaze smoothing";      visible:settingsCategory.currentIndex==2;Layout.fillWidth:true
       ColumnLayout {
        anchors.fill:parent;spacing:Kirigami.Units.largeSpacing
-       SettingsComboBox {model:["Kalman","Exponential"];currentIndex:controller.gazeFilterType;onActivated:controller.gazeFilterType=currentIndex}
+       SettingsComboBox {objectName:"gazeFilterSelector";model:["Kalman","Exponential","Mill Mouse"];currentIndex:controller.gazeFilterType;onActivated:controller.gazeFilterType=currentIndex}
+       SettingSlider {visible:controller.gazeFilterType==2;label:"Speed";displayValue:controller.millMouseSpeed;from:-5;to:5;stepSize:1;value:controller.millMouseSpeed;onMoved:controller.millMouseSpeed=Math.round(value)}
+       RowLayout {
+        visible:controller.gazeFilterType==2
+        Desktop.Label {text:"Response"}
+        SettingsComboBox {model:["Standard","Fine"];currentIndex:controller.millMouseResponse;onActivated:controller.millMouseResponse=currentIndex}
+       }
+       SettingsCheckBox {visible:controller.gazeFilterType==2;text:"Steady small moves";checked:controller.millMouseAdaptive;onToggled:controller.millMouseAdaptive=checked}
+       SettingSlider {visible:controller.gazeFilterType==2;enabled:controller.millMouseAdaptive&&controller.millMouseSpeed>0;label:"Jitter range";displayValue:controller.millMouseJitterRadius===0?"Auto":controller.millMouseJitterRadius+" px";from:0;to:40;stepSize:.5;value:controller.millMouseJitterRadius;onMoved:controller.millMouseJitterRadius=value}
+       SettingsCheckBox {visible:controller.gazeFilterType==2;text:"Snap on large moves";checked:controller.millMouseSnap;onToggled:controller.millMouseSnap=checked}
+       SettingSlider {visible:controller.gazeFilterType==2;enabled:controller.millMouseSnap;label:"Snap distance";displayValue:controller.millMouseSnapDistance+"%";from:1;to:100;stepSize:1;value:controller.millMouseSnapDistance;onMoved:controller.millMouseSnapDistance=value}
+       SettingsCheckBox {visible:controller.gazeFilterType==2;text:"Cursor feedback";checked:controller.millMouseCursorFeedback;onToggled:controller.millMouseCursorFeedback=checked}
        SettingSlider {visible:controller.gazeFilterType==1;label:"Filter gain";displayValue:controller.gazeFilterGain.toFixed(2);from:0.01;to:1;stepSize:0.01;value:controller.gazeFilterGain;onMoved:controller.gazeFilterGain=value}
        SettingSlider {visible:controller.gazeFilterType==1;label:"Saccade distance";displayValue:controller.gazeSaccadeDistance.toFixed(2)+" (screen coordinates)";from:0.01;to:1;stepSize:0.01;value:controller.gazeSaccadeDistance;onMoved:controller.gazeSaccadeDistance=value}
        SettingSlider {visible:controller.gazeFilterType==0;label:"Gaze smoothing";displayValue:controller.gazeSmoothingLevel+" - "+["Off","Low","Medium","High","Extreme"][controller.gazeSmoothingLevel];from:0;to:4;stepSize:1;value:controller.gazeSmoothingLevel;onMoved:controller.gazeSmoothingLevel=Math.round(value)}
@@ -1168,8 +1179,15 @@ Window {
         checked:controller.magneticTargetAssist
         onToggled:controller.magneticTargetAssist=checked
        }
-       SettingSlider {label:"Strength";displayValue:controller.targetAssistStrength+"%";from:0;to:100;stepSize:5;value:controller.targetAssistStrength;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistStrength=value}
-       SettingSlider {label:"Range";displayValue:controller.targetAssistRange+" px";from:10;to:200;stepSize:5;value:controller.targetAssistRange;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistRange=value}
+       RowLayout {
+        enabled:controller.magneticTargetAssist
+        Desktop.Label {text:"Assist"}
+        SettingsComboBox {objectName:"targetAssistModeSelector";model:["Center pull","Edge retention","Center + edges"];currentIndex:controller.targetAssistMode;onActivated:controller.targetAssistMode=currentIndex}
+       }
+       SettingSlider {visible:controller.targetAssistMode!==1;label:"Strength";displayValue:controller.targetAssistStrength+"%";from:0;to:100;stepSize:5;value:controller.targetAssistStrength;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistStrength=value}
+       SettingSlider {visible:controller.targetAssistMode!==1;label:"Range";displayValue:controller.targetAssistRange+" px";from:10;to:200;stepSize:5;value:controller.targetAssistRange;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistRange=value}
+       SettingSlider {visible:controller.targetAssistMode!==0;label:"Edge range";displayValue:controller.targetAssistEdgeRange+" px";from:0;to:40;stepSize:.5;value:controller.targetAssistEdgeRange;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistEdgeRange=value}
+       SettingSlider {visible:controller.targetAssistMode!==0;label:"Edge inset";displayValue:controller.targetAssistEdgeInset+" px";from:0;to:10;stepSize:.5;value:controller.targetAssistEdgeInset;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistEdgeInset=value}
        SettingSlider {label:"Target retention";displayValue:controller.targetAssistRetention+" px";from:0;to:40;stepSize:1;value:controller.targetAssistRetention;enabled:controller.magneticTargetAssist;onMoved:controller.targetAssistRetention=value}
        Desktop.Label {text:controller.magneticMouseRelative?"Moves the cursor toward your gaze point using relative movement and cursor-position feedback.":"Moves the cursor directly to where you look.";wrapMode:Text.Wrap;Layout.fillWidth:true}
        Desktop.Label {text:Qt.platform.os==="windows"?"Applies immediately. Save preferences to keep this setting after restarting.":"Relative movement requires global cursor-position feedback, which is unavailable through the Linux desktop portal.";wrapMode:Text.Wrap;Layout.fillWidth:true;opacity:0.6}

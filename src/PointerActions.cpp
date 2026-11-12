@@ -69,7 +69,7 @@ void PointerActions::execute(){
         }
         finish(true);return;
     }
-    if(a=="MouseMagneticCursor"){assist.reset();following=!following;if(following)lookScroll.stop();finish(true);return;}
+    if(a=="MouseMagneticCursor"){assist.reset();followPositionValid=false;following=!following;if(following)lookScroll.stop();finish(true);return;}
     if(a=="MouseDrag"){
         if(!moveTo(current.source)||!setButton(272,true)){finish(false);return;}
         phase=1;dragStep=0;timer.start(100);return;
@@ -125,6 +125,7 @@ void PointerActions::cancel(){
     reset(false);
 }
 void PointerActions::reset(bool preserveMagnetic){
+    followPositionValid=false;
     scrollTrackingPaused=false;
     assist.reset();
     timer.stop();active=false;choosing=false;phase=0;sourceChosen=false;last={};following=preserveMagnetic&&following;
@@ -164,6 +165,7 @@ bool PointerActions::follow(QPointF point,bool overDesktop){
         if(relativeMagnetic){
             if(!moveRelativeTo||!moveRelativeTo(point.x(),point.y())){cancel();return false;}
         }else if(!moveTo(point)){cancel();return false;}
+        position=point;followPositionValid=true;
     }
     return true;
 }
