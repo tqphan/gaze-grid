@@ -10,37 +10,83 @@
 #include <objbase.h>
 #include <uiautomationclient.h>
 namespace {
+constexpr int discoveryBudgetMs=500,resultLifetimeMs=750,maxRequestAgeMs=1000;
 template<class T> struct Com {
  T *p=nullptr;
+ Com()=default;Com(const Com &)=delete;Com &operator=(const Com &)=delete;
  ~Com(){if(p)p->Release();}
  T **out(){return &p;}
  T *operator->()const{return p;}
 };
-QList<QRectF> discover(QPointF gaze,int range){
- QList<QRectF> result;
- const HRESULT apartment=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
- if(FAILED(apartment))return result;
- {
+QRectF rectangle(IUIAutomationElement *element){
+ RECT rect{};
+ if(FAILED(element->get_CachedBoundingRectangle(&rect)))return {};
+ return {double(rect.left),double(rect.top),double(rect.right-rect.left),double(rect.bottom-rect.top)};
+}
+bool actionable(IUIAutomationElement *element){
+ BOOL enabled=FALSE,offscreen=TRUE;CONTROLTYPEID type=0;
+ if(FAILED(element->get_CachedIsEnabled(&enabled))||!enabled||FAILED(element->get_CachedIsOffscreen(&offscreen))||offscreen)return false;
+ if(FAILED(element->get_CachedControlType(&type)))return false;
+ return type==UIA_ButtonControlTypeId||type==UIA_HyperlinkControlTypeId||type==UIA_CheckBoxControlTypeId||type==UIA_RadioButtonControlTypeId||type==UIA_ComboBoxControlTypeId||type==UIA_TabItemControlTypeId||type==UIA_MenuItemControlTypeId||type==UIA_ListItemControlTypeId||type==UIA_EditControlTypeId;
+}
+struct Apartment {
+ HRESULT initialized=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
+ ~Apartment(){if(SUCCEEDED(initialized))CoUninitialize();}
+};
+struct DiscoveryContext {
+ Apartment apartment;
  Com<IUIAutomation2> api;
- if(SUCCEEDED(CoCreateInstance(CLSID_CUIAutomation8,nullptr,CLSCTX_INPROC_SERVER,IID_IUIAutomation2,reinterpret_cast<void**>(api.out())))){
-  api->put_ConnectionTimeout(50);api->put_TransactionTimeout(50);
-  // Point queries respect stacking/occlusion, unlike a desktop-wide tree scan.
-  const int axis=qRound(range*0.8),diagonal=qRound(range*0.6);
-  for(const QPoint offset: {QPoint(0,0),QPoint(-axis,0),QPoint(axis,0),QPoint(0,-axis),QPoint(0,axis),QPoint(-diagonal,-diagonal),QPoint(diagonal,-diagonal),QPoint(-diagonal,diagonal),QPoint(diagonal,diagonal)}){
-   Com<IUIAutomationElement> element;
-   POINT point{LONG(std::lround(gaze.x()+offset.x())),LONG(std::lround(gaze.y()+offset.y()))};
-   if(FAILED(api->ElementFromPoint(point,element.out()))||!element.p)continue;
-   BOOL enabled=FALSE,offscreen=TRUE;CONTROLTYPEID type=0;RECT rect{};
-   if(FAILED(element->get_CurrentIsEnabled(&enabled))||!enabled||FAILED(element->get_CurrentIsOffscreen(&offscreen))||offscreen)continue;
-   if(FAILED(element->get_CurrentControlType(&type)))continue;
-   if(type!=UIA_ButtonControlTypeId&&type!=UIA_HyperlinkControlTypeId&&type!=UIA_CheckBoxControlTypeId&&type!=UIA_RadioButtonControlTypeId&&type!=UIA_ComboBoxControlTypeId&&type!=UIA_TabItemControlTypeId&&type!=UIA_MenuItemControlTypeId&&type!=UIA_ListItemControlTypeId&&type!=UIA_EditControlTypeId)continue;
-   if(FAILED(element->get_CurrentBoundingRectangle(&rect)))continue;
-   QRectF bounds(rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top);
-   if(bounds.width()>=4&&bounds.height()>=4&&bounds.width()<=600&&bounds.height()<=200&&!result.contains(bounds))result.append(bounds);
-  }
+ Com<IUIAutomationCacheRequest> cache;
+ DiscoveryContext(){
+  if(FAILED(apartment.initialized)||FAILED(CoCreateInstance(CLSID_CUIAutomation8,nullptr,CLSCTX_INPROC_SERVER,IID_IUIAutomation2,reinterpret_cast<void**>(api.out()))))return;
+  api->put_ConnectionTimeout(100);api->put_TransactionTimeout(100);
+  if(FAILED(api->CreateCacheRequest(cache.out())))return;
+  for(PROPERTYID property:{UIA_BoundingRectanglePropertyId,UIA_IsEnabledPropertyId,UIA_IsOffscreenPropertyId,UIA_ControlTypePropertyId})cache->AddProperty(property);
+  cache->put_TreeScope(static_cast<TreeScope>(TreeScope_Element|TreeScope_Children));
  }
+};
+QList<QRectF> discover(QPointF gaze,int range){
+ // Reuse the worker's COM connection so provider startup does not consume every
+ // request's deadline. All cached element snapshots are still refreshed below.
+ thread_local DiscoveryContext context;
+ auto &api=context.api;auto &cache=context.cache;
+ QList<QRectF> result;
+ if(api.p&&cache.p){
+   // Search only intersecting containers in the windows under the gaze area.
+   // Sparse point samples miss small controls, and often hit a button's label.
+   const QRectF area(gaze.x()-range,gaze.y()-range,2*range,2*range);
+   QElapsedTimer budget;budget.start();int visited=0;QList<HWND> windows;
+   for(const QPoint offset:{QPoint(0,0),QPoint(-range,0),QPoint(range,0),QPoint(0,-range),QPoint(0,range)}){
+    if(budget.elapsed()>=discoveryBudgetMs||visited>=256)break;
+    POINT point{LONG(std::lround(gaze.x()+offset.x())),LONG(std::lround(gaze.y()+offset.y()))};
+    const HWND window=GetAncestor(WindowFromPoint(point),GA_ROOT);
+    if(!window||windows.contains(window))continue;
+    windows.append(window);
+    Com<IUIAutomationElement> root;
+    if(FAILED(api->ElementFromHandle(window,root.out()))||!root.p)continue;
+    const auto visit=[&](auto &&self,IUIAutomationElement *element,int depth)->void{
+     if(depth>16||visited++>=256||budget.elapsed()>=discoveryBudgetMs)return;
+     Com<IUIAutomationElement> snapshot;
+     if(FAILED(element->BuildUpdatedCache(cache.p,snapshot.out()))||!snapshot.p)return;
+     const auto bounds=rectangle(snapshot.p);
+     if(!bounds.intersects(area))return;
+     if(actionable(snapshot.p)&&bounds.width()>=4&&bounds.height()>=4&&bounds.width()<=600&&bounds.height()<=200){
+      // Do not attract to controls covered by another top-level window.
+      POINT nearest{LONG(std::lround(qBound(bounds.left()+1,gaze.x(),bounds.right()-1))),LONG(std::lround(qBound(bounds.top()+1,gaze.y(),bounds.bottom()-1)))};
+      if(GetAncestor(WindowFromPoint(nearest),GA_ROOT)==window&&!result.contains(bounds))result.append(bounds);
+      return; // Labels inside an actionable control are not separate targets.
+     }
+     Com<IUIAutomationElementArray> children;int count=0;
+     if(FAILED(snapshot->GetCachedChildren(children.out()))||!children.p||FAILED(children->get_Length(&count)))return;
+     for(int i=0;i<count&&visited<256&&budget.elapsed()<discoveryBudgetMs;++i){
+      Com<IUIAutomationElement> child;
+      if(SUCCEEDED(children->GetElement(i,child.out()))&&child.p&&rectangle(child.p).intersects(area))self(self,child.p,depth+1);
+     }
+    };
+    visit(visit,root.p,0);
+   }
  }
- CoUninitialize();return result;
+ return result;
 }
 }
 #endif
@@ -87,10 +133,10 @@ QPointF TargetAssist::adjust(QPointF normalized){
   pending=true;requested=now;const int requestGeneration=generation,requestRange=rangeValue;
   QMetaObject::invokeMethod(worker,[this,gaze,requestGeneration,requestRange]{
    const auto result=discover(gaze,requestRange);
-   QMetaObject::invokeMethod(this,[this,result,requestGeneration]{pending=false;if(requestGeneration==generation&&clock.elapsed()-requested<=250){bounds=result;received=clock.elapsed();}},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[this,result,requestGeneration]{pending=false;if(requestGeneration==generation&&clock.elapsed()-requested<=maxRequestAgeMs){bounds=result;received=clock.elapsed();}},Qt::QueuedConnection);
   },Qt::QueuedConnection);
  }
- if(now-received>250){selected={};return normalized;}
+ if(now-received>resultLifetimeMs){selected={};return normalized;}
  const QPointF target=resolve(gaze,bounds,selected,strengthValue,rangeValue,retentionValue);
  return {qBound(0.,target.x()/screen.width(),1.),qBound(0.,target.y()/screen.height(),1.)};
 #else
