@@ -14,6 +14,13 @@ function Run-Msi([string]$Operation, [string[]]$Properties = @(), [string]$Packa
 # Run entry still exists, then removes the old product before writing new keys.
 function Test-StartupUpgrade {
     $previous = (Resolve-Path -LiteralPath $UpgradeFromMsi).Path
+    $baseline = (Get-Content "$PSScriptRoot/release-trust.json" -Raw | ConvertFrom-Json).upgradeBaseline
+    if ((Get-FileHash -LiteralPath $previous -Algorithm SHA256).Hash -ne $baseline.sha256) { throw 'Upgrade baseline checksum mismatch.' }
+    Import-Certificate -FilePath $testCertificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+    try {
+        $signature = Get-AuthenticodeSignature -LiteralPath $previous
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Thumbprint -ne $baseline.thumbprint) { throw 'Upgrade baseline signature mismatch.' }
+    } finally { Remove-Item "Cert:\LocalMachine\Root\$CertificateThumbprint" -Force }
     $mode = 'startup-upgrade-baseline'
     Run-Msi '/i' @('GAZE_GRID_STARTUP=1', 'GAZE_GRID_SIGN_IN=0') $previous
     try {

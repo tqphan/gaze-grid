@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$CertificateThumbprint,
+    [string]$CertificateThumbprint,
+    [string]$PublicCertificate,
+    [switch]$PrepareOnly,
     [string]$BuildDirectory = 'build/windows',
     [string]$TobiiSdk = '',
     [switch]$LocalIme = $true
@@ -12,9 +14,16 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit code $LASTEXITCODE" }
 }
 $root = (Resolve-Path "$PSScriptRoot/../..").Path
-$cert = Get-Item "Cert:\CurrentUser\My\$CertificateThumbprint"
-if ($cert.Subject -ne 'CN=GazeGrid' -or $cert.Issuer -ne $cert.Subject -or !$cert.HasPrivateKey -or $cert.NotAfter -le (Get-Date)) {
-    throw 'An unexpired self-signed CN=GazeGrid certificate with its private key is required.'
+if ($PrepareOnly) {
+    $cert = Get-PfxCertificate -FilePath $PublicCertificate
+    if ($cert.HasPrivateKey) { throw 'The build runner must receive only a public certificate.' }
+    $CertificateThumbprint = $cert.Thumbprint
+} else {
+    $cert = Get-Item "Cert:\CurrentUser\My\$CertificateThumbprint"
+    if (!$cert.HasPrivateKey) { throw 'A private signing key is required.' }
+}
+if ($cert.Subject -ne 'CN=GazeGrid' -or $cert.Issuer -ne $cert.Subject -or $cert.NotAfter -le (Get-Date)) {
+    throw 'An unexpired self-signed CN=GazeGrid certificate is required.'
 }
 $signCommand = Get-Command signtool.exe -ErrorAction SilentlyContinue
 $signTool = if ($signCommand) { $signCommand.Source } else { $null }
@@ -56,10 +65,15 @@ $execution = $manifest.SelectSingleNode("//*[local-name()='requestedExecutionLev
 if (!$execution -or $execution.uiAccess -ne 'true' -or $execution.level -ne 'asInvoker') {
     throw 'Release manifest must request asInvoker with uiAccess=true.'
 }
-Invoke-Checked $signTool @('sign', '/sha1', $CertificateThumbprint, '/fd', 'SHA256', $exe)
-Invoke-Checked $signTool @('verify', '/pa', $exe)
+if (!$PrepareOnly) {
+    Invoke-Checked $signTool @('sign', '/sha1', $CertificateThumbprint, '/fd', 'SHA256', $exe)
+    Invoke-Checked $signTool @('verify', '/pa', $exe)
+}
 $deploy = "$build/deploy"
-if (Test-Path $deploy) { Remove-Item -Recurse -Force $deploy }
+if (Test-Path $deploy) {
+    if (!(Resolve-Path $deploy).Path.StartsWith($build + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Deployment directory escaped the build directory.' }
+    Remove-Item -LiteralPath $deploy -Recurse -Force
+}
 New-Item -ItemType Directory $deploy | Out-Null
 # Only scan Qt-only generated QML; the source directory also contains KDE imports.
 $qtDirectory = (& qmake -query QT_INSTALL_PREFIX).Trim()
@@ -71,6 +85,13 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not locate Qt platform plugins.' }
 Copy-Item "$pluginDirectory/platforms/qoffscreen.dll" "$deploy/platforms/qoffscreen.dll"
 if (@(Get-ChildItem -LiteralPath $deploy -Recurse -File -Filter '*tobii*.dll').Count) {
     throw 'Tobii runtime DLLs must not be distributed in the MSI.'
+}
+if ($PrepareOnly) {
+    # Materialize all Qt, MSVC runtime, keyboard and license files now. The later
+    # packaging runner needs neither Qt/Python nor a compiler or private key.
+    Invoke-Checked cmake @('--install', $build, '--config', 'Release', '--prefix', "$build/payload")
+    "exe_hash=$((Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
+    return
 }
 Push-Location $build
 try { Invoke-Checked cpack @('-G', 'WIX', '-C', 'Release') }

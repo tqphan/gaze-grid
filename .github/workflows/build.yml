@@ -8,11 +8,15 @@ permissions:
 jobs:
   linux:
     runs-on: ubuntu-24.04
-    container: archlinux:base
+    container: archlinux:base@sha256:d4594bb2300cba11f41c2f27923eb56f63d9988909c402f9c95517d1e362c899
     steps:
       - name: Install build and desktop dependencies
-        run: pacman -Syu --noconfirm --needed git cmake ninja gcc pkgconf qt6-base qt6-declarative qt6-svg qt6-virtualkeyboard qt6-wayland layer-shell-qt libei speech-dispatcher kirigami qqc2-desktop-style dbus
+        run: |
+          printf '%s\n' 'Server = https://archive.archlinux.org/repos/2026/11/11/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          pacman -Syyuu --noconfirm --needed git cmake ninja gcc pkgconf qt6-base qt6-declarative qt6-svg qt6-virtualkeyboard qt6-wayland layer-shell-qt libei speech-dispatcher kirigami qqc2-desktop-style dbus
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGAZE_GRID_WITH_TOBII=OFF
       - run: cmake --build build --parallel 2
       - run: dbus-run-session -- ctest --test-dir build --output-on-failure
@@ -23,15 +27,14 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
-          # Qt 6.11+ uses compiler-specific repositories unsupported by aqt 3.3.0.
-          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7'
-          py7zrversion: '==1.1.4'
-          version: '6.12.0'
-          arch: win64_msvc2022_64
-          modules: qtvirtualkeyboard qttasktree
-          cache: true
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.14.0'
+      - name: Install Qt with locked installer dependencies
+        shell: pwsh
+        run: ./platform/windows/Install-Qt.ps1
       - name: Configure WiX 3 and test certificate
         shell: pwsh
         run: |
