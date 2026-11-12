@@ -47,7 +47,10 @@ bool PointerActions::setButton(int code,bool down){
     if(down)held.insert(code);else held.remove(code);emit changed();return true;
 }
 bool PointerActions::click(int code){
-    if(!setButton(code,true))return false;
+    if(clickDurationMs>0&&timedButton){
+        if(!timedButton(code,clickDurationMs))return false;
+        held.insert(code);emit changed();
+    }else if(!setButton(code,true))return false;
     if(clickDurationMs==0)return setButton(code,false);
     pendingClickButton=code;
     pendingClickDurationMs=clickDurationMs;

@@ -10,8 +10,68 @@
 #include <windows.h>
 #endif
 
-WindowsInput::WindowsInput(Sender sender):send(std::move(sender)){}
-WindowsInput::~WindowsInput(){releaseAll();}
+WindowsInput::WindowsInput(Sender sender):send(std::move(sender)),inputThread([this]{run();}){}
+WindowsInput::~WindowsInput(){
+    {
+        std::lock_guard lock(queueMutex);
+        stopping=true;
+    }
+    queueChanged.notify_one();
+    inputThread.join(); // Worker drains accepted sends and releases owned input.
+}
+bool WindowsInput::dispatch(std::function<bool()> operation){
+    // Internal operations (including cleanup) stay on the worker without queuing
+    // behind themselves. Public calls keep the existing synchronous result API.
+    if(std::this_thread::get_id()==inputThread.get_id())return operation();
+    std::packaged_task<bool()> job(std::move(operation));
+    auto result=job.get_future();
+    {
+        std::lock_guard lock(queueMutex);
+        if(stopping)return false;
+        jobs.push_back(std::move(job));
+    }
+    queueChanged.notify_one();
+    return result.get();
+}
+bool WindowsInput::timedButton(int code,int durationMs){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,code,durationMs]{return timedButton(code,durationMs);});
+    if(durationMs<0||heldButtons.contains(code))return false;
+    if(!button(code,true))return false;
+    releases[code]=std::chrono::steady_clock::now()+std::chrono::milliseconds(durationMs);
+    return true;
+}
+void WindowsInput::releaseDueButtons(){
+    const auto now=std::chrono::steady_clock::now();
+    for(auto it=releases.begin();it!=releases.end();){
+        if(it->second>now){++it;continue;}
+        const int code=it->first;
+        it=releases.erase(it);
+        // A failed release stays owned and can be retried by cleanup.
+        button(code,false);
+    }
+}
+void WindowsInput::run(){
+    std::unique_lock lock(queueMutex);
+    for(;;){
+        lock.unlock();
+        releaseDueButtons();
+        lock.lock();
+        if(!jobs.empty()){
+            auto job=std::move(jobs.front());jobs.pop_front();
+            lock.unlock();job();lock.lock();continue;
+        }
+        if(stopping)break;
+        if(releases.empty())queueChanged.wait(lock);
+        else{
+            auto deadline=releases.begin()->second;
+            for(const auto &[code,time]:releases)if(time<deadline)deadline=time;
+            queueChanged.wait_until(lock,deadline);
+        }
+    }
+    lock.unlock();
+    releaseAll();
+}
 WindowsInput::Sender WindowsInput::nativeSender(){
 #ifdef _WIN32
     return [](const Event &event){
@@ -30,6 +90,8 @@ WindowsInput::Sender WindowsInput::nativeSender(){
 #endif
 }
 bool WindowsInput::key(const QString &name,bool down){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,name,down]{return key(name,down);});
     const auto canonical=KeyNames::canonical(name);
     Event event;event.kind=Event::Key;
     const int code=KeyNames::linuxCode(canonical);
@@ -50,16 +112,23 @@ bool WindowsInput::key(const QString &name,bool down){
     return true;
 }
 bool WindowsInput::text(const QString &text){
-    if(!send||!heldKeys.isEmpty()||!text.isValidUtf16()||text.contains(QChar(0)))return false;
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,text]{return this->text(text);});
+    if(!send||!heldKeys.isEmpty()||!heldUnicode.isEmpty()||!text.isValidUtf16()||text.contains(QChar(0)))return false;
     for(auto ch:text){
+        releaseDueButtons(); // Large text commits must not strand a timed click.
         Event event;event.kind=Event::Key;event.scan=ch.unicode();event.flags=0x0004; // KEYEVENTF_UNICODE
         if(!send(event))return false;
+        heldUnicode.insert(event.scan);
         event.flags|=0x0002;
         if(!send(event))return false;
+        heldUnicode.remove(event.scan);
     }
     return true;
 }
 bool WindowsInput::button(int code,bool down){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,code,down]{return button(code,down);});
     Event event;
     switch(code){
     case 272:event.flags=down?0x0002:0x0004;break;
@@ -67,7 +136,9 @@ bool WindowsInput::button(int code,bool down){
     case 274:event.flags=down?0x0020:0x0040;break;
     default:return false;
     }
+    if(!down&&!heldButtons.contains(code))return true;
     if(!send||!send(event))return false;
+    releases.erase(code);
     if(down)heldButtons.insert(code);else heldButtons.remove(code);
     return true;
 }
@@ -75,17 +146,23 @@ namespace {
 bool representable(double n){return std::isfinite(n)&&n>=std::numeric_limits<int32_t>::min()&&n<=std::numeric_limits<int32_t>::max();}
 }
 bool WindowsInput::move(double dx,double dy){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,dx,dy]{return move(dx,dy);});
     if(!representable(dx)||!representable(dy))return false;
     Event event;event.flags=0x0001;event.x=int32_t(std::round(dx));event.y=int32_t(std::round(dy));
     return send&&send(event);
 }
 bool WindowsInput::moveAbsolute(double x,double y){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,x,y]{return moveAbsolute(x,y);});
     if(!std::isfinite(x)||!std::isfinite(y)||x<0||x>1||y<0||y>1)return false;
     Event event;event.flags=0x0001|0x8000|0x4000;
     event.x=int32_t(std::round(x*65535));event.y=int32_t(std::round(y*65535));
     return send&&send(event);
 }
 bool WindowsInput::scrollAxes(double horizontal,double vertical){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this,horizontal,vertical]{return scrollAxes(horizontal,vertical);});
     const double x=horizontal*120,y=-vertical*120;
     if(!representable(x)||!representable(y))return false;
     if(!send)return false;
@@ -97,12 +174,21 @@ bool WindowsInput::scrollAxes(double horizontal,double vertical){
     return true;
 }
 bool WindowsInput::releaseButtons(){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this]{return releaseButtons();});
     bool ok=true;const auto buttons=heldButtons;
     for(int code:buttons)if(!button(code,false))ok=false;
     return ok;
 }
 bool WindowsInput::releaseAll(){
+    if(std::this_thread::get_id()!=inputThread.get_id())
+        return dispatch([this]{return releaseAll();});
     bool ok=true;const auto keys=heldKeys;
     for(const auto &name:keys)if(!key(name,false))ok=false;
+    const auto unicode=heldUnicode;
+    for(auto scan:unicode){
+        Event event;event.kind=Event::Key;event.scan=scan;event.flags=0x0006;
+        if(send&&send(event))heldUnicode.remove(scan);else ok=false;
+    }
     return releaseButtons()&&ok;
 }

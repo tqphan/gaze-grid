@@ -227,6 +227,11 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  pointer.moveRelative=[this](double x,double y){return desktopActive&&portal.move(x,y);};
  pointer.moveRelativeTo=[this](double x,double y){return desktopActive&&portal.moveRelativeTo(x,y);};
  pointer.button=[this](int code,bool down){return (!down||desktopActive)&&portal.button(code,down);};
+#ifdef GAZE_GRID_WINDOWS
+ // Native caption tracking can suspend Qt timers on this thread. The backend
+ // releases timed presses independently; the UI timer only finishes the action.
+ pointer.timedButton=[this](int code,int ms){return desktopActive&&portal.timedButton(code,ms);};
+#endif
  pointer.scroll=[this](double amount){return desktopActive&&portal.scroll(amount);};
  pointer.scrollAxes=[this](double x,double y){return desktopActive&&portal.scrollAxes(x,y);};
  pointer.releaseAll=[this]{portal.releaseButtons();};

@@ -19,6 +19,7 @@ public:
  bool move(double dx,double dy){return available&&input.move(dx,dy);}
  bool click(){if(!button(272,true))return false;return button(272,false);}
  bool button(int code,bool down){return available&&input.button(code,down);}
+ bool timedButton(int code,int durationMs){return available&&input.timedButton(code,durationMs);}
  bool moveAbsolute(double x,double y);
  bool moveRelativeTo(double x,double y);
  bool relativeTargetAvailable()const{return available;}

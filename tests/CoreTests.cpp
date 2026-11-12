@@ -1215,6 +1215,19 @@ private slots:
   QVERIFY(p.start("MouseLeftClick"));QTRY_VERIFY(held);QVERIFY(p.busy());
   p.cancel();QVERIFY(!held);QTest::qWait(300);QCOMPARE(events,1);QCOMPARE(done.count(),0);QVERIFY(!p.busy());
  }
+ void backendTimedClicksCompleteAndRepeat(){
+  for(const auto &action:QStringList{"MouseLeftClick","MouseMoveAndMiddleClick","MouseMoveAndRightClick","MouseMoveAndLeftDoubleClick"}){
+   PointerActions p;p.setClickDuration(30);int presses=0,releases=0;
+   p.move=[](double,double){return true;};
+   p.timedButton=[&](int,int ms){if(ms!=30)return false;++presses;return true;};
+   p.button=[&](int,bool down){if(down)return false;++releases;return true;};
+   QSignalSpy done(&p,&PointerActions::completed);QVERIFY(p.start(action));
+   if(p.targeting())p.select({.3,.4});
+   QTRY_COMPARE(done.count(),1);QVERIFY(done[0][0].toBool());
+   QCOMPARE(presses,action.endsWith("DoubleClick")?2:1);QCOMPARE(releases,presses);
+   QVERIFY(p.heldButtons().isEmpty());QVERIFY(!p.busy());
+  }
+ }
  void heldButtonCannotBeReleasedByClick(){
   PointerActions p;QStringList events;p.button=[&](int,bool down){events<< (down?"down":"up");return true;};
   QSignalSpy done(&p,&PointerActions::completed);QVERIFY(p.start("MouseLeftDownUp"));QTRY_COMPARE(done.count(),1);

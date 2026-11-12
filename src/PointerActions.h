@@ -17,6 +17,8 @@ public:
     std::function<bool(double,double)> moveRelative;
     std::function<bool(double,double)> moveRelativeTo;
     std::function<bool(int,bool)> button;
+    // Optional backend-owned release, independent of this object's Qt timer.
+    std::function<bool(int,int)> timedButton;
     std::function<bool(double)> scroll;
     std::function<bool(double,double)> scrollAxes;
     std::function<void()> releaseAll;

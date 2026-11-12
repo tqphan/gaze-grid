@@ -10,6 +10,11 @@ The root CMake project now builds the full application on Windows. The earlier
 Windows uses SendInput for keyboard/pointer output, primary-screen desktop
 capture for magnification, and SAPI speech on the speech worker thread. Existing
 pause, cancellation, tracking-loss and shutdown paths release owned input.
+Desktop keyboard, Unicode text, pointer and wheel sends run in order on a
+dedicated input worker, which also owns held-input tracking and timed mouse
+releases. Calls wait for their send result so failures remain visible to the
+action runner. Timed mouse releases continue without Qt event processing;
+macro waits, gaze repeats and UI actions still advance on the UI thread.
 Primary-display gaze coordinates are translated to physical virtual-desktop
 coordinates before SendInput; capture uses that same primary display. Qt's
 non-focus-taking, topmost window flags apply to the keyboard and target overlay.
