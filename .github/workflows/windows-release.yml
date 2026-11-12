@@ -15,83 +15,238 @@ concurrency:
 permissions:
   contents: read
 jobs:
-  package:
+  validate:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require approved source and successful CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CREATE_RELEASE: ${{ github.event_name == 'push' || inputs.create_release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != refs/heads/main && "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo 'Releases require main or a version tag.'; exit 1
+          fi
+          if [[ "$CREATE_RELEASE" == true && "$GITHUB_REF_TYPE" != tag ]]; then
+            echo 'Create and push the version tag before publishing a release.'; exit 1
+          fi
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          python - <<'PY'
+          import os, re
+          from pathlib import Path
+          version = re.search(r'project\(gaze-grid\s+VERSION\s+(\d+\.\d\.\d)\s', Path('CMakeLists.txt').read_text()).group(1)
+          if os.environ['GITHUB_REF_TYPE'] == 'tag' and os.environ['GITHUB_REF_NAME'] != 'v' + version:
+              raise SystemExit('Tag must match the project version.')
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" > checks.json
+          python - <<'PY'
+          import json
+          checks = json.load(open('checks.json'))['check_runs']
+          for name in ('linux', 'windows'):
+              matches = [c for c in checks if c['name'] == name and c['app']['slug'] == 'github-actions']
+              if not matches or any(c['conclusion'] != 'success' for c in matches):
+                  raise SystemExit(f'Required CI check is not successful: {name}')
+          PY
+  build:
+    needs: validate
     runs-on: windows-2022
+    # Only the pinned SDK header secret is referenced here; never the signing key.
     environment: windows-release
     timeout-minutes: 45
+    outputs:
+      exe_hash: ${{ steps.build.outputs.exe_hash }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.14.10'
+      - name: Install Qt with locked installer dependencies
+        shell: pwsh
+        run: ./platform/windows/Install-Qt.ps1
+      - name: Restore pinned SDK headers
+        shell: pwsh
+        env:
+          GAZE_GRID_TOBII_HEADERS_BASE64: ${{ secrets.GAZEGRID_TOBII_HEADERS_BASE64 }}
+        run: ./platform/windows/Restore-TobiiSdk.ps1 -Destination "$env:RUNNER_TEMP/tobii-sdk"
+      - name: Build, test and stage without the signing key
+        id: build
+        shell: pwsh
+        run: |
+          $trust = Get-Content platform/windows/release-trust.json -Raw | ConvertFrom-Json
+          if ((Get-FileHash platform/windows/gaze-grid.cer).Hash -ne $trust.certificateSha256) { throw 'Public certificate mismatch.' }
+          (Join-Path $env:WIX 'bin') | Out-File $env:GITHUB_PATH -Append
+          ./platform/windows/Build-Release.ps1 -PrepareOnly -PublicCertificate platform/windows/gaze-grid.cer -TobiiSdk "$env:RUNNER_TEMP/tobii-sdk" -LocalIme
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          GAZE_GRID_TEST_LOCAL_IME: '1'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-inputs
+          path: |
+            build/windows/CPackConfig.cmake
+            build/windows/Installer.wxs
+            build/windows/gaze-grid.cer
+            build/windows/Release/gaze-grid_sign_in_actions.dll
+            build/windows/unsigned/gaze-grid.exe
+            build/windows/payload/
+          if-no-files-found: error
+          retention-days: 3
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned-executable
+          path: build/windows/Release/gaze-grid.exe
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-build-diagnostics
+          path: |
+            build/windows/*-qt-test.txt
+            build/windows/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
+  sign-exe:
+    needs: build
+    runs-on: windows-2022
+    environment: windows-release
+    timeout-minutes: 10
+    outputs:
+      signed_hash: ${{ steps.sign.outputs.signed_hash }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: unsigned-executable
+          path: build/windows/Release
+      - name: Sign only the application
+        id: sign
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.GAZEGRID_SIGNING_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.GAZEGRID_SIGNING_PFX_PASSWORD }}
+          EXPECTED_HASH: ${{ needs.build.outputs.exe_hash }}
+        run: ./platform/windows/Sign-Artifact.ps1 -Kind exe -ExpectedHash $env:EXPECTED_HASH
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-executable
+          path: build/windows/Release/gaze-grid.exe
+          if-no-files-found: error
+          retention-days: 3
+  package:
+    needs: sign-exe
+    runs-on: windows-2022
+    timeout-minutes: 15
+    outputs:
+      msi_hash: ${{ steps.package.outputs.msi_hash }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-inputs
+          path: build/windows
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: signed-executable
+          path: build/windows/Release
+      - name: Package on a runner without the signing key
+        id: package
+        shell: pwsh
+        env:
+          EXPECTED_HASH: ${{ needs.sign-exe.outputs.signed_hash }}
+        run: |
+          if ((Get-FileHash build/windows/Release/gaze-grid.exe).Hash -ne $env:EXPECTED_HASH) { throw 'Signed executable mismatch.' }
+          $env:PATH = (Join-Path $env:WIX 'bin') + ';' + $env:PATH
+          cpack --config platform/windows/CPack-Release.cmake -G WIX -C Release
+          if ($LASTEXITCODE -ne 0) { throw 'Packaging failed.' }
+          $msi = @(Get-ChildItem build/windows/*.msi)
+          if ($msi.Count -ne 1) { throw 'Expected one MSI.' }
+          ./platform/windows/Assert-NoTobiiRuntime.ps1 -Msi $msi[0].FullName
+          "msi_hash=$((Get-FileHash $msi[0].FullName).Hash.ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned-msi
+          path: build/windows/*.msi
+          if-no-files-found: error
+          retention-days: 3
+  sign-msi:
+    needs: package
+    runs-on: windows-2022
+    environment: windows-release
+    timeout-minutes: 10
+    outputs:
+      signed_hash: ${{ steps.sign.outputs.signed_hash }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: unsigned-msi
+          path: build/windows
+      - name: Sign only the MSI
+        id: sign
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.GAZEGRID_SIGNING_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.GAZEGRID_SIGNING_PFX_PASSWORD }}
+          EXPECTED_HASH: ${{ needs.package.outputs.msi_hash }}
+        run: ./platform/windows/Sign-Artifact.ps1 -Kind msi -ExpectedHash $env:EXPECTED_HASH
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-msi
+          path: build/windows/*.msi
+          if-no-files-found: error
+          retention-days: 3
+  verify:
+    needs: sign-msi
+    runs-on: windows-2022
+    timeout-minutes: 30
     outputs:
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Validate version tag
-        shell: pwsh
-        run: |
-          $project = Get-Content CMakeLists.txt -Raw
-          if ($project -notmatch 'project\(gaze-grid\s+VERSION\s+(\d+\.\d+\.\d+)') { throw 'Missing project version' }
-          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$($Matches[1])") {
-            throw 'The release tag must match the version in CMakeLists.txt.'
-          }
-      - uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
-          # Qt 6.11+ uses compiler-specific repositories unsupported by aqt 3.3.0.
-          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7'
-          py7zrversion: '==1.1.4'
-          version: '6.12.0'
-          arch: win64_msvc2022_64
-          modules: qtvirtualkeyboard qttasktree
-          cache: true
-      - name: Restore pinned Tobii SDK headers (no runtime binaries)
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: signed-msi
+          path: build/windows
+      - name: Verify signatures and installer behavior without a private key
         shell: pwsh
         env:
-          GAZE_GRID_TOBII_HEADERS_BASE64: ${{ secrets.GAZEGRID_TOBII_HEADERS_BASE64 }}
-        run: ./platform/windows/Restore-TobiiSdk.ps1 -Destination "$env:RUNNER_TEMP/tobii-sdk"
-      - name: Import persistent gaze-grid signing identity
-        shell: pwsh
-        env:
-          PFX_BASE64: ${{ secrets.GAZEGRID_SIGNING_PFX_BASE64 }}
-          PFX_PASSWORD: ${{ secrets.GAZEGRID_SIGNING_PFX_PASSWORD }}
-        run: |
-          if (!$env:PFX_BASE64 -or !$env:PFX_PASSWORD) { throw 'Configure the gaze-grid signing secrets first.' }
-          $path = "$env:RUNNER_TEMP/gaze-grid.pfx"
-          try {
-            [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:PFX_BASE64))
-            $password = ConvertTo-SecureString $env:PFX_PASSWORD -AsPlainText -Force
-            $cert = Import-PfxCertificate -FilePath $path -Password $password -CertStoreLocation Cert:\CurrentUser\My
-            if ($cert.Subject -ne 'CN=GazeGrid' -or $cert.Issuer -ne $cert.Subject) { throw 'Expected self-signed CN=GazeGrid' }
-            Export-Certificate -Cert $cert -FilePath "$env:RUNNER_TEMP/gaze-grid.cer" | Out-Null
-            Import-Certificate -FilePath "$env:RUNNER_TEMP/gaze-grid.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-            "SIGNING_THUMBPRINT=$($cert.Thumbprint)" | Out-File $env:GITHUB_ENV -Append
-          } finally { Remove-Item $path -Force -ErrorAction SilentlyContinue }
-          (Join-Path $env:WIX 'bin') | Out-File $env:GITHUB_PATH -Append
-      - name: Build signed MSI
-        shell: pwsh
-        run: ./platform/windows/Build-Release.ps1 -CertificateThumbprint $env:SIGNING_THUMBPRINT -TobiiSdk "$env:RUNNER_TEMP/tobii-sdk" -LocalIme
-        env:
+          EXPECTED_HASH: ${{ needs.sign-msi.outputs.signed_hash }}
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
-          GAZE_GRID_TEST_LOCAL_IME: '1'
-      - name: Verify MSI installation, signed application launch and uninstall
-        shell: pwsh
         run: |
-          $msi = (Get-ChildItem build/windows/*.msi | Select-Object -First 1).FullName
-          # Keep an upgrade regression against the release whose startup entry
-          # could disappear when NeverOverwrite met early product removal.
-          $previous = "$env:RUNNER_TEMP/gaze-grid-0.4.9-Windows-x64.msi"
-          Invoke-WebRequest "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v0.4.9/gaze-grid-0.4.9-Windows-x64.msi" -OutFile $previous
-          ./platform/windows/Test-Installed.ps1 -Msi $msi -CertificateThumbprint $env:SIGNING_THUMBPRINT -ExpectTobii -ExpectLocalIme -UpgradeFromMsi $previous
-        env:
-          QT_QPA_PLATFORM: offscreen
-          QT_QUICK_BACKEND: software
-      - name: Remove signing identity
-        if: always()
-        shell: pwsh
-        run: |
-          if ($env:SIGNING_THUMBPRINT) {
-            Remove-Item "Cert:\CurrentUser\My\$env:SIGNING_THUMBPRINT" -Force -ErrorAction SilentlyContinue
-            Remove-Item "Cert:\LocalMachine\Root\$env:SIGNING_THUMBPRINT" -Force -ErrorAction SilentlyContinue
-          }
-      - name: Prepare versioned release assets and checksums
+          $trust = Get-Content platform/windows/release-trust.json -Raw | ConvertFrom-Json
+          Copy-Item platform/windows/gaze-grid.cer build/windows/gaze-grid.cer
+          if ((Get-FileHash build/windows/gaze-grid.cer).Hash -ne $trust.certificateSha256) { throw 'Public certificate mismatch.' }
+          $msi = @(Get-ChildItem build/windows/*.msi)
+          if ($msi.Count -ne 1 -or (Get-FileHash $msi[0].FullName).Hash -ne $env:EXPECTED_HASH) { throw 'Signed MSI mismatch.' }
+          Import-Certificate -FilePath build/windows/gaze-grid.cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          $signature = Get-AuthenticodeSignature $msi[0].FullName
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Thumbprint -ne $trust.thumbprint) { throw 'Release signature mismatch.' }
+          $previous = "$env:RUNNER_TEMP/upgrade-baseline.msi"
+          Invoke-WebRequest $trust.upgradeBaseline.url -OutFile $previous
+          ./platform/windows/Test-Installed.ps1 -Msi $msi[0].FullName -CertificateThumbprint $trust.thumbprint -ExpectTobii -ExpectLocalIme -UpgradeFromMsi $previous
+      - name: Prepare release assets
         id: release
         shell: pwsh
         run: ./platform/windows/Prepare-Release.ps1
@@ -101,21 +256,18 @@ jobs:
           path: build/windows/release/*
           if-no-files-found: error
           retention-days: 30
-      - name: Upload Windows diagnostics
+      - name: Upload installer diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: windows-installer-diagnostics
+          name: release-installer-diagnostics
           path: |
-            build/windows/*-qt-test.txt
-            build/windows/Testing/Temporary/LastTest.log
-            build/windows/_CPack_Packages/win64/WIX/wix.log
             ${{ runner.temp }}/gaze-grid-msi-*.log
             ${{ runner.temp }}/gaze-grid-app-*
           if-no-files-found: ignore
   release:
     name: Create draft GitHub release
-    needs: package
+    needs: [verify, sign-msi]
     if: github.event_name == 'push' || inputs.create_release
     runs-on: ubuntu-24.04
     permissions:
@@ -124,6 +276,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: gaze-grid-Windows-x64-signed
@@ -131,14 +284,13 @@ jobs:
       - name: Attach verified assets to a draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.package.outputs.tag }}
-          RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+          EXPECTED_MSI_HASH: ${{ needs.sign-msi.outputs.signed_hash }}
         shell: bash
         run: |
           set -euo pipefail
-          cd release
-          sha256sum --check SHA256SUMS.txt
-          cd ..
+          python platform/windows/Validate-ReleaseAssets.py
           if git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
             tagged_commit=$(git rev-list -n 1 "$RELEASE_TAG")
             test "$tagged_commit" = "$GITHUB_SHA" || { echo 'Existing version tag points to a different commit.'; exit 1; }

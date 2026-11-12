@@ -1,0 +1,9 @@
+{
+  "thumbprint": "55BFAE0900C0279A821B349DCE827803AD14B7FF",
+  "certificateSha256": "b17be06adec753d044967f66e78c3f630a4b26f404d59c19d8b44bec17831c6a",
+  "upgradeBaseline": {
+    "url": "https://github.com/tqphan/gaze-grid/releases/download/v0.4.9/gaze-grid-0.4.9-Windows-x64.msi",
+    "sha256": "98aad7bfc9f2c3a0345411a7ab782df3e1a8b74f98a2d53d0cd5bda85193f860",
+    "thumbprint": "55BFAE0900C0279A821B349DCE827803AD14B7FF"
+  }
+}
