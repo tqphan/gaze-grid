@@ -245,7 +245,10 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  pointer.scroll=[this](double amount){return desktopActive&&portal.scroll(amount);};
  pointer.scrollAxes=[this](double x,double y){return desktopActive&&portal.scrollAxes(x,y);};
  pointer.releaseAll=[this]{portal.releaseButtons();};
- connect(&pointer,&PointerActions::changed,this,[this]{targeting=pointer.targeting();if(!targeting)clearCapture();emit changed();});
+ connect(&pointer,&PointerActions::changed,this,[this]{
+  if(pointer.hidesKeyboard())mouseActionSequence=true;
+  targeting=pointer.targeting();if(!targeting)clearCapture();emit changed();
+ });
  connect(&screenshot,&ScreenshotPortal::failed,this,[this](QString error){
   clearCapture();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();actionStatus=error;emit changed();
  });
@@ -268,7 +271,12 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  runner.supportsAction=ActionCatalog::supported;
  runner.navigate=[this](QString name,bool back){if(desktopActive)openLayout(name,back);};
  connect(&runner,&ActionRunner::failed,this,[this](QString m){endButtonHold();gameController.reset();activeJoystick=-1;actionStatus=m.contains("Gamepad")&&!gameController.error().isEmpty()?gameController.error():m;emit changed();});
- connect(&runner,&ActionRunner::stateChanged,this,&Controller::changed);
+ connect(&runner,&ActionRunner::stateChanged,this,[this]{
+  // Keep the keyboard hidden between pointer operations and through waits in
+  // the same command sequence. Completion, failure and cancellation all clear it.
+  if(!runner.busy())mouseActionSequence=false;
+  emit changed();
+ });
  connect(&runner,&ActionRunner::cancelled,this,&Controller::clearOverlap);
  connect(&runner,&ActionRunner::failed,this,[this]{clearOverlap();});
  connect(&runner,&ActionRunner::finished,this,&Controller::dispatchOverlap,Qt::QueuedConnection);

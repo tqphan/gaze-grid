@@ -1199,7 +1199,13 @@ private slots:
   QVERIFY(c.executeCommands(action));QTRY_VERIFY(c.keyboardTemporarilyHidden());
   c.clickCommand("CancelTarget");QVERIFY(!c.keyboardTemporarilyHidden());
   QVERIFY(c.executeCommands(action));QTRY_VERIFY(c.keyboardTemporarilyHidden());
+  bool restoredWhileExecuting=false;
+  const auto visibilityConnection=connect(&c,&Controller::changed,&c,[&]{
+   if(c.executingCommands()&&!c.keyboardTemporarilyHidden())restoredWhileExecuting=true;
+  });
   QTRY_VERIFY(!c.keyboardTemporarilyHidden()); // Unavailable portal fails safely and restores the keyboard.
+  QVERIFY(!c.executingCommands());QVERIFY(!restoredWhileExecuting);
+  disconnect(visibilityConnection);
   c.resetPreferences();QVERIFY(!c.property("hideKeyboardDuringMouseActions").toBool());
  }
 

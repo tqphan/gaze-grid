@@ -224,7 +224,7 @@ public:
  QString targetPrompt()const{return zoomAnimating?"Zooming in…":magnifierReady?"Choose the precise target in the magnified image":pointer.prompt();}
  QImage magnifierImage()const{return magnifiedImage;}
  QStringList heldPointerButtons()const{return pointer.heldButtons();}
- bool keyboardTemporarilyHidden()const{return hideKeyboardDuringMouseActions&&pointer.hidesKeyboard();}
+ bool keyboardTemporarilyHidden()const{return hideKeyboardDuringMouseActions&&(pointer.hidesKeyboard()||(mouseActionSequence&&runner.busy()));}
  bool magneticCursor()const{return pointer.magnetic();}
  bool lookScrolling()const{return pointer.lookScrolling();}
  QPointF scrollCentre()const{return pointer.scrollCentre();}
@@ -398,6 +398,7 @@ private:
  bool preserveTogglesBetweenLayouts=false;
  bool cycleModifiersOnHover=false;
  bool hideKeyboardDuringMouseActions=false;
+ bool mouseActionSequence=false;
  bool gazeIndicatorMorph=false;
  int millMouseSpeed=0;
  int millMouseResponse=0;
