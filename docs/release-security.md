@@ -2,6 +2,9 @@
 
 The Windows release workflow accepts `main` or an exact version tag on a commit
 reachable from `main`. Both Linux and Windows CI must have passed for that commit.
+CI must come from a `main` push run of `.github/workflows/build.yml` in this
+repository. Validation checks the workflow identity and the Linux/Windows jobs
+in its current run attempt; same-name checks from other workflows do not count.
 Publishing requires a version tag created by an administrator. A manual run on
 `main` with `create_release=false` tests the full pipeline without publishing.
 Checkout does not retain credentials, and tokens default to read access. Only the
@@ -11,7 +14,9 @@ Release jobs use separate GitHub-hosted runners:
 
 1. Build, test and stage with the public certificate and pinned Tobii headers.
 2. Sign the application. Import the persistent key only around `signtool`, then
-   remove it in `finally`. Do not install dependencies or execute the input.
+   delete the imported certificate and private key in `finally`. Cleanup attempts
+   every item, reports failures, and must succeed before publishing a signed hash.
+   Do not install dependencies or execute the input.
 3. Package the signed application and staged files without a private key.
 4. Sign the MSI on another fresh runner, with the same restrictions as step 2.
 5. Verify and install the signed MSI on another runner without a private key.

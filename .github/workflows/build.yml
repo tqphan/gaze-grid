@@ -34,6 +34,11 @@ jobs:
           python-version: '3.14.10'
       - name: Test publishing boundary
         run: python tests/ReleaseAssetsTests.py
+      - name: Test release CI identity validation
+        run: python tests/ReleaseCiTests.py
+      - name: Test private-key cleanup with disposable certificates
+        shell: pwsh
+        run: ./tests/SigningCleanupTests.ps1
       - name: Install Qt with locked installer dependencies
         shell: pwsh
         run: ./platform/windows/Install-Qt.ps1
