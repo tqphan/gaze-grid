@@ -245,7 +245,10 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  pointer.scroll=[this](double amount){return desktopActive&&portal.scroll(amount);};
  pointer.scrollAxes=[this](double x,double y){return desktopActive&&portal.scrollAxes(x,y);};
  pointer.releaseAll=[this]{portal.releaseButtons();};
- connect(&pointer,&PointerActions::changed,this,[this]{targeting=pointer.targeting();if(!targeting)clearCapture();emit changed();});
+ connect(&pointer,&PointerActions::changed,this,[this]{
+  if(pointer.hidesKeyboard())mouseActionSequence=true;
+  targeting=pointer.targeting();if(!targeting)clearCapture();emit changed();
+ });
  connect(&screenshot,&ScreenshotPortal::failed,this,[this](QString error){
   clearCapture();runner.cancel();endButtonHold();gameController.reset();activeJoystick=-1;pointer.cancel();actionStatus=error;emit changed();
  });
@@ -268,7 +271,12 @@ Controller::Controller(bool signIn,const QJsonObject &signInProfile,TobiiInput *
  runner.supportsAction=ActionCatalog::supported;
  runner.navigate=[this](QString name,bool back){if(desktopActive)openLayout(name,back);};
  connect(&runner,&ActionRunner::failed,this,[this](QString m){endButtonHold();gameController.reset();activeJoystick=-1;actionStatus=m.contains("Gamepad")&&!gameController.error().isEmpty()?gameController.error():m;emit changed();});
- connect(&runner,&ActionRunner::stateChanged,this,&Controller::changed);
+ connect(&runner,&ActionRunner::stateChanged,this,[this]{
+  // Keep the keyboard hidden between pointer operations and through waits in
+  // the same command sequence. Completion, failure and cancellation all clear it.
+  if(!runner.busy())mouseActionSequence=false;
+  emit changed();
+ });
  connect(&runner,&ActionRunner::cancelled,this,&Controller::clearOverlap);
  connect(&runner,&ActionRunner::failed,this,[this]{clearOverlap();});
  connect(&runner,&ActionRunner::finished,this,&Controller::dispatchOverlap,Qt::QueuedConnection);
@@ -398,6 +406,14 @@ void Controller::invalidateInputContext(){
 }
 DesktopTextContext Controller::predictionDesktopContext(DesktopTextContext context)const{
  if(bestEffortPredictionOnlyValue){
+  // Best-effort prediction must not depend on the UIA element or its text
+  // provider. Windows supplies an independently verified native focus token.
+  if(!context.focusIdentity.isEmpty()){
+   context.identity=context.focusIdentity;
+   if(context.readFailed)
+    context.privateField=context.privateField||!externalContextObserved||externalContext.focusIdentity!=context.focusIdentity||externalContext.privateField;
+   context.readFailed=false;
+  }
   context.before.clear();context.after.clear();context.cursor=-1;
   context.supported=false;context.available=false;
  }
@@ -415,6 +431,12 @@ void Controller::setBestEffortPredictionOnly(bool enabled){
 void Controller::updateDesktopTextContext(const DesktopTextContext &incoming){
  const auto context=predictionDesktopContext(incoming);
  if(signInMode)return;
+ // An unknown focus is not evidence of a field change. Keep the displayed
+ // targets until focus can be verified, but acceptance must still read it afresh.
+ const bool unknownFocus=context.focusIdentity.isEmpty()
+    &&(context.windowIdentity.isEmpty()||context.windowIdentity==externalContext.windowIdentity);
+ if(context.readFailed&&!context.privateField&&externalContextObserved
+    &&(unknownFocus||(!context.focusIdentity.isEmpty()&&context.focusIdentity==externalContext.focusIdentity)))return;
  if(externalContextObserved&&externalContext==context){
   if(externalContextPending)pendingExternalContext=context;
   return;
@@ -975,6 +997,7 @@ void Controller::activate(QString key){
   if(showingImeCandidates())return;
   if(!hasScratchpad()&&desktopContextProvider){
    const auto current=predictionDesktopContext(desktopContextProvider());
+   if(current.readFailed)return;
    if(current!=externalContext){updateDesktopTextContext(current);return;}
   }
   const auto word=suggestions[i];
@@ -1449,8 +1472,12 @@ void Controller::setLearning(bool enabled){
  learning=enabled;dwell.reset();updateSuggestions();
 }
 void Controller::updateSuggestions(){
- ++predictionRevision;suggestionOffset=0;
- suggestions=predictionSuggestions();emit changed();
+ const PredictionTargetContext context{predictionText(),predictionLanguageValue,hasScratchpad()?DesktopTextContext{}:externalContext,hasScratchpad()};
+ const auto next=predictionSuggestions();
+ // Identical labels can still refer to a different field or typed prefix.
+ // Invalidate those targets, while leaving a redundant refresh's dwell intact.
+ if(next!=suggestions||context!=predictionTargetContext)++predictionRevision;
+ predictionTargetContext=context;suggestionOffset=0;suggestions=next;emit changed();
 }
 void Controller::resetLearning(){if(signInMode)return;frequencies.clear();QFile::remove(learnedFile(predictionLanguageValue));updateSuggestions();}
 void Controller::speak(){if(desktopActive&&!sensitiveInput)speech.speak(scratchpad);}

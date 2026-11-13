@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <QSettings>
+#include <QTemporaryDir>
 #include <QTextStream>
 #include <QTimer>
 #include <QProcess>
@@ -448,9 +449,16 @@ int main(int argc,char **argv){
  auto settings=window->findChild<QQuickWindow*>("settingsWindow");
  if(!settings)return 1;
  settings->setTransientParent(nullptr);
+ const bool settingsPlacementCheck=app.arguments().contains("--settings-placement-ui-check");
+ const auto settingsPlacementTestDirectory=settingsPlacementCheck?std::make_unique<QTemporaryDir>():nullptr;
  // Keep window placement separate from the explicit Save preferences action.
- QSettings settingsPlacement(QDir(appConfigDirectory()).filePath("windows.ini"),QSettings::IniFormat);
+ QSettings settingsPlacement(QDir(settingsPlacementCheck?settingsPlacementTestDirectory->path():appConfigDirectory()).filePath("windows.ini"),QSettings::IniFormat);
+ const QRect settingsPlacementTestBounds(13,80,770,510);
+ if(settingsPlacementCheck)settingsPlacement.setValue("settings/geometry",settingsPlacementTestBounds);
  auto settingsBounds=settingsPlacement.value("settings/geometry").toRect();
+ auto restoreSettingsPlacement=[&]{
+ // Restore after the keyboard has initialized screen dimensions and QML minimum sizes.
+ // Window size must not stay bound to the keyboard's screen dimensions.
  if(settingsBounds.isValid()){
   QScreen *placementScreen=nullptr;
   int largestArea=0;
@@ -468,7 +476,10 @@ int main(int argc,char **argv){
    settings->setScreen(placementScreen);
    settings->setGeometry(settingsBounds);
   }
+ }else if(auto screen=QGuiApplication::primaryScreen()){
+  settings->resize(settings->size().boundedTo(screen->availableGeometry().size()));
  }
+ };
  QTimer settingsPlacementTimer;
  settingsPlacementTimer.setSingleShot(true);
  settingsPlacementTimer.setInterval(250);
@@ -633,7 +644,37 @@ int main(int argc,char **argv){
  QObject::connect(&app,&QGuiApplication::screenAdded,&app,[&](QScreen *screen){watchScreen(screen);displayChanged();});
  QObject::connect(&app,&QGuiApplication::screenRemoved,&app,displayChanged);
  QObject::connect(&app,&QGuiApplication::primaryScreenChanged,&app,displayChanged);
- applyGeometry();window->show();
+ applyGeometry();restoreSettingsPlacement();window->show();
+ if(settingsPlacementCheck){
+  settings->showNormal();
+  QTimer::singleShot(350,&app,[&]{
+   if(settings->geometry()!=settingsPlacementTestBounds){
+    QTextStream(stderr)<<"FAIL: restored settings placement "<<settings->x()<<","<<settings->y()<<" "<<settings->width()<<"x"<<settings->height()<<Qt::endl;app.exit(2);return;
+   }
+   // Reapplying display geometry must not reset a restored or resized window.
+   window->setProperty("screenWidth",960);window->setProperty("screenHeight",700);
+   if(settings->geometry()!=settingsPlacementTestBounds){
+    QTextStream(stderr)<<"FAIL: screen dimensions reset settings placement"<<Qt::endl;app.exit(2);return;
+   }
+   settings->setGeometry(QRect(11,90,780,520));
+   QTimer::singleShot(350,&app,[&]{
+    const QRect expected(11,90,780,520);
+    QSettings saved(settingsPlacement.fileName(),QSettings::IniFormat);
+    if(saved.value("settings/geometry").toRect()!=expected){
+     QTextStream(stderr)<<"FAIL: settings placement was not saved"<<Qt::endl;app.exit(2);return;
+    }
+    settings->close();settings->showNormal();
+    QTimer::singleShot(100,&app,[&,expected]{
+     if(settings->geometry()!=expected){
+      QTextStream(stderr)<<"FAIL: reopening reset settings placement"<<Qt::endl;app.exit(2);return;
+     }
+     QTextStream(stdout)<<"PASS: settings placement restore, screen changes, save and reopen"<<Qt::endl;app.quit();
+    });
+   });
+  });
+  QTimer::singleShot(5000,&app,[&]{QTextStream(stderr)<<"FAIL: settings placement check timed out"<<Qt::endl;app.exit(2);});
+  return app.exec();
+ }
 #ifdef _WIN32
  // Prepare the translucent target surface before its first use and suppress
  // Windows' show/hide fades, which otherwise flash over the selection point.

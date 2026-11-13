@@ -589,7 +589,7 @@ Window {
   }
  }
  Window {
-  id:settings;onActiveChanged:if(active)controller.refreshWindowsStartup();objectName:"settingsWindow";visible:false;width:Math.min(1100,root.screenWidth);height:Math.min(800,root.screenHeight-60);title:"Settings";color:Kirigami.Theme.backgroundColor
+  id:settings;onActiveChanged:if(active)controller.refreshWindowsStartup();objectName:"settingsWindow";visible:false;width:1100;height:800;title:"Settings";color:Kirigami.Theme.backgroundColor
   minimumWidth:Math.min(760,root.screenWidth);minimumHeight:Math.min(500,root.screenHeight-60)
   ColorDialog {
    id:gazeColorDialog
