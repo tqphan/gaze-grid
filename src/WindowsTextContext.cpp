@@ -44,7 +44,8 @@ DesktopTextContext WindowsTextContext::readControl(HWND control){
  result.cursor=int(start);result.available=true;return result;
 }
 bool WindowsTextContext::replaceControl(HWND control,const DesktopTextContext &expected,const QString &candidate,const QString &language,bool space){
- if(!expected.available||expected.privateField||readControl(control)!=expected)return false;
+ auto controlExpected=expected;controlExpected.focusIdentity.clear();controlExpected.windowIdentity.clear();
+ if(!expected.available||expected.privateField||readControl(control)!=controlExpected)return false;
  const auto edit=PredictionLanguage::edit(expected.before,expected.after,candidate,language,space);
  if(!edit.valid||edit.removeAfter>=4096)return false;
  if(edit.text.isEmpty()&&!edit.removeBefore&&!edit.removeAfter)return true;
@@ -60,15 +61,23 @@ bool WindowsTextContext::replaceCurrent(const DesktopTextContext &expected,const
 }
 DesktopTextContext WindowsTextContext::current(){
  if(!WindowsDesktop::inputDesktopActive())return {};
- const auto window=GetForegroundWindow();if(!window)return {};
+ const auto window=GetForegroundWindow();if(!window){DesktopTextContext failed;failed.readFailed=true;return failed;}
  DWORD process=0;const auto thread=GetWindowThreadProcessId(window,&process);
+ if(!thread||!process){DesktopTextContext failed;failed.readFailed=true;return failed;}
  if(process==GetCurrentProcessId())return {};
+ DesktopTextContext failed;failed.readFailed=true;
+ failed.windowIdentity=QString("win:%1:%2").arg(process).arg(quintptr(window),0,16);
  GUITHREADINFO info{};info.cbSize=sizeof(info);
- if(!GetGUIThreadInfo(thread,&info)||!info.hwndFocus)return {};
+ if(!GetGUIThreadInfo(thread,&info))return failed;
+ if(!info.hwndFocus){DesktopTextContext empty;empty.windowIdentity=failed.windowIdentity;return empty;}
  const auto focus=info.hwndFocus;auto result=readControl(focus);
- if(!result.supported){const auto automation=WindowsAutomationContext::current();if(automation.supported||!automation.identity.isEmpty())result=automation;}
+ if(!result.supported){const auto automation=WindowsAutomationContext::current();if(automation.readFailed||automation.supported||!automation.identity.isEmpty())result=automation;}
  GUITHREADINFO verify{};verify.cbSize=sizeof(verify);
- if(GetForegroundWindow()!=window||!GetGUIThreadInfo(thread,&verify)||verify.hwndFocus!=focus)return {};
+ if(GetForegroundWindow()!=window){failed.windowIdentity.clear();return failed;}
+ if(!GetGUIThreadInfo(thread,&verify))return failed;
+ if(verify.hwndFocus!=focus)return failed;
+ result.windowIdentity=failed.windowIdentity;
+ result.focusIdentity=QString("win:%1:%2:%3").arg(process).arg(quintptr(window),0,16).arg(quintptr(focus),0,16);
  return result;
 }
 void WindowsTextContext::run(){

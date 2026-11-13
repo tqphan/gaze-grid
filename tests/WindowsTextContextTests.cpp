@@ -52,6 +52,14 @@ private slots:
   monitor.requestInterruption();QVERIFY(monitor.wait(1000));
   for(const auto &snapshot:snapshots)QVERIFY(qvariant_cast<DesktopTextContext>(snapshot.front())==DesktopTextContext{});
  }
+ void nativeReplacementAcceptsFocusMetadataButRejectsChangedText(){
+  Control control;QVERIFY(control.window);SetWindowTextW(control.window,L"thank y");SendMessageW(control.window,EM_SETSEL,7,7);
+  auto context=WindowsTextContext::readControl(control.window);QVERIFY(context.available);
+  context.focusIdentity="win:verified-focus";context.windowIdentity="win:verified-window";
+  QVERIFY(WindowsTextContext::replaceControl(control.window,context,"you","eng",true));
+  QCOMPARE(WindowsTextContext::readControl(control.window).before,QString("thank you "));
+  QVERIFY(!WindowsTextContext::replaceControl(control.window,context,"you","eng",true));
+ }
  void automationSurroundingTextStaysInsideEditor(){
   const QString editor="thank y",prefix="outside ",suffix=". toolbar";
   for(int position:{-1,0,4,7,8}){
@@ -97,7 +105,7 @@ private slots:
   Control control;QVERIFY(control.window);SetWindowTextW(control.window,L"thank yuo today");SendMessageW(control.window,EM_SETSEL,7,7);
   auto read=std::async(std::launch::async,[&]{return WindowsAutomationContext::readWindow(control.window);});
   QTRY_VERIFY_WITH_TIMEOUT(read.wait_for(std::chrono::milliseconds(0))==std::future_status::ready,5000);
-  const auto context=read.get();QVERIFY(context.supported);QVERIFY(context.available);
+  auto context=read.get();QVERIFY(context.supported);QVERIFY(context.available);context.focusIdentity="win:verified-focus";context.windowIdentity="win:verified-window";
   QCOMPARE(context.before,QString("thank y"));QCOMPARE(context.after,QString("uo today"));
   auto replace=std::async(std::launch::async,[&]{return WindowsAutomationContext::replaceWindow(control.window,context,"you","eng",true,[&](const QString &value){
    SendMessageW(control.window,EM_REPLACESEL,TRUE,LPARAM(value.utf16()));return true;

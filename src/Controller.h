@@ -352,6 +352,12 @@ private:
  QList<QMetaObject::Connection> imeConnections;
  QList<QMetaObject::Connection> editorConnections;
  quint64 predictionRevision=0;
+ struct PredictionTargetContext {
+  QString text,language;
+  DesktopTextContext desktop;
+  bool scratchpad=false;
+  bool operator==(const PredictionTargetContext &)const=default;
+ } predictionTargetContext;
  bool scratchpadRefreshPending=false;
  SystemKeyboard systemLayout;
  LocalScratchpadInput localInput;

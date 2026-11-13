@@ -196,6 +196,100 @@ private slots:
   auto values=ProfileStore::defaults();values.remove("bestEffortPredictionOnly");QVERIFY(ProfileStore::valid(values));
   values["bestEffortPredictionOnly"]="true";QVERIFY(!ProfileStore::valid(values));
  }
+ void bestEffortDwellSurvivesAutomationFailuresAndIdentityChurn(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.setProperty("dwellMs",250);
+  QString output;
+  c.configureInputMethod([&](QString text){output+=text;return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  auto context=DesktopTextContext::fromUtf8("unrelated",9,9);context.identity="uia:steam-search";context.focusIdentity="win:steam:search";
+  c.setDesktopContextProvider([&]{return context;});c.updateDesktopTextContext(context);
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","thank y"}}}));QTRY_VERIFY(!c.executingCommands());
+  const auto words=c.displaySuggestions();const auto prefix=c.suggestionPrefix();const int index=words.indexOf("you");QVERIFY(index>=0);
+  const auto target=prefix+QString::number(index);c.hover(target);QTest::qWait(40);const auto progress=c.hover(target);QVERIFY(progress>0);
+  context.identity.clear();context.readFailed=true;context.available=false;context.supported=false;context.before.clear();
+  c.updateDesktopTextContext(context);QCOMPARE(c.displaySuggestions(),words);QCOMPARE(c.suggestionPrefix(),prefix);QVERIFY(c.hover(target)>=progress);
+  context.readFailed=false;context.identity="uia:recreated-search";context.available=true;context.supported=true;context.before="changed externally";
+  c.updateDesktopTextContext(context);QCOMPARE(c.displaySuggestions(),words);QCOMPARE(c.suggestionPrefix(),prefix);
+  // A timeout at the instant dwell completes must not make best-effort acceptance fail.
+  context.identity.clear();context.readFailed=true;c.updateDesktopTextContext(context);
+  QTRY_VERIFY((c.hover(target),output=="thank you "));QTRY_VERIFY(!c.executingCommands());
+  context.readFailed=false;context.identity="uia:search";context.privateField=true;c.updateDesktopTextContext(context);QVERIFY(c.displaySuggestions().isEmpty());
+  context.readFailed=true;context.identity.clear();context.privateField=false;c.updateDesktopTextContext(context);QVERIFY(c.displaySuggestions().isEmpty());
+  context.readFailed=false;context.privateField=false;c.updateDesktopTextContext(context);
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","thank y"}}}));QTRY_VERIFY(!c.executingCommands());
+  QVERIFY(c.displaySuggestions().contains("you"));const auto stale=c.suggestionPrefix()+"0";
+  context.focusIdentity="win:other:field";context.readFailed=true;c.updateDesktopTextContext(context);
+  QVERIFY(c.displaySuggestions().isEmpty());const auto before=output;c.clickCommand(stale);QCOMPARE(output,before);
+ }
+ void caretAwareDwellSurvivesTransientReadButAcceptanceRequiresFreshContext(){
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
+  c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  auto good=DesktopTextContext::fromUtf8("thank y",7,7);good.identity="uia:search";good.focusIdentity="win:steam:search";
+  auto context=good;int replacements=0;
+  c.setDesktopContextProvider([&]{return context;});
+  c.setDesktopCompletionProvider([&](const DesktopTextContext &,const QString &,const QString &,bool){++replacements;return true;});
+  c.updateDesktopTextContext(context);const auto words=c.displaySuggestions();const auto prefix=c.suggestionPrefix();
+  const int index=words.indexOf("you");QVERIFY(index>=0);const auto target=prefix+QString::number(index);
+  context={};context.focusIdentity=good.focusIdentity;context.readFailed=true;
+  for(int i=0;i<3;++i){c.updateDesktopTextContext(context);QCOMPARE(c.displaySuggestions(),words);QCOMPARE(c.suggestionPrefix(),prefix);}
+  c.clickCommand(target);QCOMPARE(replacements,0);QCOMPARE(c.suggestionPrefix(),prefix);
+  context=good;c.updateDesktopTextContext(context);QCOMPARE(c.suggestionPrefix(),prefix);
+  c.clickCommand(target);QCOMPARE(replacements,1);
+  context={};context.focusIdentity="win:other:field";context.readFailed=true;c.updateDesktopTextContext(context);
+  QVERIFY(c.suggestionPrefix()!=prefix);c.clickCommand(target);QCOMPARE(replacements,1);
+ }
+ void nativeFocusReadFailurePreservesDwellButBlocksUnverifiedAcceptance(){
+  for(bool bestEffort:{false,true}){
+   Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(bestEffort);c.setProperty("paused",false);c.setProperty("dwellMs",250);
+   QString output;int replacements=0;
+   c.configureInputMethod([&](QString text){output+=text;return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+   auto good=DesktopTextContext::fromUtf8("thank y",7,7);good.identity="uia:search";good.focusIdentity="win:steam:search";good.windowIdentity="win:steam";
+   auto context=good;c.setDesktopContextProvider([&]{return context;});
+   c.setDesktopCompletionProvider([&](const DesktopTextContext &,const QString &,const QString &,bool){++replacements;return true;});
+   c.updateDesktopTextContext(context);
+   if(bestEffort){QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","thank y"}}}));QTRY_VERIFY(!c.executingCommands());}
+   const auto words=c.displaySuggestions();const auto prefix=c.suggestionPrefix();const int index=words.indexOf("you");QVERIFY(index>=0);
+   const auto target=prefix+QString::number(index);c.hover(target);QTest::qWait(40);const auto progress=c.hover(target);QVERIFY(progress>0);
+   for(bool knownWindow:{true,false}){
+    context={};context.readFailed=true;if(knownWindow)context.windowIdentity=good.windowIdentity;
+    c.updateDesktopTextContext(context);QCOMPARE(c.displaySuggestions(),words);QCOMPARE(c.suggestionPrefix(),prefix);QVERIFY(c.hover(target)>=progress);
+   }
+   const auto beforeFailure=output;c.clickCommand(target);QCOMPARE(output,beforeFailure);QCOMPARE(replacements,0);QCOMPARE(c.suggestionPrefix(),prefix);
+   context=good;c.updateDesktopTextContext(context);QCOMPARE(c.suggestionPrefix(),prefix);
+   c.clickCommand(target);QTRY_VERIFY(!c.executingCommands());
+   if(bestEffort)QCOMPARE(output,QString("thank you "));else QCOMPARE(replacements,1);
+   const auto previous=c.suggestionPrefix();context={};context.readFailed=true;context.windowIdentity="win:other";c.updateDesktopTextContext(context);
+   QVERIFY(c.suggestionPrefix()!=previous);
+   const auto before=output;const auto committed=replacements;c.clickCommand(c.suggestionPrefix()+"0");QCOMPARE(output,before);QCOMPARE(replacements,committed);
+   context={};c.updateDesktopTextContext(context); // Confirmed absence still invalidates.
+   const auto emptyPrefix=c.suggestionPrefix();context=good;c.updateDesktopTextContext(context);QVERIFY(c.suggestionPrefix()!=emptyPrefix);
+   context.privateField=true;c.updateDesktopTextContext(context);QVERIFY(c.displaySuggestions().isEmpty());
+   context={};context.readFailed=true;context.windowIdentity=good.windowIdentity;c.updateDesktopTextContext(context);QVERIFY(c.displaySuggestions().isEmpty());
+  }
+ }
+ void redundantPredictionRefreshPreservesDwell(){
+  Controller c;c.resetPreferences();c.setProperty("paused",false);c.setProperty("dwellMs",250);
+  QString output;c.configureInputMethod([&](QString text){output+=text;return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  DesktopTextContext context;context.identity="field";c.setDesktopContextProvider([&]{return context;});c.updateDesktopTextContext(context);
+  QVERIFY(c.executeCommands({QVariantMap{{"tag","Text"},{"text","thank y"}}}));QTRY_VERIFY(!c.executingCommands());
+  const auto words=c.displaySuggestions();const auto prefix=c.suggestionPrefix();const int index=words.indexOf("you");QVERIFY(index>=0);
+  const auto target=prefix+QString::number(index);c.hover(target);QTest::qWait(40);const auto progress=c.hover(target);QVERIFY(progress>0);
+  for(int i=0;i<3;++i){c.inputContextChanged(true,false);QCOMPARE(c.displaySuggestions(),words);QCOMPARE(c.suggestionPrefix(),prefix);QVERIFY(c.hover(target)>=progress);}
+  QTRY_VERIFY((c.hover(target),output=="thank you "));QTRY_VERIFY(!c.executingCommands());
+ }
+ void unchangedPredictionWordsStillInvalidateChangedAcceptanceContext(){
+  Controller c;c.resetPreferences();c.setBestEffortPredictionOnly(false);c.setProperty("paused",false);
+  c.configureInputMethod([](QString){return true;},[](QString,bool){return true;});c.inputContextChanged(true,false);
+  auto context=DesktopTextContext::fromUtf8("thank y",7,7);context.identity="field";
+  c.setDesktopContextProvider([&]{return context;});int replacements=0;
+  c.setDesktopCompletionProvider([&](const DesktopTextContext &,const QString &,const QString &,bool){++replacements;return true;});
+  c.updateDesktopTextContext(context);const auto words=c.displaySuggestions();QVERIFY(words.contains("you"));
+  for(bool changeField:{false,true}){
+   const auto prefix=c.suggestionPrefix(),target=prefix+QString::number(words.indexOf("you"));
+   if(changeField)context.identity="other-field";else context.after="remaining text";
+   c.updateDesktopTextContext(context);QCOMPARE(c.displaySuggestions(),words);QVERIFY(c.suggestionPrefix()!=prefix);
+   c.clickCommand(target);QCOMPARE(replacements,0);
+  }
+ }
  void predictionUnderlineRequiresBestEffort(){
   Controller c;c.resetPreferences();c.setProperty("underlineTypedText",true);
   c.setBestEffortPredictionOnly(false);

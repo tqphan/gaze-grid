@@ -5,8 +5,13 @@
 #include <QTextBoundaryFinder>
 struct DesktopTextContext {
  QString before,after,identity;
+ // Native focus survives UI Automation provider timeouts/recreated elements.
+ QString focusIdentity;
+ // Foreground window can remain verifiable when its focused-control query fails.
+ QString windowIdentity;
  int cursor=-1;
  bool supported=false,available=false,privateField=false;
+ bool readFailed=false;
  bool operator==(const DesktopTextContext &)const=default;
  static DesktopTextContext fromUtf8(const QByteArray &text,int cursor,int anchor){
   DesktopTextContext result;result.supported=true;

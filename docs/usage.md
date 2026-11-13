@@ -190,7 +190,11 @@ Save preferences to retain the choice. Next-word predictions are unchanged.
 
 Prediction languages are selected under Settings > Typing & speech > Word prediction > Prediction language. See [multilingual prediction models](../resources/prediction/MULTILINGUAL.md) for the 18 languages, training data, and evaluation. Chinese and Thai use offline lexicon-segmented word models; Japanese retains character prediction alongside local IME conversion. Scratchpad prediction follows the caret and returns after composition ends.
 
-**Settings > Typing & speech > Word prediction > Use best-effort prediction only** uses Gaze Grid's typed-key history for desktop prediction and completion, even when the target exposes text and caret context. It defaults to on. Private fields remain excluded; scratchpad prediction is unchanged. Save preferences to retain the choice.
+**Settings > Typing & speech > Word prediction > Use best-effort prediction only** uses Gaze Grid's typed-key history for desktop prediction and completion, even when the target exposes text and caret context. It defaults to on. On Windows, accessibility timeouts and accessibility element changes within the same native focused control preserve prediction dwell; switching native controls or windows still clears typed-key context. Private fields remain excluded; scratchpad prediction is unchanged. Save preferences to retain the choice.
+
+With best-effort-only prediction off, temporary accessibility read failures preserve prediction dwell while Windows confirms the same native focus. Accepting a prediction still requires a fresh matching text/caret snapshot.
+
+Temporary Windows focus-query failures also preserve the displayed predictions and dwell. Acceptance waits for a successful focus check; a confirmed focus change or private field still invalidates predictions. Refreshing unchanged words and acceptance context preserves dwell.
 
 **Settings > Typing & speech > Word prediction > Underline best-effort prediction typed text** underlines the matching typed portion of best-effort predictions. It defaults to off and does not apply to caret-aware predictions, scratchpad predictions, or IME candidates. Save preferences to retain the choice.
 
